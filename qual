@@ -1,0 +1,1960 @@
+Quality Intake 
+
+<h2 style="text-align: left;">
+  <strong>Agent Guide – Return for Credit (R4C)</strong>
+</h2>
+<h1>Pre-Requisites:</h1>
+<p>To login as an agent, we should have Sandbox access for the required test environment. We have two types of Agents L1 &amp; L2. L1 Agent can login to the Sandbox URL and create a Return Request for Stock Rotation. L2 Agent can view the cases assigned to them and can change the case owner.</p>
+<p>
+  <strong>Sandbox (IAOQA) Link: </strong>
+  <a href="https://isvc--isvcqa25.sandbox.my.salesforce.com/">
+    <strong>https://isvc--isvciaoqa.sandbox.my.salesforce.com/</strong>
+  </a>Access related issues, Contact: <span>@Indus ISVC GRL R4C</span>
+</p>
+<h1>1. Login to CRM R4C System:</h1>
+<ul>
+  <li data-uuid="c4294cb4-88c6-47e0-ae3f-c0c963b73fa3">Enter the sandbox URL in the browser and login as an L1 Agent with your user credentials.</li>
+</ul>
+<ul>
+  <li data-uuid="96ac2c22-ce4a-4f74-aaf6-d9e56dd22893">After we login to the system, we will be able to see the app “Return for Credit”, and “Home” Tab.</li>
+</ul>
+<p>Note: If ‘Return for Credit’ app is not displayed directly after login, then click on App launcher (nine dots), search for “Return for credit” and select first option.</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-6-41-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="3b43a294-8d29-4e78-b1fc-a96caff9cb0f">After we login to the system, we will be able to see the app “Return for Credit”, and “Home” Tab.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-7-3-1.png"/>
+  </ac:image>
+</p>
+<p>Note: If ‘Return for Credit’ app is not displayed directly after login, then click on App launcher (nine dots), search for “Return for credit” and select first option.</p>
+<h1>
+  <span>2. Case creation:</span>
+</h1>
+<ul>
+  <li data-uuid="8375b485-1776-4819-b4cf-a5810d49cf6e">
+    <span>Select ‘Contact’ from the ‘Navigation items/ Menu’ dropdown</span>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <span>
+    <ac:image ac:width="550">
+      <ri:attachment ri:filename="image-2026-7-6_11-16-40-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="f9e14a9a-dd54-4cdb-b975-3a4dccfe2d1a">
+    <span> </span>
+    <span>Select a contact from the list view of contacts to open corresponding contact record.</span>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-17-9-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="f12aa7b8-7063-46d7-9e91-f7510d4a9d08">In the contact detail page, we can see “Create R4C Case” link &amp; “New R4C Case” Button, click on one of them.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-17-42-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="9d2a2b1c-2adc-445d-a47d-88bf52a4e272">When Clicking on a contact hyperlink the page opens in a new tab and if clicked on the button then the “Step1 Dialog box for Service type selection “is opened. “Technical” is selected by default, Agent needs to select Quality for Quality Service Type.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-18-5-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="f704fca5-114b-42a4-9379-b11916849ee7">The New R4C Case subtab will be opened after clicking on the Create button. Fill in the Request header details &amp; Collection Details.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-18-28-1.png"/>
+  </ac:image>
+</p>
+<h1>
+  <span>3.Blocks scenarios:</span>
+</h1>
+<h3>Export Compliance Block: </h3>
+<ul>
+  <li data-uuid="bb8ec71a-8be8-4751-8d9c-e9dd75f39bb6">
+    <strong>How to Check Export Compliance on Account</strong>: Click on the Account name in the contact details &gt; Account Page opens in New Sub tab &gt; Go to Details section &gt; See the Compliance information &gt; Observe the “Export Compliance Block” Checkbox. </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-19-8-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="a044acc8-425f-4f7d-922b-e445e1c6841e">We are checking ECB Block at only for the Sold to CMF level Account.</li>
+  <li data-uuid="ebcc796c-2a6a-4848-b732-7ca278b2b946">In case creation, If the ECB block available then on click of New R4C create button it will display an error message &amp; not able to create case. It is an hard stop.</li>
+  <li data-uuid="1c6d524a-d210-4341-af64-fb8dacecfbce">In case Edit, If the ECB block available then on click of Edit button, then it will display an error message &amp; not able to Edit the case.</li>
+</ul>
+<h3>Sold to Block (SAP Blocks): </h3>
+<ul>
+  <li data-uuid="50d96862-d8e2-4f36-9d76-db79d24cf68b">From account record page, go to ‘Related’ tab and there we can see ‘Customer BAG Account Associations’.  Open the related ‘Business Account Group’ (BAG) record. </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-20-52-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="47ac2bbf-cf80-4a3e-be50-9d20cc101079">The related ‘BAG’ record open in a new subtab. Open ‘Related’ tab and we can see the ‘Customer CMFs’ associated with the Account in ‘Customer BAG CMF Associations’ </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-21-22-1.png"/>
+  </ac:image>
+</p>
+<p style="margin-left: 40.0px;">
+  <br/>
+</p>
+<ul>
+  <li data-uuid="7c31f868-7cc6-4930-b75a-a0f190945521">Click on any “Customer CMF” to open the corresponding record detail page. Navigate to ‘related’ tab and there we can see ‘Customer Partners (Partner CMF)’ records and their corresponding role code. </li>
+  <li data-uuid="4649b750-3512-471a-8a3a-da644a18afaf">If the ‘Customer CMF’ record has a related ‘Customer Partner’ record with role code “AG”, then that customer CMF record is eligible as a ‘sold to’ CMF. </li>
+  <li data-uuid="26c23c48-5cda-4a56-a585-b7401d60b92a">This means that we have a valid sold to record for creating an R4C case. </li>
+  <li data-uuid="9583ccc8-72b7-4387-b9f2-b0fea39918f1">All ‘Customer CMF’ records which have a related ‘Customer Partner’ record (with role code: AG) can be selected as sold to. </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-33-6-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="367e9c8e-f7c1-423a-be66-9b374c95329d">SAP blocks which are <strong>Central Order Block</strong>, <strong>Central Billing Block </strong>&amp; <strong>Central Delivery Block</strong>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <strong>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-33-43-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="41433185-9f5c-4d3b-b14a-152df9a5ca04">Check if there is any Central Order Block, Central Billing Block &amp; Central Delivery Block. Otherwise, directly check the blocks at Sales Area Level. (No need to check other blocks at CMF level) </li>
+  <li data-uuid="3efd379f-323d-43c9-9d8e-72aaa37aac7b">If <strong>central order block</strong> is present i.e., (Customer Central Order Block = <strong>‘01’ or ‘02’ or ‘03’ or ‘99</strong>’) it is a hard stop and an error toast message will be displayed with the corresponding blocks information. </li>
+  <li data-uuid="641704a4-d62e-405f-ab3a-f863a92edb33">If <strong>central billing block</strong> is present and billing block value (Customer Central Billing Block=<strong>”99” or “12”</strong>) then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </li>
+  <li data-uuid="b1990dc4-1c51-4dc1-87af-714c1a14ab8a">If <strong>Central Delivery block</strong> is present and Delivery block value (Central Delivery block = “<strong>99</strong>”) then it is a hard stop and an error toast message will be displayed with the corresponding blocks information. <p>
+      <span>
+        <strong>Note:</strong>
+      </span>
+      <span> </span>
+    </p>
+    <ul>
+      <li data-uuid="d39c4cb4-c6ef-4bf6-8aed-f9e1efcc005d">
+        <span>In Case creation, If any of the SAP Block is available at Sold to CMF level then that Sold To CMF will not be displayed in the Sold To selection.</span>
+      </li>
+      <li data-uuid="5babacff-d165-4ae9-a9fc-4c858bf49062">
+        <span> </span>
+        <span>In Case Edit, If any of the SAP Block is available at Sold to CMF level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+      </li>
+    </ul>
+  </li>
+</ul>
+<h3>Sold To Sales Area Blocks (SAP Blocks): </h3>
+<ul>
+  <li data-uuid="a10b9251-bd03-418f-a959-9f92ff702d24">Based on the selected sold to CMF, we will fetch the corresponding sales area records which are related to sold to ‘Customer CMF’ record. </li>
+  <li data-uuid="7fb570f0-60b0-43b4-82e3-bee3a78e9bff">To view the corresponding sales area records: </li>
+  <li data-uuid="847ba060-abc8-4390-ba9e-e796c60b4f35">Open the sold to Customer CMF record and navigate to related tab. </li>
+  <li data-uuid="cafc0a10-38a6-4684-8962-df2e2481145d">There we can see all the related ‘Customer Sales Area’ records. </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-34-42-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="15d62485-9838-4541-bbed-68f27ad4d6ed">At the sales area level we can have similar SAP blocks like that of sold to (CMF level): <ul>
+      <li>Order block </li>
+      <li>Billing block</li>
+      <li>Delivery block</li>
+    </ul>
+  </li>
+  <li data-uuid="55107094-ed3a-4adc-b9b0-428f0e7564ec">To check the blocks at the Sales Area level, Go to CMF &gt; Click on “Related “tab &gt; Click on “Customer Sales Area” &gt; open the Sales area and select the record &gt; Open and see the Block Values </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-35-22-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="84baa1d4-7933-40a4-a600-4c38fb602534">Check if there is any Order Block, Billing Block &amp; Delivery Block at Sold To Sales Area level. </li>
+  <li data-uuid="eb195ea7-7545-44b9-b837-8978e8d017e6">If <strong>order block</strong> is present i.e., (Order Block = <strong>‘01’ or ‘02’ or ‘03’ or ‘99</strong>’) it is a hard stop and an error toast message will be displayed with the corresponding blocks information. </li>
+  <li data-uuid="63719050-a470-456c-b083-e690a0e5ac84">If <strong>billing block</strong> is present and billing block value (Billing Block=<strong>”99” or “12”</strong>) then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </li>
+  <li data-uuid="76a5d15c-0329-41b1-adf5-5a0effd78f3d">If <strong>Delivery block</strong> is present and Delivery block value (Delivery block = “<strong>99</strong>”) then it is a hard stop and an error toast message will be displayed with the corresponding blocks information. </li>
+  <li data-uuid="28ddafa1-3cc4-42ab-a473-9bbce0b38c93">
+    <span>
+      <strong>Note:</strong>
+    </span>
+    <span> </span>
+    <ul>
+      <li>
+        <span>In Case creation, If any of the above SAP Block is available at Sold to Sales Area level then that Sales Area will not be displayed in the Sales Area selection.</span>
+      </li>
+      <li>
+        <span>In Case Edit, If any of the above SAP Block is available at Sold to Sales Area level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+      </li>
+    </ul>
+  </li>
+</ul>
+<h3>Payer CMF Blocks: </h3>
+<ul>
+  <li data-uuid="993f4694-a610-492a-8045-93cda1fed000">Based on the selected Sold to and Sales area value, we will fetch Payer record from Customer partner record with role code ‘RG’. </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-35-56-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="6aa0a637-2004-4b47-b0b3-9f9040e98d88">If no Payer record is found then it will be hard stop and  Agent/Portal user will be notified in case of hard stop by error toast message. </li>
+  <li data-uuid="027ff1b2-8834-4bba-b05b-05a4b4c4864d">If there is at least one Active Payer for the selected Sold To and Sales area combination, then we get the CMF and Sales area record related to Payer record and check for SAP blocks as mentioned below. </li>
+  <li data-uuid="8a8761c3-1a4e-4a7a-bbd6-8812dfb3c53d">Payer Order block &amp; billing block</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-36-20-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="5dc9846f-ff14-4a40-933e-8a2b1959f489">If Central order block = “02” then it is a hard stop and an error message will be displayed with the corresponding blocks information.</li>
+  <li data-uuid="8c476708-3040-4c4f-9c70-460d0bf89dea">If Central Billing Block = ‘08’ or ‘12’ or ‘99’, then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </li>
+</ul>
+<p>
+  <span>
+    <strong>Note:</strong>
+  </span>
+  <span> </span>
+</p>
+<ul>
+  <li data-uuid="8eb1ed4e-7532-462d-a18f-f8299dd2f011">
+    <span>In Case creation, If any of the above SAP Block is available at Payer CMF level then on selection of the related Sold To it will display an error toast message.</span>
+  </li>
+  <li data-uuid="649321ef-88df-4c32-adc8-2a2a7ac6c26f">
+    <span> </span>
+    <span>In Case Edit, If any of the above SAP Block is available at Payer CMF level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+  </li>
+</ul>
+<h3>Payer Sales Area Blocks: </h3>
+<ul>
+  <li data-uuid="2e82a060-f67e-4915-9cc3-9dad29d3dcc0">Based on the selected Sold to and Sales area value, we will fetch Payer record from Customer partner record with role code ‘RG’. </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-37-0-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="3b705919-db25-4330-ac5b-1103e5ccd8be">If no Payer record is found then it will be hard stop and  Agent/Portal user will be notified in case of hard stop by error toast message. </li>
+  <li data-uuid="3b8ecee9-f34f-45b1-8e58-914ed594c86e">If there is at least one Active Payer for the selected Sold To and Sales area combination, then we get the CMF and Sales area record related to Payer record and check for SAP blocks as mentioned below. </li>
+  <li data-uuid="9756cb4d-ec8d-4f9f-bad1-2eaa45f71d76">Payer Order block &amp; billing block</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-37-28-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="3846a7e6-d4b8-4040-994f-a74fd445744d">If order block = “02” then it is a hard stop and an error message will be displayed with the corresponding blocks information.</li>
+  <li data-uuid="e7334c20-46ab-4fcc-9ecd-8c881d90e3d7">If Billing Block = ‘08’ or ‘12’ or ‘99’, then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </li>
+</ul>
+<p>
+  <span>
+    <strong>Note:</strong>
+  </span>
+  <span> </span>
+</p>
+<ul>
+  <li data-uuid="5718bd98-c3c3-496f-9e6b-166c1249b287">
+    <span>In Case creation, If any of the above SAP Block is available at Payer Sales Area level then on selection of the related Sold To it will display an error toast message.</span>
+  </li>
+  <li data-uuid="1175d4e4-7cd2-4aa3-aeca-b65596841404">
+    <span> </span>
+    <span>In Case Edit, If any of the above SAP Block is available at Payer Sales Area level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+  </li>
+</ul>
+<h3>Ship To CMF blocks: </h3>
+<ul>
+  <li data-uuid="330bb57c-6a13-4fef-87f4-abc8924da145">If there are no hard blocks present at payer level, then the Ship To options are determined and populated based on selected Sold To and Sales Area records with role code ‘WE’. </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-38-6-1.png"/>
+  </ac:image>
+</p>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-38-19-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="41a68823-58d4-400c-a27e-ec27fd65f136">If order block = “02” then it is a hard stop and an error message will be displayed with the corresponding blocks information.</li>
+  <li data-uuid="aab754c7-0821-4f35-bc26-b5b14912912d">If Delivery Block = ‘99’, then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </li>
+</ul>
+<p>
+  <span>
+    <strong>Note:</strong>
+  </span>
+  <span> </span>
+</p>
+<ul>
+  <li data-uuid="4a59c115-e660-4e02-9fa3-33e18e4dbaa4">
+    <span>In Case creation, If any of the above SAP Block is available at Ship to CMF level then that Ship To CMF will not be displayed in the Ship To selection.</span>
+  </li>
+  <li data-uuid="02cb7ad9-266d-4fc0-83fe-3e9932c26f1c">
+    <span> </span>
+    <span>In Case Edit, If any of the above SAP Block is available at Ship to CMF level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+  </li>
+</ul>
+<h3>Ship To Sales Area blocks: </h3>
+<ul>
+  <li data-uuid="f3d778a7-9b35-42b9-8e81-050ee4c6ab21">If there are no hard blocks present at payer level, then the Ship To options are determined and populated based on selected Sold To and Sales Area records with role code ‘WE’. </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-38-46-1.png"/>
+  </ac:image>
+</p>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-39-1-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="51b878e9-2997-47a5-b46e-c533b75e4038">If order block = “02” then it is a hard stop and an error message will be displayed with the corresponding blocks information.</li>
+  <li data-uuid="0300dec9-4a23-4cf7-a92d-680155307224">If Delivery Block = ‘99’, then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </li>
+</ul>
+<p>
+  <span>
+    <strong>Note:</strong>
+  </span>
+  <span> </span>
+</p>
+<ul>
+  <li data-uuid="eb8f5864-6f65-4fa0-aa3b-f3681ed52d5f">
+    <span>In Case creation, If any of the above SAP Block is available at Ship to Sales Area level then that Ship To CMF will not be displayed in the Ship To selection.</span>
+  </li>
+  <li data-uuid="7148fa05-dc92-4a8c-ac13-746e2d7daed1">
+    <span>In Case Edit, If any of the above SAP Block is available at Ship to Sales Area level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+  </li>
+</ul>
+<h1>
+  <span>4.</span> Request Header Details:</h1>
+<ul>
+  <li data-uuid="a113beec-7adf-4d83-9b84-dcd250476004">User should fill in all the mandatory fields which are marked with the red colour asterisk symbol (*) and until all mandatory fields are entered, next button should be disabled.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="239">
+    <ri:attachment ri:filename="image-2026-7-6_11-39-28-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="40e53943-c952-4262-b7b4-294d0a0ff885">Contact Name &amp; Account Name will be auto populated as Hyperlinks. The selected Service Type is shown as the text field.</li>
+  <li data-uuid="92e9c1a1-9188-4047-aeba-b992f329e33f">
+    <strong>Sold To: </strong>All the ‘Customer CMF’ records which are related to the account which have a related ‘Customer Partner’ record (with role code : AG) can be selected as valid sold to.</li>
+  <li data-uuid="5301d2fe-a4ce-494e-9819-ba7794a04413">For selecting Sold To, we have a wild card search functionality which makes it easy to search and get the required CMF value instead of going through all the values in a dropdown.</li>
+  <li data-uuid="85d25bc8-6760-40b6-adc9-974948ace494">Based on the Selected Sold To Value, all other data will be fetched for other dropdowns.</li>
+  <li data-uuid="e85b4eda-082a-4458-bbfe-010b98a77fcb">When Sold To is selected, all the other details are auto populated based on the selected ‘Sold to’ value. Values are auto populated based on the most recent case created using that particular ‘Sold To’ if there is historical data of case being created using that Sold To CMF.</li>
+  <li data-uuid="0be6a4ea-9984-4806-800e-c6f16a97b1f7">All other fields in Request header details are dropdowns, if any dropdown contains a single value, it would be auto populated when agent selects a value on dependent dropdown for that dropdown.</li>
+  <li data-uuid="a56f04a1-fae2-4cce-a853-e6fcf7f62af3">Sold To Address values are determined and populated from the ‘Customer Physical Address’ records which are related to selected Sold To CMF having address type as ‘Sold to’.</li>
+  <li data-uuid="916f9618-a07d-4081-ba0f-b7b9e61dde2b">From Agent UI, we can see the address records related to selected Sold To: Go to the sold to ‘Customer CMF record’ &gt; Open the Related tab &gt; Customer Physical Addresses &gt; See the address Type as ‘AG/WE/RG’. All the active addresses would be displayed for user to choose from.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="176">
+    <ri:attachment ri:filename="image-2026-7-6_11-39-54-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="26a72383-1367-4aa9-889a-67954f045a18">The available sales areas for the selected Sold To are shown in the “Sales Area”</li>
+  <li data-uuid="0bce2e6e-e6ba-4c60-aad1-7fc320ddc264">(Sales Area= Sales org Code –Sales org Name/Distributional Code-Distribution channel name, e.g., EU02-U.K./02-Industrial Disti) dropdown.</li>
+  <li data-uuid="b28ab3a5-b68a-4a60-acb8-64db7bb605cb">
+    <strong>Ship To:</strong> All the ‘Customer CMF’ records which are related to the account which have a related ‘Customer Partner’ record (with role code: WE) can be selected as valid sold to.</li>
+  <li data-uuid="1dbade68-04c3-466f-b4ad-fd33f24d6bc8">These values are dependent on the Selected Sold To &amp; Sales Area. Hence, when the Sold To/Sales Area is changed the other fields should be refreshed/reset.</li>
+  <li data-uuid="b7cf9333-fb31-4e57-bfb4-f3b9c9e34624">
+    <strong>Note: </strong>We have wildcard search functionality present for ‘Ship To’ field also, which works similar to ‘Sold To’ search.</li>
+  <li data-uuid="0d23096d-7fb8-49e5-9d8d-524844c4cdb6">
+    <strong>Remedy:</strong> For Service type “Quality” the possible remedy values are ‘Credit’ and ‘NPR-Credit ‘, Agent can select one value from the dropdown.</li>
+  <li data-uuid="d95ad982-804f-4479-b738-57925e474678">The Address available for the selected Sold To/ Ship To are displayed in the dropdown.</li>
+  <li data-uuid="0a35bdd1-a01f-4f41-9ff3-0e052b20c826">The contacts available for the selected Addresses are displayed in the dropdown.</li>
+  <li data-uuid="de7d984d-91cc-4ee7-8431-1ac06d56bc8a">
+    <strong>Return Reason: </strong>These values are determined based on the selected ‘Service Type’ and ‘Remedy’. Values are fetched from the ‘Customer Return Reasons’ object and displayed in dropdown for agent to choose from.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-40-26-1.png"/>
+  </ac:image>
+</p>
+<p>Note:</p>
+<ul>
+  <li data-uuid="c39ce583-9807-4399-a52b-8b35ed684247">When the agent selects the remedy as ‘Credit, then the return reason options will be only ‘QAN/MRB’. The FAC option will not be displayed in the UI to create the case because FAC cases will be created through CQNR and edit scenarios will be worked on by agents.</li>
+</ul>
+<p>     <strong>Description</strong>: Agent can provide the issue details in case notes field.</p>
+<ul>
+  <li data-uuid="64866bf4-ab26-4eba-b0cd-5f5b3b34306b">
+    <strong>Add/Edit/Delete Contact:</strong>
+    <ul>
+      <li>Agent has the option to add new ‘Sold To Contact or ‘Ship To Contact’ contacts and edit or delete the previously existing contacts by selecting ‘Add, Edit and Delete Contact’ option from either ‘Sold To Contact or ‘Ship To Contact’ dropdowns respectively.</li>
+    </ul>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-40-56-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li style="list-style-type: none;">
+    <ul>
+      <li data-uuid="c3f77521-928f-44dd-adf2-472c2af5f2b1">
+        <span> </span>While creating new contact record associated to the related address record First Name, Email and Phone Number are mandatory fields.</li>
+    </ul>
+  </li>
+</ul>
+<h1>
+  <span>5.</span> Collection Details:</h1>
+<p>
+  <strong>       For Remedy = Credit:</strong>
+</p>
+<p>
+  <strong>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-41-44-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="a9f617f1-f492-41af-ac12-ac381c027569">
+    <span> </span>
+    <span>Agent should be unable to select anything in ‘Collection details’ section as it will be disabled until all the required fields in the ‘Request Header Details’ section are filled.</span>
+  </li>
+  <li data-uuid="de08ddc5-853b-4641-97c7-9ba4461fcaf0">
+    <span> </span>
+    <span>Once all the required fields in ‘Required header details’ are filled, agent would be able to select ‘Return to Customer Address’ value from the dropdown in ‘Collection Details’. These addresses are determined from the Sold To ‘Customer CMF’ record.</span>
+  </li>
+  <li data-uuid="ce2d96a5-dced-4a27-9510-57fa6c624c3d">
+    <span>
+      <strong>Return to Customer Address</strong>
+    </span>
+    <span>: Options are det</span>ermined and populated from the ‘Customer Physical Address’ records which are related to selected Sold To CMF having address type as ‘Return To Customer’.</li>
+  <li data-uuid="848ab56b-3a45-4469-8d61-2872fd0c924d">
+    <span> </span>
+    <span>Agent has search options from the dropdown to select Return to Customer address, can search by Name, Country, State &amp; Postal Code</span>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-6_11-42-35-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="4ce99079-90cc-40c2-8cd9-32299686a3ce">To see the address records related to selected Sold To: Go to the sold to ‘Customer CMF record’ &gt; Open the Related tab &gt; Customer Physical Addresses &gt; See the address Type as ‘Return To Customer’. All the active address records would be displayed for agent to choose from.</li>
+  <li data-uuid="21e9ddc6-5cca-42dd-b1e3-245f2ae26778">
+    <span> </span>
+    <span>
+      <strong>Return to Customer Contact</strong>
+    </span>
+    <span>: These contact values are fetched based on the selected ‘Return to Customer Address. </span>
+  </li>
+  <li data-uuid="3ae93453-7b4a-471c-9746-843e71b73065">To see the contact records related to selected <span>‘Return to Customer Address’</span>: Go to the sold to ‘Customer CMF record’ &gt; Open the Related tab &gt; Customer Physical Addresses &gt; Open the selected ‘Return To Customer’ address record &gt; Open the Related tab &gt; Physical Address Contacts. All the active contact records would be displayed for agents to choose from.</li>
+  <li data-uuid="fdf2c731-665a-4aa8-bf78-9a7f350ed0d1">
+    <strong>Freight Type: </strong>Once ‘Return to Customer Address’ is selected, Freight type values are determined and populated from <strong>‘Sales Freight Determination Matrix’</strong>.<ul>
+      <li>
+        <strong>Sales Freight Determination Matrix: </strong>Freight Determination<strong> </strong>is fetched from matrix based on below parameters, record from the matrix with least priority number and matching criteria is fetched<ul>
+          <li>
+            <strong>Service Type</strong>
+          </li>
+          <li>
+            <strong>Remedy Type</strong>
+          </li>
+          <li>
+            <strong>Country</strong>
+          </li>
+          <li>
+            <strong>Return Reason</strong>
+          </li>
+          <li>
+            <strong>Geography</strong>
+          </li>
+        </ul>
+      </li>
+      <li>The values are populated from filtering the matrix records by passing Remedy, Service Type, Return Reason, Geo, Country (RTC Address Country) fields in the matrix. If no record is found, we exclude Country and fetch the record. If still no record is found, we exclude Return Reason and fetch the record.<ul>
+          <li>
+            <strong>Freight Type-IMF (Intel Managed Freight):</strong>
+            <ul>
+              <li>If the customer selects the freight type as IMF (Intel Managed Freight), then all collection details fields are mandatory to proceed further.</li>
+              <li>After selecting the Collection Address, the collection date field is enabled, and date is auto populated.</li>
+              <li>
+                <strong>Collection Date</strong> is auto populated based on <strong>Geo Lead Time Matrix</strong> for IMF.</li>
+              <li>For APAC / APJ - 5 days are considered as ‘Lead Time’. Here the 5<sup>th</sup> day from current day/ case creation day will be auto populated in the collection date. Apart from that the 4<sup>th</sup> day would be enabled for Customer to choose from and the next 8 days would also be enabled for a total of 10 enabled days. These dates are all excluding holidays and weekends.</li>
+              <li>For all other regions – ‘Lead Time’ is 3 days. Therefore, 3<sup>rd</sup> day from current day would be auto populated, 2<sup>nd</sup> day would be enabled along with the next 8 days succeeding ‘Lead Time’ excluding holidays &amp; weekends.</li>
+              <li>Example- Let Case creation date is 14<sup>th</sup> Mar 2023, the date auto populated for Geo APJ would be 22<sup>nd</sup> Mar 2023 if there is no holiday for the selected collection Address. If there is holiday for that country on 22<sup>nd</sup> Mar 2023, then it would be auto populated as 23<sup>rd</sup> Mar 2023.</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="4f7f720e-774c-4bd8-b374-5d7c8d8a623e">
+    <strong>Incoterm Determination:</strong>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;"> When freight type is IMF, Incoterm value is determined by checking for the exact matching record by passing Remedy, Service Type, Return Reason, Geo, Country(Collection Address Country) fields to ‘Incoterm Determination Matrix’. If no record is found, we exclude Country and fetch the record. If still no record is found, we exclude Return Reason and fetch the record.</p>
+<ul>
+  <li data-uuid="afcfd26d-8e36-49d2-a10b-fe037a885981">
+    <strong>Freight Type-CRF (</strong>
+    <strong>Customer Routed Freight)</strong>
+    <strong>:</strong>
+    <ul>
+      <li>If the user selects the freight type as CRF (Customer Routed Freight), the collection date, Return to Customer address &amp; Return to customer contact fields are mandatory to proceed further.</li>
+      <li>
+        <strong>Collection date</strong> will auto-populate to the current day/case creation day as soon as the user selects freight type as “CRF” and all the succeeding days would be enabled for the Customer to choose from including holidays and weekends.</li>
+    </ul>
+  </li>
+  <li data-uuid="671f346d-4f43-4a91-912e-434401f94308">
+    <span> </span>
+    <span>
+      <strong>Note:</strong>
+    </span>
+    <span>
+      <strong> </strong>
+    </span>For IMF,<strong> <span>‘Collection date’</span>
+    </strong>
+    <span> would be reset if the case is edited and the collection date is not equal to current date.</span>
+  </li>
+  <li data-uuid="9d858859-e9dc-4b1c-9351-a542e701d413">
+    <strong>Collection Address: </strong>Collection address and collection contact fields are only mandatory if Freight type is selected as IMF. Collection address values are determined and fetched similar to ‘Return to Customer Address’ values.</li>
+  <li data-uuid="727f1cd5-d1f9-4dce-8b94-2dfc16103d28">
+    <span>The options are det</span>ermined and populated from the ‘Customer Physical Address’ records which are related to selected Sold to CMF having address type as ‘Collection’.</li>
+  <li data-uuid="3282fc7e-2a59-4922-a6ab-ac918aa02d8c">
+    <span> </span>
+    <span>Agent has search option to select Collection address from the dropdown, can search by Name, Country, State &amp; Postal Code.</span>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-6_11-54-20-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="22c7b665-9fe2-47da-9417-1712ec2cc942">
+    <span>Also, the addresses are filtered based on the Geo value of the selected Return to customer address</span>
+    <span>.</span>
+  </li>
+  <li data-uuid="2856b639-bed4-4e96-b522-b1b7fcf6907f">
+    <span> </span>
+    <strong>Collection Contact: </strong>These contacts<span> are fetched based on the selected ‘Collection Address’. </span>
+  </li>
+  <li data-uuid="6302d4e2-4688-4e5d-9126-03a54c917211">To see the contact records related to selected <span>‘Collection Address’</span>: Go to the sold to ‘Customer CMF record’ &gt; Open the Related tab &gt; Customer Physical Addresses &gt; Open the selected ‘<span>Collection Address’</span> record &gt; Open the Related tab &gt; Physical Address Contacts. All the active contacts would be displayed for agent to choose from.</li>
+  <li data-uuid="dc8e9d41-edde-4b17-84e1-877e9cdfd116">
+    <strong>Origin Bond:</strong>
+    <ul>
+      <li>If the selected RTC/Collection Address is belongs to India/China then only User can see the Origin Bonded option in UI &amp; this value is selected as ‘Non-Bonded’ by default. Customer can select ‘Bonded’ value according to the requirements.</li>
+      <li>If the selected RTC/Collection Address is not belongs to India/China then Origin Bonded option is not visible in UI &amp; by default it will consider as ‘Non-Bonded’</li>
+    </ul>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_11-55-31-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="94bae33f-86f9-4ff0-8948-f699ad585575">
+    <strong>Return Location: </strong>Return location value is determined from ‘Sales Return Location Matrix’ by using the selected Remedy, Service Type, Sold To CMF, Bonded Zone Indicator, Country(IMF- Collection Country, CRF - RTC Country)</li>
+  <li data-uuid="9d6fa39b-de9b-46ea-a7e8-d23c24f3b16a">If no match is found with above combination, then Sold To CMF is excluded and Return Location value fetched again.</li>
+  <li data-uuid="983fe09a-0652-4859-beda-bc6271e3b78d">If no match is found it’s a hard stop and agent is notified by relevant error toast message.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_11-56-0-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="6cd10d32-0e70-4548-909c-1a94f788e754">
+    <strong>Note: Add/Edit/Delete Address:</strong>
+    <ul>
+      <li>Agent has the option to add new ‘Return to Customer’ or ‘Collection’ address and edit or delete the previously existing addresses by selecting ‘Add, Edit and Delete Address’ option from either ‘Return to Customer Address’ or ‘Collection Address’ dropdowns respectively.</li>
+    </ul>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_11-56-35-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <span>
+    <strong>Note</strong>
+  </span>
+  <span>
+    <strong>: </strong>
+  </span>
+  <span>
+    <u>Address autocomplete for Google API:</u>
+  </span>
+</p>
+<ul>
+  <li data-uuid="0365c352-0f69-46f4-9201-2ac484552424">
+    <span> </span>While creating new address C/O Name, Country, Street 1 and City are mandatory fields.</li>
+  <li data-uuid="58cedd95-2453-4505-a02d-a1b79c212864">
+    <span> </span>
+    <span>Whenever user creates new address or edits an existing address based on the address entered at Street 1 predictions (Top 5) from google address API are displayed.</span>
+  </li>
+  <li data-uuid="5c6e0656-2865-4fb9-a66e-71fcf262557a">
+    <span>Upon selection of any address from dropdown State, Street 2, City and Postal code are populated.</span>
+  </li>
+  <li data-uuid="96a8703c-35c6-4786-be4e-57a0c8400ce6">
+    <span>When using this functionality for ‘Collection Address’ field, user can create/edit any addresses, but if the address that user tries to save doesn’t have the same Geo as RTC address, then the address is not saved.</span>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <span>
+    <strong>Note: </strong>If User wants to select Collection Address with LAR country (LAR Countries: Brazil, Argentina, Chile, Colombia, Costa Rica, Dominica, Dominican Rep, Ecuador, Mexico, Panama, Puerto Rico, El Salvador, Venezuela, Guatemala, Peru) then RTC Address should be selected as United States country Address. Otherwise, it will display an error message shown below.</span>
+</p>
+<p style="margin-left: 40.0px;">
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-6_11-58-6-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<h3>
+  <span>
+    <strong>Add/Edit/Delete Contact:</strong>
+  </span>
+  <span> </span>
+</h3>
+<ul>
+  <li data-uuid="50101d13-ea97-4e52-bf38-a210413b5ffa">
+    <span>Agent has the option to add new ‘Sold To Contact or ‘Ship To Contact’ contacts and edit or delete the previously existing contacts by selecting ‘Add, Edit and Delete Contact’ option from either ‘Sold To Contact or ‘Ship To Contact’ dropdowns respectively.</span>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <span>
+    <ac:image ac:width="492">
+      <ri:attachment ri:filename="image-2026-7-6_12-3-9-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="ccceb51a-5bc1-497b-929a-73f49aaf70ea">
+    <span>While creating new contact record associated to the related address record First Name, Email and Phone Number are mandatory fields.</span>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <span>
+    <strong>Note: </strong>While User creating new contact for the China country Address either Collection Address or RTC Address then User should select the <strong>Consent Confirmation</strong> check box otherwise contact will not be saved.</span>
+</p>
+<p style="margin-left: 40.0px;">
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-6_12-4-21-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<p>
+  <strong>For Remedy = NPR-Credit and Exchange :</strong>
+</p>
+<ul>
+  <li data-uuid="c09597f0-56bf-48ad-9be9-e3b9e79ae0b2">
+    <strong>Collection Address : </strong>
+    <span>The options are det</span>ermined and populated from the ‘Customer Physical Address’ records which are related to selected Sold To CMF having address type as ‘Collection’.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_12-5-14-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="2cd9b97f-0dd0-4e7a-bc08-d172e6530ede">
+    <span> </span>
+    <span>Agent have search option to select Collection address from the dropdown , can search by Name , Country, State &amp; Postal Code .</span>
+  </li>
+</ul>
+<h3>Note: Embargo check(GTS Screening):</h3>
+<ul>
+  <li data-uuid="b3d5ca18-535d-4bb3-b725-f12c66a44ea8">When agent clicks on ‘Next’ button or ‘Save for Later’, Country values from both ‘Return to Customer’ and ‘Collection’ addresses are sent to ‘Embargo GTS API’ to check if selected country is in ‘Embargo list’.</li>
+  <li data-uuid="13559013-a22e-4bfd-8857-24b23e872b5b">If a country is an embargo country, that respective address would be a hard stop and agent would be notified by error toast message with details.</li>
+  <li data-uuid="031f9bf0-5369-41c9-8ee3-020c787bbb07">If both countries pass GTS screening, then agent would be redirected to the next stage or case detail page respectively.</li>
+  <li data-uuid="0faf0e71-5eb9-46a4-bf4e-421e953efcf8">When agent clicks on ‘Next’ button or ‘Save for Later’, Country values from ‘Return to Customer’, ‘Collection’, ‘Sold to address’, ‘Ship to Address’ and ‘Payer’ addresses are validated from local database check.</li>
+  <li data-uuid="6273d863-4a90-49ff-8100-5ae7f7d5b409">If a country is an embargo country, that respective address would be a hard stop and agent would be notified by error toast message with details.</li>
+  <li data-uuid="e8146b1d-fa39-4183-8b60-91e37a30c3e7">If all the countries pass GTS screening, then agent would be redirected to the next stage or case detail page respectively.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-6_12-5-45-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="6bb6e1cc-68f4-4dab-b380-b42e2906e034">By clicking on the ‘Next’ button Agent can proceed further.</li>
+  <li data-uuid="99b194e9-8d91-45ed-a1f3-fbab8f5472bc">By clicking on the ‘Cancel’ button Agent can stop the case creation process and navigate back to the home page.</li>
+  <li data-uuid="4a6329b0-b7ff-4516-b869-1eb69ad0a0d8">By clicking on the ‘Save for Later’ button Agent can save the case &amp; customer can Edit the case if Required.</li>
+</ul>
+<h1>
+  <span>6.</span> Search/Upload Line Item:</h1>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_12-6-29-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="c76f3095-aa07-4d24-897e-17088d836755">Search By option is further divided into:<ul>
+      <li>Purchase/Sales Order search using:<ul>
+          <li>PO Number (Purchase Order Number)</li>
+          <li>SO Number (Sales Order Number)</li>
+        </ul>
+      </li>
+      <li>Product Search using:<ul>
+          <li>MM (Material Master identification)</li>
+          <li>CPN (Customer Part Number)</li>
+        </ul>
+      </li>
+      <li>Bulk Upload:</li>
+      <li>If Remedy is ‘Credit’, Customer can upload only MM/CPN template.</li>
+      <li>If Remedy is ‘NPR-Credit’, Customer can upload either MM/CPN or ULT templates.</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="a893c16e-6d1b-4c8c-9aa6-0823ba8f2221">
+    <strong>
+      <u>Purchase/Sales Order Search:</u>
+    </strong>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_12-7-1-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="2a25bd51-a010-4edb-b004-f89a1a95967d">By using the above interface, agent can search for line items using single or multiple comma separated ‘PO Numbers’ or ‘SO Numbers’ along with the Start Date and End Date parameters.</li>
+  <li data-uuid="a9819d19-6f86-4af4-9d44-3b61431a129b">If no Start date or End Date parameters are specified, agent will not able to search and is notified by a toast message.</li>
+  <li data-uuid="a4a03b41-def4-4c0d-85d4-e83d63141aa4">On click of Search button, If the given date range is exceeding 6 years, search process is halted, and agent is notified by warning toast message as shown below.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_12-7-30-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="0f0c7788-09bf-4e02-b6c6-154846f05fa8">Agent can reset the search data by clicking on the Reset button.</li>
+  <li data-uuid="f987ce6c-ce11-4228-ae55-5142c179e1d3">After agent enters the PO or SO number(s), that data is sent to ‘ECA View via Orchestration layer'  by clicking on the “Search” button to get line items from ‘ECA View via Orchestration layer’.</li>
+  <li data-uuid="3442364f-4db3-49ca-bbe4-797751af9355">If no response is obtained, it is a hard stop and agent is notified via error toast message ‘Records not found/Please check your PO number which you entered’.</li>
+  <li data-uuid="2d527ebb-95fa-470c-9bca-82155589a139">The line-item data obtained as response from API is again validated in database using Item Type ‘FERT’ check. If Item type of line items is not ‘FERT’ those line items are disabled.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-7_11-54-13.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="27b90f9d-5aac-411b-bdff-26a15e8648a1">Agent can select the line items from valid line-item data, at which point ‘Next’ and ‘Save for Later’ buttons would be enabled for agent to proceed to next step ‘Warranty Entitlement Check’.</li>
+  <li data-uuid="2a482787-6ea9-4802-bcbf-f9387a457bb5">
+    <strong>
+      <u>Note</u>
+    </strong>: Users can proceed only with up to 999 lines. If more than 999 lines are present after search/upload and clicking Next, an error appears: “You can only proceed with 999 lines”.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_12-8-57-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <strong>
+    <u>Product Search:</u>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="6d87b6d1-63fc-40b1-b4a5-b284058bdf49">When agent selects the product search option, he is presented with the following interface where agent has to select one option from the 3 options given:<strong>
+      <u> </u>
+    </strong>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_12-9-28-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="373cd455-455b-4367-9395-5a044e10ba63">Agent can search with one or more MM or CPN by selecting respective radio button.</li>
+  <li data-uuid="cdd82d67-8562-44e5-a357-6b9561197ac0">After agent selects one option and enters the related data, he can get the related line items data by clicking on the “Search” button.</li>
+  <li data-uuid="7fc077b0-6340-482f-ade1-aba5fd7835da">If <strong>agent searches using MM</strong>, the data inputted by the agent would be validated in the SF database then valid MM numbers are sent to MM-CPN API to get the respective CPN numbers for the MMs.</li>
+  <li data-uuid="37449d90-477d-4599-bf3e-34b143542a00">
+    <strong>Note: Multiple CPN Scenario:</strong>
+    <ul>
+      <li>For some MMs, there’s a chance of getting multiple CPN numbers for single MM from MM-CPN API.</li>
+      <li>In this scenario, customer is shown a popup of MM and corresponding CPNs. Customer can select any CPN from dropdown and submit. Then the selected CPNs will be populated and used for respective line items.</li>
+    </ul>
+  </li>
+  <li data-uuid="42e45357-e649-49ee-b890-24a350595341">If <strong>agent searches using CPN</strong>, data is sent first to MM-CPN API to get the required MMs and all the valid MMs obtained will again be validated in the database to get product details.</li>
+  <li data-uuid="ed0ad364-03a0-4f60-9a24-f25c9986dd7b">The line-item data obtained as response from API is again validated using Item Type ‘FERT’ or ‘KITS’. If Item type of line items is not ‘FERT’ or ‘KITS’, those line items are disabled.</li>
+  <li data-uuid="d6f2bdcc-547a-4415-a104-4f4233a399c7">Then the valid line items would be displayed in the table with related product information obtained from database.</li>
+  <li data-uuid="8a66333d-9b1f-4f83-b397-121f2062172a">The line items which fail in validation would be shown in disabled state and validation error would be shown on ‘i’ icon in validation column.</li>
+  <li data-uuid="6d94e876-e559-4c05-9e90-c5fcd1a7e2d5">If all entered data fails validation, it is a hard stop and agent is notified via error toast message.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_12-9-55-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <strong>Validate PO </strong>:</p>
+<ul>
+  <li data-uuid="3f97d566-acd8-4c24-b11e-165d58a58c07">Validate PO button will enable when Agent enter any value at PO Number textbox</li>
+  <li data-uuid="4bf9303c-65a2-405e-8891-8d1118b754d0">Agent can also enter the PO numbers manually in the input box for each valid line item. The entered PO number would be validated when click on Validate PO button.</li>
+  <li data-uuid="b5851a15-de32-4b68-b229-f21fb15fc3a2">Validate PO Number line will be bypassed at PO History step, if line failed at Validate PO step line item will be Hard stop.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_13-2-43-1.png"/>
+  </ac:image>
+</p>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_13-3-6-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="ce649c74-7ea8-4820-af53-2312ded7d8e1">Agent can select the required line items and then should click on ‘Next’ for further steps or Agent can click on save for later for saving the case at the present step.</li>
+</ul>
+<p>
+  <strong>
+    <u> </u>
+  </strong>
+</p>
+<p>
+  <strong>
+    <u>Bulk Upload:</u>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="bc77e077-0322-48ce-9a4b-12cd13827d5d">Along with search functionality agent can also upload the line items data by using ‘Bulk upload’ functionality.</li>
+</ul>
+<p>
+  <strong>Remedy as Credit</strong>: Agent can upload only MM/CPN template.</p>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:width="492">
+    <ri:attachment ri:filename="image-2026-7-6_13-3-36-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <strong>Remedy as NPR-Credit: </strong>Agent can upload either MM/CPN or ULT templates.</p>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_13-4-18-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="7d3be1c8-9338-4579-82de-2fe71b4af41f">Agent is provided the option to download the CSV template and enter the required line-item data.</li>
+  <li data-uuid="2a7b3d72-a001-4d63-8d80-11e1e5e9de54">Then agent can upload the file by either clicking on the upload file button and selecting the file or he can also drag and drop the CSV file near the ‘drop files’ area to upload it.</li>
+</ul>
+<p>
+  <strong>
+    <u>Upload using ULT template:</u>
+  </strong>
+</p>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:width="532">
+    <ri:attachment ri:filename="image-2026-7-6_13-4-59-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="ad2de0c4-1fbe-447d-b1e4-703030045f6d">Here for each line-item data entered, Product Unique Identifier number should be mandatorily entered along with MRB Reference number.</li>
+  <li data-uuid="3ed4e1f4-a055-4d01-8172-b17513649f2e">The maximum length of MRB Ref Number is 30.</li>
+  <li data-uuid="088d763c-0288-49e3-9268-2ffe4c0efbd4">The maximum length of Return PO and Debit Ref Number is 20.</li>
+  <li data-uuid="2ff04eef-1901-49e0-b5d6-428166f5e427">All other fields are optional, and data entered will be mapped to the particular line-item column in further stages respectively.</li>
+  <li data-uuid="6e3625ed-cc07-4c94-bc20-55c78718c142">If agent wants to specify ‘Box Condition’, the acceptable values are ‘Outer Box Opened – Product Unsealed’ and ‘Box closed – Factory sealed’. All other values would be invalid.</li>
+  <li data-uuid="b0ab0972-3f37-42cd-a246-4661bfec3625">Once agent uploads the CSV file, he has to click on ‘Validate’ button for line-item data to be read and validated.</li>
+  <li data-uuid="5ecd01c5-e856-4e32-a0d2-c5bda559ed72">
+    <u>Validation Scenarios:</u>
+  </li>
+  <li data-uuid="07c6d9e1-972e-4ec2-8dcc-5154f5faf985">If an empty file or file with format other than ‘.csv’ is uploaded, agent is notified with error toast message.</li>
+  <li data-uuid="c713ad81-ea51-4076-b7e7-3559b112aad2">The agent can upload only 750 lines per bulk upload. It is the maximum limit, and more than 750 lines cannot be uploaded at once.</li>
+  <li data-uuid="d130d92b-b58c-4159-b6d9-008468bd22cf">The agent can upload only 750 lines per bulk upload. Since the case submission limit is 999 lines, the remaining 249 lines can be uploaded after the initial 750 lines are processed.</li>
+  <li data-uuid="8b9bd442-843e-49c3-83ac-4071b87483bc">Uploading more than 750 lines through bulk upload will show an error message saying:<br/>“Please search/upload a file with a maximum of 750 lines only.”</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_13-6-7-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="d38bb064-92d4-4e17-a9a7-66254c3de4ff">If file is missing any required field for any Line item, agent is notified with an error in Toast Message as well as an Error Description Screen will be shown right under the upload UI as below, where agent is notified with line numbers of the errors in file and there is an option to download the file by clicking on the Bulk_Upload_Results.csv that agents uploaded and in file also we will be able to see the error message attributed in each line item in an additional column if any exists.</li>
+</ul>
+<p>
+  <strong>
+    <u>Upload using MM/CPN template:</u>
+  </strong>
+</p>
+<p>
+  <strong>
+    <u>
+      <ac:image>
+        <ri:attachment ri:filename="image-2026-7-6_13-6-48-1.png"/>
+      </ac:image>
+    </u>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="b63d1c53-8d9c-44a5-b1a8-95b6535f505b">Here for each line-item data entered, MM number or CPN number should be mandatorily entered along with quantity and MRB Ref Number.</li>
+  <li data-uuid="4b51d80c-7c5f-49f9-a49f-d30b967b3346">The maximum length of MRB Ref Number is 30.</li>
+  <li data-uuid="dbe81901-668f-4fb8-a344-0985b90d9a7f">The maximum length of Return PO and Debit Ref Number is 20.</li>
+  <li data-uuid="c8eabaf2-6439-4469-b4fa-4dae7ed48647">All other fields are optional, and data entered will be mapped to the particular line-item column in further stages respectively.</li>
+  <li data-uuid="cc24b80c-5f94-4c3d-a10f-b54f65242012">If agent wants to specify ‘Return Package Conditions’, the acceptable values are ‘Outer Box Opened – Product Unsealed’, ‘Outer Box Opened – Product sealed’ and ‘Box closed – Factory sealed’. All other values would be invalid.</li>
+  <li data-uuid="df3f5eb4-a321-4d5d-8d34-be4c822e1351">Once agent uploads the CSV file, he has to click on ‘Validate’ button for line-item data to be read and validated.</li>
+</ul>
+<p>
+  <u>Validation Scenarios:</u>
+</p>
+<ul>
+  <li data-uuid="9de94a25-9aa6-4ef1-95a1-65983fdc4b06">If an empty file or file with format other than ‘.csv’ is uploaded, agent is notified with error toast message.</li>
+  <li data-uuid="271ced7f-2eb2-458b-8b03-e3e90872ba71">The agent can upload only 750 lines per bulk upload. It is the maximum limit, and more than 750 lines cannot be uploaded at once.</li>
+  <li data-uuid="08286de6-65b6-4cab-b486-65b6112ad51b">The agent can upload only 750 lines per bulk upload. Since the case submission limit is 999 lines, the remaining 249 lines can be uploaded after the initial 750 lines are processed.</li>
+  <li data-uuid="807376b2-073f-426c-8c19-5734c41e4216">Uploading more than 750 lines through bulk upload will show an error message saying: "Please search/upload a file with a maximum of 750 lines only.”</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_13-7-59-1.png"/>
+  </ac:image>
+  <br/>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="c57dedb9-fb09-4b73-81e5-c4d6becd0651">If file is missing any required field for any Line item, agent is notified with an error in Toast Message as well as an Error Description Screen will be shown right under the upload UI as below, where agent is notified with line numbers of the errors in file and there is an option to download the file by clicking on the Bulk_Upload_Results.csv that agents uploaded and in file also we will be able to see the error message attributed in each line item in an additional column if any exists.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-7_11-59-30.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="1db5af81-322b-4b96-b9b6-3d5374c13e34">If no validation errors are present and line-item data containing only MM numbers is uploaded, data is fetched using MM-CPN API to get the respective CPN numbers for the entered MM numbers.</li>
+  <li data-uuid="51efa032-f7ce-4d0c-929e-40d17b6174b5">Similarly, if line-item data containing only CPN numbers is uploaded, data is fetched using MM-CPN API to get the respective MM numbers for the entered CPN numbers.</li>
+  <li data-uuid="0d772f4c-fd6d-4d71-b62f-d058a2a7938c">If data uploaded is a combination of MM and CPNs we get the respective required CPNs and MMs.</li>
+  <li data-uuid="af701f7e-1ac4-4a8f-8a80-99f0060acf90">If data uploaded other MM Number with other CPN number</li>
+  <li data-uuid="f4b45e93-fdc3-47e2-8e45-f595b12960d3">After uploading and validating the data, Agent will receive a pop-up template that shows the MM number replaced with another MM number, as shown below.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="250" ac:thumbnail="true">
+    <ri:attachment ri:filename="image-2026-7-7_12-1-51.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="c082e69d-0550-4dc6-bef0-8cf91b2570d7">Next the MM data which is entered or obtained is validated against the database including validation using Item Type ‘FERT’. If Item type of line items is not ‘FERT’, those line items are disabled.</li>
+  <li data-uuid="fa0a54f8-5189-4e37-b590-73f9f679dad3">For all the valid line-items, related product data is fetched and displayed as shown below.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_12-5-28.png"/>
+  </ac:image>
+</p>
+<p>
+  <strong>Validate PO :</strong>
+</p>
+<ul>
+  <li data-uuid="9b13fd95-e298-41fe-817c-730f8daba94e">Validate PO button will enable when Agent enter any value at PO Number textbox</li>
+  <li data-uuid="6c26bb8a-7dc9-45db-a531-a996440da398">Agent can also enter the PO numbers manually in the input box for each valid line item. The entered PO number would be validated when click on Validate PO button.</li>
+  <li data-uuid="38af697b-abbb-4a1c-b448-95165ff7300f">Validate PO Number line will be bypassed at PO History step , if line failed at Validate PO step lineitem will be Hardstop.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_12-6-48.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="7b0dfa23-d522-492c-9df8-6a99e0f43d2e">Agent can select the required line items and then should click on ‘Next’ for further steps or Agent can click on save for later for saving the case at the present step.</li>
+  <li data-uuid="769e19ed-87a6-4ab8-a182-e1ea648dbcf2">Agent can proceed to next step by clicking on ‘Next’. Agent would be navigated to the ‘Warranty Entitlement screen’.</li>
+  <li data-uuid="bb589dbe-c37c-436d-a34f-e83db81e677b">
+    <strong>Note: Multiple file upload:</strong>
+    <strong> </strong>
+    <ul>
+      <li>Customer has the option to upload multiple files at once by using the upload button or drag and drop functionality.</li>
+      <li>Customer can upload multiple files of same template and then click on ‘Validate’ button to process all the uploaded files in one click.</li>
+      <li>If there are any errors, customer is notified by means of error toast message containing corresponding error message.</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <strong>
+    <u>Note</u>
+  </strong>: Users can proceed only with up to 999 lines. If more than 999 lines are present after search/upload and clicking Next, an error appears: “You can only proceed with 999 lines”.</p>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_13-45-13-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <br/>
+</p>
+<h1>7.Warranty Entitlement screen:</h1>
+<p>
+  <strong>Remedy as NPR-Credit: </strong>
+</p>
+<p>
+  <strong>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_14-23-53-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="2367ccf1-cd86-4d50-b58b-260401b86065">Agent need to enter the Product Unique Id for the line items in the UI, If any one of the selected line items doesn’t have the ULT or any duplicate ULT, agent will be notified via toast message onclick of Warranty Entitlement Check button.</li>
+  <li data-uuid="9d2d4abf-8e0d-4e2b-b6a0-fc5b52dd1869">
+    <strong>Return Quantity Greater Than One</strong>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_14-24-12-1.png"/>
+  </ac:image>
+</p>
+<p style="margin-left: 40.0px;">When ULT is entered for any line item by Agent/Customer and the return quantity of line is greater than <strong>1</strong>, the system will automatically change the return quantity to <strong>1</strong> by default. If user wants to process the particular MM having line for multiple quantity, user will then need to add respective ULT values for the remaining quantity.</p>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_14-24-41-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li style="list-style-type: none;">
+    <ul>
+      <li data-uuid="71a3553c-f162-42d6-a812-b175732663ed">After clicking the <strong>Warranty Entitlement Check</strong> button, the system will check if the return quantity has changed after entering the ULT for any line item having Return Qty &gt; 1.</li>
+      <li data-uuid="3dfb47a0-69e0-4590-a36f-079a50928b4b">If Return Quantity has changed after entering the ULT, A pop-up window will appear, allowing user to add ULTs for the remaining quantity using the <strong>bulk upload</strong>
+      </li>
+    </ul>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <strong>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_14-56-25-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ul>
+  <li style="list-style-type: none;">
+    <ul>
+      <li data-uuid="d2c0dda3-6328-473a-b259-af7437d04380">If user doesn’t want to add ULTs for the remaining quantity, he can click <strong>Proceed without New Lines</strong> to skip this step. System will perform the Warranty validations for existing lines and display result.</li>
+      <li data-uuid="5f4fa1ed-a7d3-4ea6-a851-23632e849672">If user wants to add more lines for any MM which had quantity &gt; 1 before giving ULT, he has to provide ULTs for the remaining quantity using the below process as follows</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <strong>Downloading the ULT Template</strong>
+</p>
+<ul>
+  <li data-uuid="05a4aa94-d7e8-4af0-ac4f-3bfb649593e9">User should download the template file by clicking <strong>Download Template</strong>. A CSV file will be downloaded, which contains three columns:</li>
+</ul>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_14-57-10-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="eab0447b-b733-4b94-83db-3e5dc90e719c">
+    <strong>MM</strong>: This is the product name.</li>
+  <li data-uuid="b58c3d43-15ae-4903-994a-2ef0acc1af6b">
+    <strong>ULT</strong>: This is the unique identifier for the product.</li>
+  <li data-uuid="4723b045-44aa-4994-a78c-37fec9577aeb">
+    <strong>Line Identifier</strong>: This is used to match the data to the correct line item(Backend purpose)</li>
+</ul>
+<p>
+  <strong>Important</strong>: Do not change any column headers, add or delete rows, or modify existing data in the template. You only need to fill in the ULT for each MM item.</p>
+<p>
+  <strong>Uploading the ULT File</strong>
+</p>
+<ul>
+  <li data-uuid="a9035d4a-4f17-4cf9-a46b-709f4f3d7692">Once user has added the ULTs required for additional lines, user should upload the file by clicking <strong>Upload Files</strong>. The system will check the file for the following:</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_14-57-31-1.png"/>
+  </ac:image>
+</p>
+<ol>
+  <li data-uuid="eb660b56-501b-4d86-9a1c-f92b06a55b51">No changes to the column headers.</li>
+  <li data-uuid="fb251c19-0a72-4e2e-a615-7983e8c392e3">No new rows added or existing rows deleted/modified.</li>
+  <li data-uuid="e1cb914e-7468-44d3-9955-7266f81a232c">Each ULT must be filled out, with a length between 6 to 40 characters, and no duplicates allowed.</li>
+</ol>
+<ul>
+  <li data-uuid="4e4f265e-148b-462e-ab5d-7e1d09879adf">If there are any errors, they will be shown on the screen. User can download the error file, make corrections, and upload it again.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="150" ac:thumbnail="true">
+    <ri:attachment ri:filename="image-2026-7-7_14-57-59-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <strong>Validation and Next Steps</strong>
+</p>
+<ul>
+  <li data-uuid="6684102a-b7c0-4b24-b9f3-3177623c1015">If the file is correct, the system will upload it successfully. After clicking <strong>Validate</strong>, new lines will be added to the table, and the system will perform further checks, such as making sure there are no duplicate ULTs and fetching the warranty details from EH API.</li>
+</ul>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_14-58-31-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="dad34a70-ca9b-439a-a029-3ae81281f0ca">we are validating ULT duplicate check<ul>
+      <li>Local ULT duplicate check: In SF, any open case as the same ULT.</li>
+      <li>API duplicate check for scrap: In EH API, any particular ULT is duplicate or is it scraped.</li>
+    </ul>
+  </li>
+  <li data-uuid="88787ae9-1635-4725-9b9b-99e724e04d05">When user gets below popup, user needs to adjust other ULTs and proceed to create the Case.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_14-59-49-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="761394d8-e755-4410-9c39-7decca458a73">The entered product unique ids of the line items will be validated in Entitlement API.</li>
+  <li data-uuid="85993cd1-adbd-4b74-bfd6-1e0ff7ef2a5f">In response we will be checking whether Product Unique Id is valid or not and whether the status is Active.</li>
+  <li data-uuid="55abe450-ae82-4ed5-addf-bbf6bec697ed">If the Product Unique Id is not valid or if the status is not active those line items will be disabled in the UI.</li>
+  <li data-uuid="ffa07ecc-ef07-4cc1-93b4-38f84737044a">In the response if the MM (product) is not matching with current MM , agent will get one popup saying the replacement of MMs, if he click Ok then only agent can proceed further or else it is a hard stop.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-0-20-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="30d3468e-d451-4c4d-bd97-209a74996621">Agent can proceed with required line items to the next step.</li>
+</ul>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-7_15-0-48-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <br/>
+</p>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="eb18bcde-ca54-44c3-bdff-d4bb1499b5bc">On click of ‘Next’ button, the line items will be validated using the required field matrix logic and if any of ULT, CPN fields in specific line items are required, then User will be notified by toast message, and he has to enter mandatory fields to proceed further.</li>
+</ul>
+<p>
+  <u>Note:</u> In the "Remedy type - NPR-Credit" category, box conditions won't be visible in the line items.</p>
+<p>
+  <strong>Remedy as Credit: </strong>
+</p>
+<p>
+  <strong>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-7_15-1-33-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="59d927e7-03d5-4b6e-9012-0d9c1476e5d3">Agent can enter the Product Unique Id for the line items in the UI.</li>
+  <li data-uuid="ee8a475f-86d8-406e-ba2f-28835c23e8b3">
+    <strong>Return Quantity Greater Than One</strong>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <strong>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-7_15-2-8-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<p style="margin-left: 40.0px;"> When ULT is entered for any line item by Agent/Customer and the return quantity of line is greater than <strong>1</strong>, the system will automatically change the return quantity to <strong>1</strong> by default. If user wants to process the particular MM having line for multiple quantity, user will then need to add respective ULT values for the remaining quantity.</p>
+<p style="margin-left: 40.0px;">
+  <strong>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-7_15-2-47-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ul>
+  <li style="list-style-type: none;">
+    <ul>
+      <li data-uuid="d143a7c4-1b6a-468a-b76b-e066ab97c93d">After clicking the <strong>Warranty Entitlement Check</strong> button, the system will check if the return quantity has changed after entering the ULT for any line item having Return Qty &gt; 1.</li>
+      <li data-uuid="eb255d2a-5b66-49f7-a3d6-fcb18987cdaa">If Return Quantity has changed after entering the ULT, A pop-up window will appear, allowing user to add ULTs for the remaining quantity using the <strong>bulk upload</strong>
+      </li>
+    </ul>
+  </li>
+</ul>
+<p style="margin-left: 80.0px;">
+  <strong>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-7_15-3-12-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ul>
+  <li style="list-style-type: none;">
+    <ul>
+      <li data-uuid="c4f3a56e-5ce4-49d4-a2aa-a85cabc45402">If user doesn’t want to add ULTs for the remaining quantity, he can click <strong>Proceed without New Lines</strong> to skip this step. System will perform the Warranty validations for existing lines and display result.</li>
+      <li data-uuid="8df1a219-3903-4087-b57e-f4dc8d863654">If user wants to add more lines for any MM which had quantity &gt; 1 before giving ULT, he has to provide ULTs for the remaining quantity using the below process as follows</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <strong>Downloading the ULT Template</strong>
+</p>
+<ul>
+  <li data-uuid="edb96454-9569-4607-85b8-d2986a490098">User should download the template file by clicking <strong>Download Template</strong>. A CSV file will be downloaded, which contains three columns:</li>
+</ul>
+<p style="margin-left: 80.0px;">
+  <strong>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-7_15-3-42-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="653ccc1b-65ba-4e37-b070-e96310295dab">
+    <strong>MM</strong>: This is the product name.</li>
+  <li data-uuid="a076431c-c705-449c-bd77-ce8d3bf42530">
+    <strong>ULT</strong>: This is the unique identifier for the product.</li>
+  <li data-uuid="cc048b26-ffd6-4227-8390-70617cef96d3">
+    <strong>Line Identifier</strong>: This is used to match the data to the correct line item(Backend purpose)</li>
+</ul>
+<p>
+  <strong>Important</strong>: Do not change any column headers, add or delete rows, or modify existing data in the template. You only need to fill in the ULT for each MM item.</p>
+<p>
+  <strong>Uploading the ULT File</strong>
+</p>
+<ul>
+  <li data-uuid="cb68e762-c741-40b6-b07d-1a40f2f6fc3d">Once user has added the ULTs required for additional lines, user should upload the file by clicking <strong>Upload Files</strong>. The system will check the file for the following:</li>
+</ul>
+<p style="margin-left: 80.0px;">
+  <strong>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-7_15-4-7-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ol>
+  <li data-uuid="26df1e9b-8928-4e6d-816a-7b914a45e7a2">No changes to the column headers.</li>
+  <li data-uuid="8f09e1fa-86a9-4ef8-bb8b-9453188248a5">No new rows added or existing rows deleted/modified.</li>
+  <li data-uuid="e6a55f9a-df2c-43d4-bcf8-610b238153ce">Each ULT must be filled out, with a length between 6 to 40 characters, and no duplicates allowed.</li>
+</ol>
+<ul>
+  <li data-uuid="6188b187-8589-4840-afaa-f8ee67fea1b7">If there are any errors, they will be shown on the screen. User can download the error file, make corrections, and upload it again.</li>
+</ul>
+<p style="margin-left: 80.0px;">
+  <strong>
+    <ac:image ac:height="150" ac:thumbnail="true">
+      <ri:attachment ri:filename="image-2026-7-7_15-4-29-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<p>
+  <strong>Validation and Next Steps</strong>
+</p>
+<ul>
+  <li data-uuid="cb92fca8-15a6-4156-a353-ceceaf7b1aa5">If the file is correct, the system will upload it successfully. After clicking <strong>Validate</strong>, new lines will be added to the table, and the system will perform further checks, such as making sure there are no duplicate ULTs and fetching the warranty details from EH API.</li>
+</ul>
+<p style="margin-left: 80.0px;">
+  <strong>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_15-4-54-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<p style="margin-left: 80.0px;">
+  <br/>
+</p>
+<ul>
+  <li data-uuid="fb918492-e20e-4dc1-9fbd-723a93537aac">On click of ‘Warranty entitlement check’ button it will be validating basic UI validation (Min and Max of ULT number) for the entered ULT numbers and will not perform any Entitlement API call.</li>
+  <li data-uuid="e9253268-056e-4e3f-8513-f9aaf6d2e423">The length of ULT number should be in range from 6 to 40 , If not Agent will be notified via toast message.</li>
+</ul>
+<p style="margin-left: 80.0px;">
+  <strong>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-7_15-5-20-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="252b3edf-7e4c-4e5f-8968-bc6a645634f8">On click of ‘Next’ button, the line items will be validated using the required field matrix logic and if any of ULT, CPN fields in specific line items are required, then User will be notified by toast message and he has to enter mandatory fields to proceed further and there should not be any Duplicate ULT numbers among the line items.</li>
+</ul>
+<p>
+  <br/>
+</p>
+<p>
+  <strong>Note</strong>
+  <strong>:</strong> After clicking <strong>Next </strong>after <strong>Warranty entitlement check</strong> , <strong>Disti Product status check validation</strong> will happen here and following Product status check validation will be done</p>
+<ul>
+  <li data-uuid="5ad13140-7376-483f-82fa-3c7097bcfaa6" style="color:var(--ds-background-accent-red-bolder,#c9372c);">
+    <span style="color:var(--ds-background-accent-red-bolder,#c9372c);">The following Disti Channel Product Status Codes are allowing for Agent Case creation: </span>
+  </li>
+  <li data-uuid="2a1b2558-0b3f-4efc-9d41-88f691b02cac" style="color:var(--ds-background-accent-red-bolder,#c9372c);">
+    <span style="color:var(--ds-background-accent-red-bolder,#c9372c);">The following Disti Channel Product Status Codes are not allowing for Agent Case creation: <strong>PA, NI</strong>
+    </span>
+  </li>
+  <li data-uuid="759d3c0c-58d2-4156-a875-e03698155267" style="color:var(--ds-background-accent-red-bolder,#c9372c);">
+    <span style="color:var(--ds-background-accent-red-bolder,#c9372c);">When we try to create case with product status <strong>PA </strong>and <strong>NI </strong>it will be a Hardstop and will show a error message saying “Current status is PA “and for NI “current status is NI”</span>
+  </li>
+</ul>
+<p style="margin-left: 80.0px;">
+  <strong>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_15-6-45-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<p style="margin-left: 80.0px;">
+  <strong>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-7_15-6-57-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<p style="margin-left: 80.0px;">
+  <br/>
+</p>
+<ul>
+  <li data-uuid="2a80a834-2a71-48b1-919f-0696fe1818cc">If the Product status is not valid or empty (null) will display an error message saying “No valid product status was found”</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-7_15-7-33-1.png"/>
+  </ac:image>
+</p>
+<p style="margin-left: 40.0px;">
+  <br/>
+</p>
+<h1>8.Product Validation/PO History:</h1>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-8-1-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="5850ede0-a558-4410-b072-2348394ed985">The Maximum length of MRB Reference number is 30.</li>
+  <li data-uuid="cbf0e7b1-2eb1-4b03-822d-0c1853ead34b">Agent needs to enter the MRB Reference number for the line items in the UI, If any one of the selected line items doesn’t have the MRB Reference number, agent will be notified via toast message onclick of PO History Check button.</li>
+  <li data-uuid="75c81841-e1a1-4d52-a7b5-c7c6afd19239">Onclick of PO History Button, we will be validating MRB Reference numbers in salesforce data base.</li>
+  <li data-uuid="8d33c895-88ff-4662-a420-180130a7895d">The entered MRB Ref number should match with the product MRB number.</li>
+  <li data-uuid="1523ae16-1347-496c-962d-fe9f892c2963">The ‘Valid From’ and ‘Valid To’ dates should be in the current date range.</li>
+  <li data-uuid="b4c1c206-bc01-4e4f-aa1f-a2cc775d6cb0">If the ‘Valid To’ date is empty, it will be considered default date as ‘9999-12-31’</li>
+  <li data-uuid="9c46b5e5-8898-403e-bc90-f6869815f32b">The invalid MRB Reference number of the line items will be disabled in the UI and displayed the error message in ‘i’ icon.</li>
+  <li data-uuid="b885dceb-eb13-4038-8366-d7516a74da27">The Valid MRB Reference number of the line items will be validating in POH API to get the PO numbers.</li>
+  <li data-uuid="a682f9e7-8b43-4d8f-8c85-d8fca750a177">If the line is having PO number from the step 1(PO search / Validate PO), here we will bypass PO history API call just validate the date range</li>
+</ul>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-8-51-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="bc64703d-ee66-4663-b281-2328304cbadd">If no PO number at line , POH API callout will be done by sending the parameters MMs , Active CMFs of the bag , Start date , End date, sales org, Disti channel</li>
+  <li data-uuid="7dacfe87-331c-48f4-984f-a65be86b04c0">While validating from POH API the data range would be Current date – 6 years.<span>If we get the PO numbers for all the required line items, agent can directly proceed further.</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_15-9-38-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="5c5b1b64-4dbc-44cd-ae46-f1c9318e838a">
+    <strong>Note: PO replacement:</strong>
+    <ul>
+      <li>For any line item already containing PO number, if another PO number is received from POH API, then all the PO numbers are to be replaced by PO numbers received from API to proceed further.</li>
+      <li>This is done by showing a popup to customer of the replacement of PO numbers, if he clicks Ok then only customer can proceed further or else it is a hard stop for the respective line items, and they are disabled.</li>
+    </ul>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-10-1-1.png"/>
+  </ac:image>
+</p>
+<p>Note : <strong>If remedy is NPR-Credit</strong>
+</p>
+<ul>
+  <li data-uuid="31e36aed-a6a4-4694-82bd-8687d78961ef">We do an additional validation check after po history check is done, this is done for each line item individually. </li>
+  <li data-uuid="a2e6c86a-9778-41b5-8955-eb457b50709f">Using the line item details we query the ‘NPR rule matrix records’ and if the corresponding matrix record is found then the line item is validated. </li>
+  <li data-uuid="bf918067-76a4-4cd1-9cb7-a029fe6786c6">If the validation fails, the line item is disabled, and customer is shown the validation error message ‘This product is not eligible for this return reason’. </li>
+  <li data-uuid="f89c4355-df04-46fc-8e82-229ec87e06cf">Agent can proceed to next step by clicking on ‘Next’. Agent would be navigated to the ‘Credit Price validation screen’.</li>
+</ul>
+<h1>9.Credit Price Validation:</h1>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-10-33-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="9974fb63-695e-4cdc-bdc9-8f9fd6398ea0">In “Credit Price Validation” step agent can see “Credit Price Validation” button enabled for all selected line items.</li>
+  <li data-uuid="054bbd52-14ad-4208-a702-6bb3975ef063">Enter the Return Quantity for each line item as it is a mandatory field. Return Po &amp; Debit Reference number are optional fields.</li>
+  <li data-uuid="6638708b-9788-4c1b-9a74-fe7e532aa52f">Once agent clicks on ‘Credit Price Validation‘ button:</li>
+  <ul>
+    <li data-uuid="ebfce84b-fc5d-44d1-a5b0-24c2936081b5">If the Distribution channel of the case that is being created is 01, then the Unit Price of Line item will be determined by SalesOrderLineNetPriceAmt attribute value of POH API.</li>
+    <li data-uuid="f11c2601-3c35-4f02-84ca-ff7d6f41d39f">If the Distribution channel is anything apart from 01-Direct, i.e., 02-Industrial Distribution or 03-Retail then the Unit Price of every line item will be fetched by making a callout to PIC API by passing required parameters (selected MMs, selected Sold to CMF and sales org).</li>
+    <li data-uuid="d5216b43-9c28-49d2-8e49-c6ee370e05ba">If no credit price value is fetched from PIC API, then the agent has the option to enter the price and Reason in the input columns.</li>
+  </ul>
+</ul>
+<h2>PIC System Price Zero Scenarios: </h2>
+<ul>
+  <li data-uuid="31f627aa-1b99-45a3-80c7-b73be6c6ee58">In the credit price step at the line-item level, when user clicks on credit price validation, if the Distribution channel is any value other than 01-Direct, i.e., 02-Industrial Distribution or 03-retail, then the Credit price of every line item is fetched by making a callout to the PIC API and passing the required Parameters. </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-11-1-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="e0297e5d-24d4-4a67-bb5e-9d4058bbdd03">If no credit price is fetched from the PIC API for a particular line-item, then the agent has the ability to manually enter the credit price in the input field. </li>
+  <li data-uuid="b69dfde2-e0e8-4201-85ad-b7b6e5d8199c">Also, the agent needs to fill in the ‘Reason for the price change’ field if he enters the credit price manually. </li>
+  <li data-uuid="5e874923-2803-49d5-a657-5e88927b98a1">Without filling out the Credit Price and Reason for price change, the agent can’t proceed to the next step with that line-item; these validations will be checked on click of "Save and view summary" button. </li>
+  <li data-uuid="08935c2a-018b-440b-b8d0-c58757683b5f">If the agent enters the credit price and Reason for price change for all required line-items, then on click of "Save and View summary" button, the agent will get the below popup to enter the Header Level comments for price change. </li>
+</ul>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-11-38-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="a7f7427a-5f8b-416c-a615-ce0cf08b2aca">This is a mandatory field to proceed further. Once the agent fills in the Reason for Price Change and clicks on Submit, case will be created and user will be navigated to the View Summary page. </li>
+</ul>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-11-55-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="f8124c6b-9bca-442e-9da6-278e3bb27f94">Agent can see “Edit”, “Cancel” and “Submit” buttons. </li>
+  <li data-uuid="b54492f6-a8ba-482f-a3ef-1800cefe0fef">In case of any soft blocks (SAP blocks or other), ‘Submit’ button will be disabled and agent would be notified by a toast message about the presence of soft blocks. </li>
+</ul>
+<p>
+  <br/>
+</p>
+<p>
+  <u>On click of Edit Button:</u> </p>
+<ul>
+  <li data-uuid="71ca427a-71c9-4177-b2b4-6fb13443e367">Agent can edit the case and modify the details as needed. </li>
+</ul>
+<p>
+  <u>On click of Cancel Button:</u> </p>
+<ul>
+  <li data-uuid="120c725a-db7f-4cd5-b6e1-713cbfa34d4e">Agent is redirected to the ‘Case Detail Page’ of particular case. </li>
+</ul>
+<p>
+  <u>On click of Submit button:</u> </p>
+<ul>
+  <li data-uuid="7775d815-596d-4305-a2c6-d907247c73b9">If net credit value of line items whose credit price was manually entered is greater than $25,000; Agent will have to get approval from an L3 agent. </li>
+  <li data-uuid="2d23622c-4189-4b34-b326-59e80ce2ee3b">Agent will get below popup to select the L3 Approver, to whom the email will be triggered for Approval of price overridden line items. </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="150" ac:thumbnail="true">
+    <ri:attachment ri:filename="image-2026-7-7_15-12-44-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="b69b19ca-5b10-4d94-8bd2-c390ad958189">After selection the case is submitted with case status as “Pending Approval” and agent is redirected to the ‘Case Detail Page’. </li>
+</ul>
+<p>
+  <br/>
+</p>
+<p>
+  <strong>Note: Once L3 Approver approves the price overridden line items, then the actual Approval </strong>
+  <strong>email can be triggered to the actual approver based on Net value and Service type.</strong> </p>
+<ul>
+  <li data-uuid="77261430-96a6-438e-854f-014f6258faff">If the L3 Approves declines the price override line items, then the case status will be set to ‘Declined’. </li>
+  <li data-uuid="cd66a65c-825a-4239-9c95-233c8f29abd2">For price overridden line items, if the net value is less than $25,000: </li>
+  <li data-uuid="8438a0f3-adaf-4770-b08c-7e0dedd560ba">Based on service type and Net value, the case gets submitted with case status as “Pending Approval” or “RMA Authorized” and email will be triggered to approver if it is ‘Pending  Approval’. </li>
+  <li data-uuid="215d2bf1-5234-47cd-9d6a-acba035f0eaf">‘Net credit Value’ of each valid line item is calculated as ‘Return Quantity’ * ‘Credit Price’ and displayed in ‘Net credit value’ column.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-13-19-1.png"/>
+  </ac:image>
+</p>
+<p style="margin-left: 40.0px;">
+  <br/>
+</p>
+<ul>
+  <li data-uuid="59268171-0621-4198-8122-9ea83844f379">After successfully obtaining credit price, ‘Save &amp; View Summary’ button is enabled so agent can move to view page.</li>
+  <li data-uuid="524c139f-7c69-4aec-b082-864c9d8a949a">Agent also has the option to select the ‘Box Condition’ of each line item.</li>
+</ul>
+<h1>10. View Summary Page:</h1>
+<ul>
+  <li data-uuid="f8991e0b-fb7a-4732-bbe3-db0d8bae6bdd">On clicking the button, agent is navigated to ‘Save &amp; View summary’/’Ready to Submit’ page.</li>
+  <li data-uuid="8500f6e8-cd4a-49e3-bdcc-3d0c491834ad">Here agent can see all the case details briefly and confirm if everything is correct before he can submit the case.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-7_15-13-40-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="c3beefc5-2e7d-4429-9542-2de3cd407d5c">Agent can see “Edit”, “Cancel” and “Submit” buttons.</li>
+  <li data-uuid="6c7a35af-9bc1-4826-9fbd-54b993c34562">In case of any soft blocks (SAP blocks or other), ‘Submit’ button will be disabled and agent would be notified by a toast message about the presence of soft blocks.</li>
+  <li data-uuid="837be925-901a-4730-9e3c-a8f045c861f7">Then agent can edit the case again or continue and submit the case if no soft blocks are present.</li>
+  <li data-uuid="f380ac12-71a2-4a89-9a9d-5474499bbcec">If the Net Value is greater than 100k or total price overridden for line items is greater than 25k then case status will be ‘Pending Approval’.</li>
+  <li data-uuid="704ec95d-4145-4520-aa27-6fa8c156862b">If the Net Value is less than 100k and total price overridden for line items is less than 25k then case status will be ‘RMA Authorized’.</li>
+  <li data-uuid="71cfed0a-1075-45a2-9c78-bcd503f87669">On click of Submit button, the case is submitted with case status as ‘Pending Approval’ or ‘RMA Authorized’ agent is redirected to the ‘Case Detail Page’.</li>
+  <li data-uuid="b07d93dd-ad2b-47a2-a642-193c25f2cc79">If agent clicks on cancel then the case is saved with “Open, Unsubmitted” status and agent is redirected to the related ‘Case Detail Page’.</li>
+</ul>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="61198bd1-811c-4649-b78f-e243b10a37e6">
+    <strong>Note: Email Approval Scenario</strong>
+  </li>
+  <li data-uuid="0a7d895f-db05-4aac-a1c5-ce04aebeee7a">Price Override Scenarios:<ul>
+      <li>If total price overridden for line items is greater than 25k and Net Credit value is greater than 100k, then first ‘L3 Approver’ needs to approve the particular line items before case is sent to External approver.</li>
+      <li>If L3 approver declines the approval request, then Case status is set to ‘Declined’ and external approval will not be triggered.</li>
+      <li>If L3 approver approves the approval request, another email will be triggered to external approver, based on his response the case status gets updated to ‘RMA Authorized’ or ‘Declined’.</li>
+    </ul>
+  </li>
+  <li data-uuid="ed95d920-9919-4302-9e8b-a212da788fcb">In case of price override less than 25k and Net Credit value is greater than 100k, on load of ‘View Summary page’, email of external approver is fetched from ‘Approval Matrix’ by sending sold to CMF, remedy, return reason, service type, distribution channel and sales org along with net credit price.</li>
+  <li data-uuid="e988e14a-88c1-4a45-b47a-f3d40ebdb4a4">On click of ‘Submit’ button, case status is set to ‘Pending Approval’ and email is sent to approver for approval, based on his response the case status gets updated to ‘RMA Authorized’ or ‘Declined’..</li>
+  <li data-uuid="186eb832-8f38-4512-858d-b184f9bcfc18">If no approver record is found, agent is notified by error toast message.</li>
+</ul>
+<h1>11. Case View:</h1>
+<ul>
+  <li data-uuid="3a59774e-b199-4372-9cff-110d0e0c28e4">The Case can be viewed either by going to contact and then click on related tab and can also be viewed by Searching with Case Number and the Case view is as follows:</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-7_15-14-6-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="f4503965-e232-49b2-abc8-f90901bb3f74">Here in the case view page, we can see the details of case in Details tab, in R4C Case Header tab we can see the details of the Header object as shown below.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="150" ac:thumbnail="true">
+    <ri:attachment ri:filename="image-2026-7-7_15-17-28-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="8230aeeb-1d03-4b30-b8cd-253aa9f8fd8f">We have a tab called R4C Shipment tab, where shipment status can be tracked of each line item.</li>
+</ul>
+<p>
+  <br/>
+</p>
+<h1>12.Case Edit Flow:</h1>
+<ul>
+  <li data-uuid="5fab8073-c5c5-49ba-9032-684e0546fde1">
+    <strong>For Open, Unsubmitted cases,</strong> we check SAP Blocks on Load when the Edit R4C button is clicked, and if any hard blocks existing or if any inactive records are part of case, then it’s a hard stop and Agents can’t edit the case else if no blocks and no inactive CMFs Agent can edit all the Collection details as well as Line Items</li>
+  <li data-uuid="b7daa586-775c-4398-ac36-a17526722114">The Default landing page for the line items is Search/Upload Line Items Page, line items can be deleted by using dropdown or unselect the line items, in the data base, the line items status gets set to Deleted.<ul>
+      <li>
+        <u>Cancel Line Items:</u>
+      </li>
+      <li>In Edit Case tab, we have an additional column ‘Line items status’ where agent can select to delete line items.</li>
+    </ul>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-18-13-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li style="list-style-type: none;">
+    <ul>
+      <li data-uuid="53c94be8-21ab-4064-82cd-f7c6a5b857fe">If agent selects ‘delete’, then he will be shown a prompt to confirm if he really wants to delete the line item.</li>
+      <li data-uuid="51a4d3fd-ad96-4c07-920c-630e01d18f68">Agent can also unselect the line items which will have same functionality as selecting ‘Delete’ status.</li>
+    </ul>
+  </li>
+</ul>
+<ul>
+  <li data-uuid="010ad726-9ab9-4888-b923-c0f616dc89b8">
+    <strong>For Pending Approval Cases, </strong>Only RTC Address, RTC Contact fields can be edited, additionally If Freight Type is IMF, Collection Date can also be edited.</li>
+  <li>
+    <strong>RTC/Collection, Date Edit scenarios</strong>: After clicking on Edit button, agent can be able to edit RTC/Collection address, Date fields for the RMA Authorised cases.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-18-58-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="e9bca0b4-64ce-45c2-8a24-254e59ac83fd">RTCAddressChange, CollectionAddressChange, CollectionDateChange indicators will get updated in S4 at header level.</li>
+  <li data-uuid="48d91cad-5bb8-4e57-ae54-5f34ba6a0280">S4 will update the records once case submitted in SF.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-20-7-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="4efaf876-3a87-41f1-b9fc-e7ed353eae87">
+    <strong>Notes in Edit Scenario:</strong>
+    <strong> </strong>
+    <ul>
+      <li>In Edit Case scenario, for any line item, if the earlier entitlement check date is on same day, we will not be doing the Entitlement check for that Line item again and we use earlier data but if any new line items are added then the Entitlement check API callout will happen for the newly added Line Items.</li>
+      <li>If case is being edited and the earlier and line items are gone beyond Credit Price Validation step and earlier detected credit price is on same day, then credit price validation API call is bypassed for existing line items.</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <strong>
+    <u> </u>
+  </strong>
+</p>
+<h1>13.CPN Indicator Check:</h1>
+<ul>
+  <li data-uuid="c4997cf5-2964-4ede-8671-de5a25a14b10">When user clicks on ‘Save &amp; View Summary’ or ‘Save for Later’, additional validation called as ‘CPN Indicator check’ is done. For the selected Sold To CMF, the value of ‘Is CPN required?’ field is fetched.</li>
+  <li data-uuid="1e7d324e-543d-442a-80fa-65c00bd66de8">If the field value is ‘True’, then all the line items are validated for CPN values.</li>
+  <li data-uuid="04831a96-53ee-4c66-a74d-3468bda6799d">Any line item that doesn’t have CPN value is disabled and shown to agent. The corresponding error message can be seen in the validation column for the disabled line items.</li>
+</ul>
+<h1>14. Export to CSV:</h1>
+<ul>
+  <li data-uuid="07ade37e-8014-4a55-a98c-b26792d0b8f7">After customer has searched for or uploaded the data for line items, and the line items are displayed in table, customer has the option to download all the line-item data present in the table as a CSV file.</li>
+  <li data-uuid="b2dbab70-8b06-4e20-8e80-2d3a52bbcd1b">This can be done by clicking on the ‘Export To CSV’ button which is present on the top right corner of the line items table.</li>
+  <li data-uuid="7c845b32-2868-4fd9-8869-f9cab51c2b65">This button is available in every step of case creation process once line-item table is visible, and it is also present in the View Summary section and Case View.</li>
+  <li data-uuid="da6b2338-d933-42e2-9c78-16ed9ee179d1">When user clicks on ‘Export To CSV’, all the line item details which are present for each line item until that step where the button is clicked (i.e., MM, PO, CPN, Validation status, etc..) are downloaded in a single file for user.</li>
+  <li data-uuid="dc8fbf97-c811-4da0-b83c-fb026adaafa0">In the ‘Case details and description’ section where we add and validate the line items, customer has the option to export all the line items present in that particular stage.</li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-21-17-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="fd60f7a6-eb39-4c3d-93fe-90581064d7ff">When customer clicks on ‘Export to CSV’, all the line-items present on the screen will be formatted into CSV, which would then be downloaded automatically.</li>
+  <li data-uuid="3816fc6c-103a-42a4-a7b1-7ef2afc92227">Customer is allowed to export before and after the validation on that particular stage. The downloaded file will display the corresponding success and error messages for line items after validation.</li>
+</ul>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-21-59-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="19f49e83-0e1d-4053-9d53-fbfa0e028c4f">All the details which customer is able to see on the UI will be available in the downloaded sheet including details shown in ‘More info’ icon.</li>
+</ul>
+<h1>15. FAC Edit Scenario:</h1>
+<ul>
+  <li data-uuid="0ac6081a-c217-4bf0-91ea-d33943b14268">
+    <span> </span>
+    <span>FAC cases are created through API, Once the case is created, it will be assigned to Agents.</span>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <ac:image ac:height="150" ac:thumbnail="true">
+    <ri:attachment ri:filename="image-2026-7-7_15-22-37-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="900fc428-4486-4fcb-9cee-e4a0395ca659">Onclick of Edit button, the case will be navigated to Edit page.</li>
+</ul>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-23-7-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="b3f6a96a-4817-421d-9f4c-28825e0b4a44">Here Request Header details cannot be edited it will be disabling mode if we have the proper data.</li>
+  <li data-uuid="abaa3707-8ae0-45c5-a7ad-2370cc6bf0bd">In Request Header details agent can see all the information related to CQE name, CQE email, CQE WWID, Return issue Description and QSC site</li>
+  <li data-uuid="311d31ae-d41b-4a49-ac92-4c36ae179d16">In Collection details Agent can Edit Collection Address, Collection Date, Collection Contact, origin bonded fields if required.</li>
+  <li data-uuid="8f70b8cb-b018-48b0-8657-007e3740bbe4">If any of the fields are empty in Request Header details and collection details the line-item section will not be displayed in the UI.</li>
+</ul>
+<p>Note: For FAC cases we will not have the option to add the new line items.</p>
+<p>
+  <strong>Search/Upload Line item:</strong>
+</p>
+<ul>
+  <li data-uuid="781213bd-723c-4cb9-974b-3ed9548ecbac">Here agent can view all the line items which are created in case creation.</li>
+</ul>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-7_15-23-32-1.png"/>
+  </ac:image>
+</p>
+<p>Note:</p>
+<ul>
+  <li data-uuid="7d27118b-9a56-448a-8230-c512f3c97caa">In the current step, if all line items are failed due to validations, then also save for later button will be enabled.</li>
+  <li data-uuid="365d3bab-eef8-4e28-8159-d54f33a3a829">Onclick of save for later button, the line items information will be updated in the data base and email will be triggered to CQE regarding failed line items.</li>
+</ul>
+<p>
+  <br/>
+</p>
+<p>
+  <strong>Warranty Entitlement Check:</strong>
+</p>
+<p>
+  <span>Once agent clicks on ‘Next’ button, he will land in the ‘Warranty Entitlement Check’ page.</span>
+  <span> </span>
+</p>
+<p>
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_15-24-3-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="970b5395-077e-4af8-8b54-4ed0fb0c4bd4">
+    <span> </span>
+    <span>Once agent clicks on </span>warranty entitlement check <span>button:</span>
+    <ul>
+      <li>
+        <span> </span>
+        <span>ULT number is mandatory for each of the line item.</span>
+      </li>
+    </ul>
+  </li>
+  <li data-uuid="efb399e7-252c-4555-ab21-4c9b3842b2c0">
+    <span>The ULT numbers are validated on basis on length (i.e., A ULT number should be having minimum of 6 characters and maximum of 40 characters)</span>
+  </li>
+  <li data-uuid="a9fd2787-63d5-4176-91d8-bacb2fdd9a46">
+    <span>Then ULTs are validated for duplicate ULTs. Duplicates are not allowed and if any are present agent will be notified via popup message.</span>
+  </li>
+  <li data-uuid="9704e7bb-ad01-4ed4-91cd-141bcc154b89">
+    <span> </span>
+    <span>ULTs are also searched among ‘Draft’ and ‘Open’ cases to see if ULT is used already as no duplicate ULTs are allowed. (This validation is currently disabled due to data constraints for ease of testing)</span>
+  </li>
+  <li data-uuid="4b32f6e5-3a10-4aac-a858-0f0faee937bd">After above validations, the product unique ids of the line items will be validated in Entitlement API.</li>
+  <li data-uuid="c5ef2e57-6721-4708-9cbc-08b51e201316">If the Product unique ids are not available in the Entitlement system, it will be considered as soft stop and message will be shown in ‘i’ icon, agent can change the ULT number and revalidate it again in Entitlement API.</li>
+</ul>
+<p>
+  <br/>
+</p>
+<p>
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_15-24-30-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="ec769b6e-d965-409d-bafa-723396f858ab">If the agent doesn’t change the ULT number in case of soft stop, still he can proceed to further steps but he can’t submit the case.</li>
+  <li data-uuid="8af6e794-09ef-4337-a701-9b492a4f12ea">If the Product unique ids are available in the Entitlement system, in response we will be getting all related information (Warranty Start Date, Warranty End Date, CEP Days).</li>
+  <li data-uuid="c1d57028-597a-48cf-808e-a55b4ed2af6e">If the line item fails for any validation check, then the line item will be disabled, and the corresponding error message will be displayed in ‘i’ icon.</li>
+  <li data-uuid="fc1c7e9b-3081-4952-8f3f-bf25efc1bf1c">Agent can select valid line items and click on next button to proceed further.</li>
+  <li data-uuid="d1916b5e-db98-4d48-8352-3027c1fad0e9">On click of ‘Next’ button, the line items will be validated using the required field matrix logic and if any of ULT, CPN fields in specific line items are required, then User will be notified by toast message, and he has to enter mandatory fields to proceed further and there should not be any Duplicate ULT numbers among the line items.</li>
+  <li data-uuid="f13154c2-1a1d-4cdd-ac9d-d7de14f0a2a2">Agent can use save for later option to pause the case process and he can continue later by editing the case.</li>
+</ul>
+<p>Note:</p>
+<ul>
+  <li data-uuid="9e0c698e-f2f2-4bba-a4b6-d13b7c46b3de">In the current step, if all line items are failed due to validations, then also save for later button will be enabled.</li>
+</ul>
+<ul>
+  <li data-uuid="603f965a-9056-4d51-bc00-ce004698bbd4">Onclick of save for later button, the line items information will be updated in the data base and email will be triggered to CQE regarding failed line items.</li>
+</ul>
+<p>
+  <br/>
+</p>
+<p>
+  <strong>Product Validation/PO History</strong>
+  <strong>:</strong>
+</p>
+<ul>
+  <li data-uuid="31711a92-5200-46c4-8dd1-4b1996d9bea7">
+    <span> </span>
+    <span>Once agent clicks on ‘Next’ button, he will land in the ‘Product validation/PO History’ page.</span>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <span>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-7_15-25-18-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="7a3521df-1520-46a4-befb-fabb7f929b53">If no PO number at line , POH API callout will be done by sending the parameters MMs , Active CMFs of the bag , Start date , End date, sales org, Disti channel</li>
+  <li data-uuid="60801f6e-3884-4ac0-a154-9534e33ef8a9">While validating from POH API the data range would be Current date – 6 years.</li>
+  <li data-uuid="34790898-48c5-462e-9285-0b0527574b21">
+    <span>If we get the PO numbers for all the required line items, agent can directly proceed further.</span>
+  </li>
+</ul>
+<p style="margin-left: 40.0px;">
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_15-25-41-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<p style="margin-left: 40.0px;">
+  <br/>
+</p>
+<p>Note:</p>
+<ul>
+  <li data-uuid="4f3434ef-18ac-4b3c-8e51-ad425202b330">In the current step, if all line items are failed due to validations, then also save for later button will be enabled.</li>
+  <li data-uuid="d4eaf1b3-fbe4-4a6e-ab0a-959889373180">Onclick of save for later button, the line items information will be updated in the data base and email will be triggered to CQE regarding failed line items.</li>
+</ul>
+<p>
+  <strong>Note:</strong> PO History validation will be bypass for the line items which are coming from PO Search.</p>
+<p>
+  <br/>
+</p>
+<p>
+  <strong>Credit Price Validation:</strong>
+</p>
+<ul>
+  <li data-uuid="7602d434-e73f-4523-8d30-6fc70e903307">
+    <span>Once agent clicks on ‘Next’ button, he will land in the ‘Credit Price Validation’ page.</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_15-26-13-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="210b6fd4-a1f5-49fb-abd0-75309051fd14">In “Credit Price Validation” step agent can see “Credit Price Validation” button enabled for all selected line items.</li>
+  <li data-uuid="1d4ca9cf-4eb9-4998-86ea-82ee8992ad16">Enter the Return Quantity for each line item as it is a mandatory field. Return Po &amp; Debit Reference number are optional fields.</li>
+  <li data-uuid="bb5c1923-0345-4f6f-aa5b-3355e6d49b8a">Once agent clicks on ‘Credit Price Validation‘ button:<ul>
+      <li>If the Distribution channel of the case that is being created is 01, then the Unit Price of Line item will be determined by SalesOrderLineNetPriceAmt attribute value of POH API.</li>
+      <li>If the Distribution channel is anything apart from 01-Direct, i.e., 02-Industrial Distribution or 03-Retail then the Unit Price of every line item will be fetched by making a callout to PIC API by passing required parameters (selected MMs, selected Sold to CMF and sales org).</li>
+      <li>If no credit price value is fetched from PIC API, then the agent has the option to enter the price and Reason in the input columns.</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <strong>Note</strong>
+  <strong>:</strong> For Price Override scenarios, please refer to the user manual:</p>
+<ul>
+  <li data-uuid="7d907631-8f34-4e87-8b59-9ea1b2b92a99">‘Net credit Value’ of each valid line item is calculated as ‘Return Quantity’ * ‘Credit Price’ and displayed in ‘Net credit value’ column.</li>
+</ul>
+<p>
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_15-26-36-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="7f2647a0-1c96-497f-b7d4-9f493b9d129c">After successfully obtaining credit price, ‘Save &amp; View Summary’ button is enabled so agent can move to view page.</li>
+  <li data-uuid="4844a399-5dad-4523-b6c5-a91ba8ade664">Agent also has the option to select the ‘Box Condition’ of each line item.</li>
+</ul>
+<p>
+  <br/>
+</p>
+<p>Note: <strong>CPN Indicator Check</strong>
+</p>
+<ul>
+  <li data-uuid="f427cb42-b01f-4e9b-a833-5734b14121ce">When user clicks on ‘Save &amp; View Summary’ or ‘Save for Later’, additional validation called as ‘CPN Indicator check’ is done. For the selected Sold To CMF, the value of ‘Is CPN required?’ field is fetched.</li>
+  <li data-uuid="a7e87458-676a-4b58-8c27-2c9ad21c4fbf">If the field value is ‘True’, then all the line items are validated for CPN values.</li>
+  <li data-uuid="34a5c36e-32de-469d-8584-f613ec5e4ead">Any line item that doesn’t have CPN value is disabled and shown to agent. The corresponding error message can be seen in the validation column for the disabled line items.</li>
+</ul>
+<p>
+  <strong>Note:</strong>
+  <strong> </strong>For CPN Support Customer, If the CPN is not available for line items then MMCPN API will call on click of ‘Save for Later’ &amp; ‘Save &amp; View Summary’ buttons &amp; populate the CPN at line item level otherwise the line items which are not having CPN are disabled with error message &amp; User not able to create Case with non-CPN line items.</p>
+<p>
+  <strong>
+    <u> </u>
+  </strong>
+</p>
+<p>
+  <strong>View Summary Page:</strong>
+</p>
+<ul>
+  <li data-uuid="bb549a3a-2cee-4d13-b7d1-047825ee9636">On clicking the button, agent is navigated to ‘Save &amp; View summary’/’Ready to Submit’ page.</li>
+  <li data-uuid="f3b3333b-cdd6-4b9a-b4f2-e8db9f89163d">Here agent can see all the case details briefly and confirm if everything is correct before he can submit the case.</li>
+</ul>
+<p>
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_15-26-59-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="a481a386-b149-4c93-a4a0-c8b6ace1f8d8">Agent can see “Edit”, “Cancel” and “Submit” buttons.</li>
+  <li data-uuid="079fe742-fe2b-4cf0-be45-16ba447862f3">In case of any soft blocks (SAP blocks or other), ‘Submit’ button will be disabled and agent would be notified by a toast message about the presence of soft blocks.</li>
+  <li data-uuid="3d39658d-9f34-4671-9d79-dac613189784">Then agent can edit the case again or continue and submit the case if no soft blocks are present.</li>
+  <li data-uuid="4444344b-3bf3-4dc6-9653-e5fdbd31789c">If the Net Value is greater than 100k or total price overridden for line items is greater than 25k then case status will be ‘Pending Approval’.</li>
+  <li data-uuid="ac5ac1e9-83c4-44bd-8584-84e952601b1f">If the Net Value is less than 100k and total price overridden for line items is less than 25k then case status will be ‘RMA Authorized’.</li>
+  <li data-uuid="be925a14-eaf2-452d-b106-e2888bf3e9a3">On click of Submit button, the case is submitted with case status as ‘Pending Approval’ or ‘RMA Authorized’ agent is redirected to the ‘Case Detail Page’.</li>
+  <li data-uuid="25dce824-1553-4a12-ba38-6bab4fb32a17">If agent clicks on cancel then the case is saved with “Draft” status and agent is redirected to the related ‘Case Detail Page’.</li>
+</ul>
+<p>
+  <br/>
+</p>
+<h1>
+  <strong> Email Approval Scenario:</strong>
+</h1>
+<ul>
+  <li data-uuid="89fe5c89-3603-4d4c-b2be-2428e9fee1da">Price Override Scenarios:<ul>
+      <li>If total price overridden for line items is greater than 25k and Net Credit value is greater than 100k, then first ‘L3 Approver’ needs to approve the particular line items before case is sent to External approver.</li>
+      <li>If L3 approver declines the approval request, then Case status is set to ‘Declined’ and external approval will not be triggered.</li>
+      <li>If L3 approver approves the approval request, another email will be triggered to external approver, based on his response the case status gets updated to ‘RMA Authorized’ or ‘Declined’.</li>
+    </ul>
+  </li>
+  <li data-uuid="56da87b0-2ae9-4224-901a-0bf4375d3c70">In case of price override less than 25k and Net Credit value is greater than 100k, on load of ‘View Summary page’, email of external approver is fetched from ‘Approval Matrix’ by sending sold to CMF, remedy, return reason, service type, distribution channel and sales org along with net credit price.</li>
+  <li data-uuid="4e15e470-6028-488c-9723-e0b36ccdff74">On click of ‘Submit’ button, case status is set to ‘Pending Approval’ and email is sent to approver for approval, based on his response the case status gets updated to ‘RMA Authorized’ or ‘Declined’..</li>
+  <li data-uuid="231935f2-c9d1-4630-add1-614ad86f6571">If no approver record is found, agent is notified by error toast message.</li>
+</ul>
+<p>
+  <br/>
+</p>
+<p>Note:</p>
+<ul>
+  <li data-uuid="7c6a384e-bbfb-480a-9d16-354d10d81654">Onclick of submit button if there are any failed line items in the case process those line items will be triggered an email to CQE with the error message.</li>
+  <li data-uuid="996681ef-827e-496f-9219-c7262cda3690">Once the case status gets ‘RMA Authorized’, an email will be triggered to CQE and Agent, regarding shipping instructions information.</li>
+  <li data-uuid="4b689a40-a84e-4ef8-a5bf-488aa01f0e55">
+    <strong>For Draft cases,</strong> we check SAP Blocks on Load when the Edit R4C button is clicked, and if any hard blocks existing or if any inactive records are part of case, then it’s a hard stop and Agents can’t edit the case else if no blocks and no inactive CMFs Agent can edit Collection details as well as Line Items</li>
+  <li data-uuid="8d22f88b-7246-4b83-8aa3-508f802ecc1d">The Default landing page for the line items is Search/Upload Line Items Page, line items can be deleted by using dropdown or unselect the line items, in the data base, the line items status gets set to Deleted.<ul>
+      <li>
+        <u>Cancel Line Items:</u>
+      </li>
+      <li>In Edit Case tab, we have an additional column ‘Line items status’ where agent can select to delete line items.</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image>
+      <ri:attachment ri:filename="image-2026-7-7_15-27-21-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="adcabf3e-16ed-4a36-a474-d4a8b6537af9">If agent selects ‘delete’, then he will be shown a prompt to confirm if he really wants to delete the line item.</li>
+  <li data-uuid="a4c74fed-7bbb-475f-ae50-8403aaf91bd7">Agent can also unselect the line items which will have same functionality as selecting ‘Delete’ status.</li>
+</ul>
+<ul>
+  <li data-uuid="26a868b9-7702-420f-b752-c6cbf4dcdad4">
+    <strong>For Pending Approval Cases, </strong>Only Collection Date field can be edited, and we can’t edit anything else.</li>
+  <li data-uuid="6f33d42e-e0a0-4171-aadf-dbc21a9b6be3">In Edit Case scenario, for any line item, if the earlier entitlement check date is on same day, we will not be doing the Entitlement check for that Line item again and we use earlier data but if any new line items are added then the Entitlement check API callout will happen for the newly added Line Items.</li>
+  <li data-uuid="da935998-a25c-4f66-a510-39de29d1277e">If case is being edited and the earlier and line items are gone beyond Credit Price Validation step and earlier detected credit price is on same day, then credit price validation API call is bypassed for existing line items.</li>
+</ul>
+<p>
+  <br/>
+</p>
+
+  
