@@ -1,0 +1,1474 @@
+/***************************************************************************
+ * Class Name  : R4C_KTBR_TI_BusinessRulesCheck
+ * Description : KTBR - Business Rules Check (Technical Intake).
+ *               Reads the CSV produced by R4C_KTBR_TI_PICCheck, runs three
+ *               business rule validations in sequence on all non-declined
+ *               lines, appends result columns.
+ *
+ * USAGE:
+ *   R4C_KTBR_TI_BusinessRulesCheck.run('06596326', 5000, 5100);
+ *
+ * Created By  : Abhishek Pandey
+ * Created Date: 09/05/2026
+ ***************************************************************************/
+public without sharing class R4C_KTBR_TI_BusinessRulesCheck {
+
+    private static final String CLASS_NAME        = 'R4C_KTBR_TI_BusinessRulesCheck';
+    private static final String RT_REQUIRED_FIELD = 'Sales_Issue_Required_Field_Matrix';
+    private static final String RT_NPR_RULE       = 'Sales_Issue_NPR_Rule_Matrix';
+    private static final String REMEDY_NPR_CREDIT = 'NPR-Credit';
+    private static final String RETURN_REASON_QAN_MRB = 'QAN_MRB_PRT';
+
+    private static final List<String> NEW_HEADERS = new List<String>{
+        'IsUltRequired', 'IsCPNRequired', 'IsMMRequired',
+        'NPRCheck', 'MRBCheck',
+        'BusinessRulesStatus', 'BusinessRulesErrorReason'
+    };
+
+
+    public static void run(String caseNumber, Integer lineStart, Integer lineEnd) {
+        System.debug('==== ' + CLASS_NAME + ' START | Case: ' + caseNumber
+            + ' | Range: ' + lineStart + '-' + lineEnd + ' ====');
+        try {
+            if (String.isBlank(caseNumber) || lineStart == null || lineEnd == null) {
+                System.debug('ERROR: Invalid input parameters'); return;
+            }
+
+            List<Customer_Sales_Issue_Request_Line__c> lines =
+                R4C_KTBR_Util.queryLinesInRange(caseNumber, lineStart, lineEnd);
+            if (lines.isEmpty()) { System.debug('No lines found in range.'); return; }
+
+            Id caseId = R4C_KTBR_Util.getCaseId(caseNumber);
+            if (caseId == null) return;
+
+            R4C_KTBR_Util.CaseContext ctx = R4C_KTBR_Util.buildCaseContext(caseNumber);
+            if (ctx == null) { System.debug('ERROR: Could not build case context.'); return; }
+
+            List<Customer_Sales_Issue_Request_Line__c> activeLines =
+                R4C_KTBR_Util.filterActiveLines(lines);
+            if (activeLines.isEmpty()) { System.debug('No active lines found.'); return; }
+            System.debug('Active lines: ' + activeLines.size());
+
+            String picAttachmentName =
+                'KTBR_TI_PICCheck_' + caseNumber + '_' + lineStart + '_' + lineEnd;
+            R4C_KTBR_Util.CSVReadResult previous =
+                R4C_KTBR_Util.readPreviousStepCSV(caseId, picAttachmentName);
+
+            List<String> lineOrder = new List<String>();
+            for (Customer_Sales_Issue_Request_Line__c line : lines) {
+                lineOrder.add(line.Name);
+            }
+
+            Boolean isNPRCredit = ctx.remedyType != null
+                && ctx.remedyType.equalsIgnoreCase(REMEDY_NPR_CREDIT);
+            Boolean isQANMRB    = ctx.returnReasonCode != null
+                && ctx.returnReasonCode.equalsIgnoreCase(RETURN_REASON_QAN_MRB);
+
+            Map<Id, BusinessRuleFlags> flagsMap =
+                runRequiredFieldMatrix(activeLines, ctx);
+
+            Map<Id, String> nprResultMap = new Map<Id, String>();
+            if (isNPRCredit) {
+                nprResultMap = runNPRMatrix(activeLines, ctx);
+            }
+
+            Set<Id> mrbValidLines = new Set<Id>();
+            if (isQANMRB) {
+                for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+                    mrbValidLines.add(line.Id);
+                }
+            }
+
+            List<Customer_Sales_Issue_Request_Line__c> linesToUpdate =
+                new List<Customer_Sales_Issue_Request_Line__c>();
+            Map<String, Map<String, String>> newValues =
+                new Map<String, Map<String, String>>();
+
+            for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+                BusinessRuleFlags flags   = flagsMap.get(line.Id);
+                String nprResult          = nprResultMap.get(line.Id);
+                Boolean mrbValid          = isQANMRB && mrbValidLines.contains(line.Id);
+
+                String status = 'Pass';
+                String reason = '';
+
+                if (flags != null && flags.isMMRequired
+                        && String.isBlank(line.Sales_Issue_Item__c)) {
+                    status = R4C_KTBR_Util.DECLINED_STATUS;
+                    reason = 'MM is required but missing for this product type';
+                }
+
+                if (status != R4C_KTBR_Util.DECLINED_STATUS
+                        && isNPRCredit && nprResult == 'BLOCKED') {
+                    status = R4C_KTBR_Util.DECLINED_STATUS;
+                    reason = 'NPR COD Not Eligible — no matching NPR rule';
+                }
+
+                if (status != R4C_KTBR_Util.DECLINED_STATUS
+                        && isQANMRB && !mrbValid) {
+                    status = R4C_KTBR_Util.DECLINED_STATUS;
+                    reason = 'MRB/QAN validation failed';
+                }
+
+                if (status == R4C_KTBR_Util.DECLINED_STATUS) {
+                    line.Sales_Issue_Line_Item_Status__c = R4C_KTBR_Util.DECLINED_STATUS;
+                    line.Line_item_error_messages__c     = reason;
+                    linesToUpdate.add(line);
+                }
+
+                newValues.put(line.Name, buildBRNewValueMap(
+                    flags, nprResult, mrbValid,
+                    isNPRCredit, isQANMRB,
+                    status, reason
+                ));
+            }
+
+            if (!linesToUpdate.isEmpty()) {
+                R4C_KTBR_Util.updateLines(linesToUpdate, CLASS_NAME);
+                System.debug('Updated ' + linesToUpdate.size() + ' lines.');
+            }
+
+            List<String> csvRows = R4C_KTBR_Util.appendColumnsToCSV(
+                previous, lineOrder, NEW_HEADERS, newValues
+            );
+            R4C_KTBR_Util.createCaseAttachment(
+                caseId,
+                'KTBR_TI_BusinessRulesCheck_' + caseNumber + '_' + lineStart + '_' + lineEnd,
+                csvRows
+            );
+
+            System.debug('==== ' + CLASS_NAME + ' COMPLETED SUCCESSFULLY ====');
+
+        } catch (Exception ex) {
+            R4C_KTBR_Util.logError(CLASS_NAME, 'run', ex);
+            System.debug('ERROR: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
+        }
+    }
+
+    private static Map<String, String> buildBRNewValueMap(
+        BusinessRuleFlags flags,
+        String nprResult,
+        Boolean mrbValid,
+        Boolean isNPRCase,
+        Boolean isQANMRBCase,
+        String status,
+        String reason
+    ) {
+        String isUltReq = flags != null ? String.valueOf(flags.isUltRequired)  : 'false';
+        String isCPNReq = flags != null ? String.valueOf(flags.isCPNRequired)  : 'false';
+        String isMMReq  = flags != null ? String.valueOf(flags.isMMRequired)   : 'false';
+        String nprCol   = isNPRCase     ? (nprResult ?? 'N/A')                 : 'N/A';
+        String mrbCol   = isQANMRBCase  ? String.valueOf(mrbValid)             : 'N/A';
+
+        return new Map<String, String>{
+            'IsUltRequired'            => isUltReq,
+            'IsCPNRequired'            => isCPNReq,
+            'IsMMRequired'             => isMMReq,
+            'NPRCheck'                 => nprCol,
+            'MRBCheck'                 => mrbCol,
+            'BusinessRulesStatus'      => status,
+            'BusinessRulesErrorReason' => reason
+        };
+    }
+
+    private static Map<Id, BusinessRuleFlags> runRequiredFieldMatrix(
+        List<Customer_Sales_Issue_Request_Line__c> activeLines,
+        R4C_KTBR_Util.CaseContext ctx
+    ) {
+        Map<Id, BusinessRuleFlags> result = new Map<Id, BusinessRuleFlags>();
+        if (activeLines.isEmpty() || ctx == null) return result;
+
+        Set<String> opIds       = new Set<String>();
+        Set<String> families    = new Set<String>();
+        Set<String> prodCodes   = new Set<String>();
+        Set<String> profitCtrs  = new Set<String>();
+        Set<String> marketNames = new Set<String>();
+
+        for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+            String opid      = line.Sales_Issue_Item__r?.ICS_WR_Operation_Business_Unit_Code__c;
+            String family    = line.Sales_Issue_Item__r?.ICS_WR_Family_Name__c;
+            String prodCode  = line.Sales_Issue_Item__r?.Item_Product_Code__c;
+            String profitCtr = line.Sales_Issue_Item__r?.ICS_WR_Profit_Center_Code__c;
+            String mktName   = line.Sales_Issue_Item__r?.Item_Market_Name__c;
+            if (String.isNotBlank(opid))      opIds.add(opid);
+            if (String.isNotBlank(family))    families.add(family);
+            if (String.isNotBlank(prodCode))  prodCodes.add(prodCode);
+            if (String.isNotBlank(profitCtr)) profitCtrs.add(profitCtr);
+            if (String.isNotBlank(mktName))   marketNames.add(mktName);
+        }
+        opIds.add(null); families.add(null); prodCodes.add(null);
+        profitCtrs.add(null); marketNames.add(null);
+
+        List<Sales_Issue_Matrix__c> matrices = [
+            SELECT Id,
+                   Sales_Issue_Rule_Prioritization_Number__c,
+                   Sales_Issue_Operation_Business_Unit_Code__c,
+                   Item_Family_Name__c,
+                   Item_Product_Code__c,
+                   Item_Market_Name__c,
+                   Sales_Issue_Profit_Center__c,
+                   Product_Unique_Id_Required_Indicator__c,
+                   Sales_Issue_CPN_Support_Indicator__c,
+                   Item_Required_Indicator__c
+            FROM   Sales_Issue_Matrix__c
+            WHERE  RecordType.DeveloperName = :RT_REQUIRED_FIELD
+            AND    Sales_Issue_Active_Indicator__c = true
+            AND    Sales_Issue_Valid_From__c <= TODAY
+            AND    Sales_Issue_Valid_To__c   >= TODAY
+            AND    Sales_Issue_Service_Type__c           = :ctx.serviceTypeId
+            AND    Sales_Issue_Remedy_Type__c            = :ctx.remedyTypeId
+            AND    Sales_Issue_Customer_Return_Reason__c = :ctx.returnReasonId
+            AND    Sales_Issue_Customer_Sales_Organization__c = :ctx.salesOrgId
+            AND    Customer_Disti_Channel__c             = :ctx.distiChannelId
+            AND    (
+                Item_Family_Name__c IN :families
+                OR Sales_Issue_Operation_Business_Unit_Code__c IN :opIds
+                OR Item_Product_Code__c IN :prodCodes
+                OR Item_Market_Name__c IN :marketNames
+                OR Sales_Issue_Profit_Center__c IN :profitCtrs
+            )
+            ORDER BY Sales_Issue_Rule_Prioritization_Number__c ASC NULLS LAST
+            LIMIT 4000
+        ];
+
+        for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+            String opid      = line.Sales_Issue_Item__r?.ICS_WR_Operation_Business_Unit_Code__c;
+            String family    = line.Sales_Issue_Item__r?.ICS_WR_Family_Name__c;
+            String prodCode  = line.Sales_Issue_Item__r?.Item_Product_Code__c;
+            String profitCtr = line.Sales_Issue_Item__r?.ICS_WR_Profit_Center_Code__c;
+            String mktName   = line.Sales_Issue_Item__r?.Item_Market_Name__c;
+
+            BusinessRuleFlags flags = new BusinessRuleFlags();
+
+            for (Sales_Issue_Matrix__c m : matrices) {
+                Boolean matched;
+                    Boolean profitMatch = m.Sales_Issue_Profit_Center__c == null
+                        || m.Sales_Issue_Profit_Center__c == profitCtr;
+                    Boolean mktMatch    = m.Item_Market_Name__c == null
+                        || m.Item_Market_Name__c == mktName;
+                    Boolean famMatch    = m.Item_Family_Name__c == null
+                        || m.Item_Family_Name__c == family;
+                    matched = (profitMatch || mktMatch) && famMatch;
+                if (matched) {
+                    flags.isUltRequired = m.Product_Unique_Id_Required_Indicator__c == true;
+                    flags.isCPNRequired = m.Sales_Issue_CPN_Support_Indicator__c    == true;
+                    flags.isMMRequired  = m.Item_Required_Indicator__c              == true;
+                    flags.ruleMatched   = true;
+                    break;
+                }
+            }
+            result.put(line.Id, flags);
+        }
+        return result;
+    }
+
+    private static Map<Id, String> runNPRMatrix(
+        List<Customer_Sales_Issue_Request_Line__c> activeLines,
+        R4C_KTBR_Util.CaseContext ctx
+    ) {
+        Map<Id, String> result = new Map<Id, String>();
+        if (activeLines.isEmpty() || ctx == null) return result;
+
+        Set<String> opIds       = new Set<String>();
+        Set<String> mmIds       = new Set<String>();
+        Set<String> profitCtrs  = new Set<String>();
+        Set<String> marketNames = new Set<String>();
+
+        for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+            String opid     = line.Sales_Issue_Item__r?.ICS_WR_Operation_Business_Unit_Code__c;
+            String mm       = line.Sales_Issue_Item__r?.Name;
+            String profitCtr= line.Sales_Issue_Item__r?.ICS_WR_Profit_Center_Code__c;
+            String mktName  = line.Sales_Issue_Item__r?.Item_Market_Name__c;
+            if (String.isNotBlank(opid))      opIds.add(opid);
+            if (String.isNotBlank(mm))        mmIds.add(mm);
+            if (String.isNotBlank(profitCtr)) profitCtrs.add(profitCtr);
+            if (String.isNotBlank(mktName))   marketNames.add(mktName);
+        }
+        opIds.add(null); mmIds.add(null); profitCtrs.add(null); marketNames.add(null);
+
+        List<Sales_Issue_Matrix__c> nprMatrices = [
+            SELECT Id,
+                   Sales_Issue_Operation_Business_Unit_Code__c,
+                   Item_Market_Name__c,
+                   Sales_Issue_Profit_Center__c,
+                   Sales_Issue_Item__c,
+                   Sales_Issue_Item__r.Name
+            FROM   Sales_Issue_Matrix__c
+            WHERE  RecordType.DeveloperName = :RT_NPR_RULE
+            AND    Sales_Issue_Active_Indicator__c = true
+            AND    Sales_Issue_Valid_From__c <= TODAY
+            AND    Sales_Issue_Valid_To__c   >= TODAY
+            AND    Sales_Issue_Customer_Sales_Organization__c = :ctx.salesOrgId
+            AND    Customer_Disti_Channel__c                  = :ctx.distiChannelId
+            AND    Sales_Issue_Customer_Return_Reason__c      = :ctx.returnReasonId
+            AND    (
+                Sales_Issue_Operation_Business_Unit_Code__c IN :opIds
+                OR Item_Market_Name__c IN :marketNames
+                OR Sales_Issue_Profit_Center__c IN :profitCtrs
+                OR Sales_Issue_Item__c IN :mmIds
+            )
+            LIMIT 4000
+        ];
+
+        for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+            String opid     = line.Sales_Issue_Item__r?.ICS_WR_Operation_Business_Unit_Code__c;
+            String mm       = line.Sales_Issue_Item__r?.Name;
+            String profitCtr= line.Sales_Issue_Item__r?.ICS_WR_Profit_Center_Code__c;
+            String mktName  = line.Sales_Issue_Item__r?.Item_Market_Name__c;
+
+            List<Sales_Issue_Matrix__c> pass1 = new List<Sales_Issue_Matrix__c>();
+            for (Sales_Issue_Matrix__c m : nprMatrices) {
+                String matrixMM = m.Sales_Issue_Item__r?.Name;
+                Boolean mmMatch = m.Sales_Issue_Item__c == null
+                    || (String.isBlank(mm) && String.isBlank(matrixMM))
+                    || mm == matrixMM;
+
+                Boolean primaryMatch;
+                    Boolean profitMatch = m.Sales_Issue_Profit_Center__c == null
+                        || (String.isBlank(profitCtr)
+                            && String.isBlank(m.Sales_Issue_Profit_Center__c))
+                        || m.Sales_Issue_Profit_Center__c == profitCtr;
+                    Boolean mktMatch    = m.Item_Market_Name__c == null
+                        || (String.isBlank(mktName)
+                            && String.isBlank(m.Item_Market_Name__c))
+                        || m.Item_Market_Name__c == mktName;
+                    primaryMatch = profitMatch || mktMatch;
+                if (primaryMatch && mmMatch) pass1.add(m);
+            }
+
+            Boolean blocked;
+            if (!pass1.isEmpty()) {
+                blocked = false;
+            } else {
+                List<Sales_Issue_Matrix__c> pass2 = new List<Sales_Issue_Matrix__c>();
+                for (Sales_Issue_Matrix__c m : nprMatrices) {
+                    String matrixMM = m.Sales_Issue_Item__r?.Name;
+                    Boolean mmMatch = m.Sales_Issue_Item__c == null
+                        || (String.isBlank(mm) && String.isBlank(matrixMM))
+                        || mm == matrixMM;
+
+                    Boolean noOrgFilter;
+                        noOrgFilter = String.isBlank(m.Item_Market_Name__c)
+                            || String.isBlank(m.Sales_Issue_Profit_Center__c);
+                    if (noOrgFilter && mmMatch) pass2.add(m);
+                }
+                blocked = pass2.isEmpty();
+            }
+
+            result.put(line.Id, blocked ? 'BLOCKED' : 'PASS');
+        }
+        return result;
+    }
+
+    public class BusinessRuleFlags {
+        public Boolean isUltRequired = false;
+        public Boolean isCPNRequired = false;
+        public Boolean isMMRequired  = false;
+        public Boolean ruleMatched   = false;
+    }
+}
+
+
+____________________________________________________________
+
+
+/***************************************************************************
+ * Class Name  : R4C_KTBR_TI_DuplicateULTAPI
+ * Description : Duplicate ULT Check against Entitlement API.
+ *               Reads the CSV produced by R4C_KTBR_TI_DuplicateULTDB,
+ *               appends API-check columns, and writes a new CSV.
+ *
+ * USAGE : R4C_KTBR_TI_DuplicateULTAPI.run('06596326', 5000, 5100);
+ *
+ * Created By  : Abhishek Pandey
+ * Created Date: 17/03/2026
+ ***************************************************************************/
+public without sharing class R4C_KTBR_TI_DuplicateULTAPI {
+
+    private static final String  CLASS_NAME = 'R4C_KTBR_TI_DuplicateULTAPI';
+    private static final Integer CHUNK_SIZE = 1000;
+
+    private static final List<String> NEW_HEADERS = new List<String>{
+        'APIStatus', 'APIErrorReason', 'APICaseNumbers'
+    };
+
+    public static void run(String caseNumber, Integer lineStart, Integer lineEnd) {
+        System.debug('==== ' + CLASS_NAME + ' START | Case: ' + caseNumber
+            + ' | Range: ' + lineStart + '-' + lineEnd + ' ====');
+        try {
+            List<Customer_Sales_Issue_Request_Line__c> lines =
+                R4C_KTBR_Util.queryLinesInRange(caseNumber, lineStart, lineEnd);
+            if (lines.isEmpty()) { System.debug('No lines found in range.'); return; }
+
+            Id caseId = R4C_KTBR_Util.getCaseId(caseNumber);
+            if (caseId == null) return;
+
+            String dbAttachmentName =
+                'KTBR_TI_DuplicateULT_DB_' + caseNumber + '_' + lineStart + '_' + lineEnd;
+            R4C_KTBR_Util.CSVReadResult previous =
+                R4C_KTBR_Util.readPreviousStepCSV(caseId, dbAttachmentName);
+
+            List<String> lineOrder = new List<String>();
+            for (Customer_Sales_Issue_Request_Line__c line : lines) {
+                lineOrder.add(line.Name);
+            }
+
+            List<Customer_Sales_Issue_Request_Line__c> activeLines =
+                R4C_KTBR_Util.filterActiveLinesWithULT(lines);
+            if (activeLines.isEmpty()) {
+                System.debug('No active ULTs to check.');
+                List<String> csvRows = R4C_KTBR_Util.appendColumnsToCSV(
+                    previous, lineOrder,
+                    NEW_HEADERS,
+                    new Map<String, Map<String, String>>()
+                );
+                R4C_KTBR_Util.createCaseAttachment(
+                    caseId,
+                    'KTBR_TI_DuplicateULT_API_' + caseNumber + '_' + lineStart + '_' + lineEnd,
+                    csvRows
+                );
+                return;
+            }
+
+            List<String> ultList = new List<String>();
+            for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+                ultList.add(line.Sales_Issue_Prd_Unique_Id__c);
+            }
+
+            R4C_APIGEE_Settings__mdt integrationSetting =
+                R4C_APIGEE_Settings__mdt.getInstance('EntitlementAPI_DuplicateULTCheck');
+            String endpoint = Boolean.valueOf(R4C_KTBR_Util.IS_IAO_FLAG)
+                ? 'callout:R4C_EH_API_DuplicateULTCheckIAO'
+                : integrationSetting.Consuming_Class_Name__c;
+
+            Set<String>         duplicateULTs      = new Set<String>();
+            Set<String>         scrappedULTs       = new Set<String>();
+            Set<String>         lostWarehouseULTs  = new Set<String>();
+            Set<String>         lostTransitULTs    = new Set<String>();
+            Map<String, String> ultToCaseNumberMap = new Map<String, String>();
+
+            for (List<String> chunk : R4C_KTBR_Util.chunkList(ultList, CHUNK_SIZE)) {
+                String filterJson    = R4C_EntAPI_UltDuplicateConsumingClass.getFilterString(chunk);
+                String transactionId = R4C_API_MessageLogAndAttachment.generateTransactionId();
+                R4C_KTBR_Util.logAPIRequest(CLASS_NAME, transactionId, filterJson);
+                try {
+                    HttpResponse res        = new Http().send(
+                        R4C_KTBR_Util.buildHttpRequest(endpoint, filterJson));
+                    Integer     statusCode  = res.getStatusCode();
+                    String      resBody     = res.getBody();
+                    R4C_KTBR_Util.logAPIResponse(CLASS_NAME, transactionId, statusCode, resBody);
+
+                    if (statusCode == 200 && String.isNotBlank(resBody)) {
+                        R4C_EntAPI_UltDuplicateConsumingClass.ResponseWrapper parsed =
+                            (R4C_EntAPI_UltDuplicateConsumingClass.ResponseWrapper)
+                            JSON.deserialize(resBody,
+                                R4C_EntAPI_UltDuplicateConsumingClass.ResponseWrapper.class);
+                        if (parsed?.elements != null) {
+                            for (R4C_EntAPI_UltDuplicateConsumingClass.Elements el
+                                    : parsed.elements) {
+                                if (el.Duplicate_ULT    == 'true') duplicateULTs.add(el.PRODUCT_UNIQUE_ID);
+                                if (el.ULT_SCRAPPED     == 'true') scrappedULTs.add(el.PRODUCT_UNIQUE_ID);
+                                if (el.Lost_In_Warehouse == 'true') lostWarehouseULTs.add(el.PRODUCT_UNIQUE_ID);
+                                if (el.Lost_In_Transit   == 'true') lostTransitULTs.add(el.PRODUCT_UNIQUE_ID);
+                                if (String.isNotBlank(el.PRODUCT_UNIQUE_ID)) {
+                                    String intakeRMA  = el.CUSTOMER_RETURN_CASE_NBR_INTAKE  ?? '';
+                                    String receiptRMA = el.CUSTOMER_RETURN_CASE_NBR_RECEIPT ?? '';
+                                    String caseNums   = (intakeRMA == receiptRMA)
+                                        ? intakeRMA
+                                        : (intakeRMA + (String.isNotBlank(receiptRMA)
+                                            ? ', ' + receiptRMA : ''));
+                                    if (String.isNotBlank(caseNums)) {
+                                        if (ultToCaseNumberMap.containsKey(el.PRODUCT_UNIQUE_ID)) {
+                                            ultToCaseNumberMap.put(el.PRODUCT_UNIQUE_ID,
+                                                ultToCaseNumberMap.get(el.PRODUCT_UNIQUE_ID)
+                                                + ', ' + caseNums);
+                                        } else {
+                                            ultToCaseNumberMap.put(el.PRODUCT_UNIQUE_ID, caseNums);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    R4C_KTBR_Util.logError(CLASS_NAME, 'run.chunk', ex);
+                }
+            }
+
+            List<Customer_Sales_Issue_Request_Line__c> linesToUpdate =
+                new List<Customer_Sales_Issue_Request_Line__c>();
+
+            Map<String, Map<String, String>> newValues =
+                new Map<String, Map<String, String>>();
+
+            for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+                String ult      = line.Sales_Issue_Prd_Unique_Id__c;
+                String apiStatus = 'Pass';
+                String reason    = '';
+                String caseNums  = ultToCaseNumberMap.get(ult) ?? '';
+
+                if (duplicateULTs.contains(ult)) {
+                    reason    = 'Duplicate ULT';
+                    apiStatus = R4C_KTBR_Util.DECLINED_STATUS;
+                } else if (scrappedULTs.contains(ult)) {
+                    reason    = 'ULT Scrapped';
+                    apiStatus = R4C_KTBR_Util.DECLINED_STATUS;
+                } else if (lostWarehouseULTs.contains(ult)) {
+                    reason    = 'Lost In Warehouse';
+                    apiStatus = R4C_KTBR_Util.DECLINED_STATUS;
+                } else if (lostTransitULTs.contains(ult)) {
+                    reason    = 'Lost In Transit';
+                    apiStatus = R4C_KTBR_Util.DECLINED_STATUS;
+                }
+
+                if (apiStatus == R4C_KTBR_Util.DECLINED_STATUS) {
+                    line.Sales_Issue_Line_Item_Status__c = R4C_KTBR_Util.DECLINED_STATUS;
+                    line.Line_item_error_messages__c     = reason
+                        + (String.isNotBlank(caseNums) ? ' - Case(s): ' + caseNums : '');
+                    linesToUpdate.add(line);
+                }
+
+                newValues.put(line.Name, new Map<String, String>{
+                    'APIStatus'      => apiStatus,
+                    'APIErrorReason' => reason,
+                    'APICaseNumbers' => caseNums
+                });
+            }
+
+            R4C_KTBR_Util.updateLines(linesToUpdate, CLASS_NAME);
+
+            List<String> csvRows = R4C_KTBR_Util.appendColumnsToCSV(
+                previous, lineOrder, NEW_HEADERS, newValues
+            );
+
+            R4C_KTBR_Util.createCaseAttachment(
+                caseId,
+                'KTBR_TI_DuplicateULT_API_' + caseNumber + '_' + lineStart + '_' + lineEnd,
+                csvRows
+            );
+
+            System.debug(CLASS_NAME + ' complete. Declined: '
+                + linesToUpdate.size() + ' | Total: ' + activeLines.size());
+
+        } catch (Exception ex) {
+            R4C_KTBR_Util.logError(CLASS_NAME, 'run', ex);
+        }
+    }
+}
+
+
+_____________________________________________________________
+
+
+/***************************************************************************
+ * Class Name  : R4C_KTBR_TI_DuplicateULTDB
+ * Description : KTBR Duplicate ULT Check against Salesforce DB lines and
+ *               sublines. Creates the initial CSV that feeds the pipeline —
+ *               every subsequent step reads this file and appends columns.
+ *
+ * USAGE : R4C_KTBR_TI_DuplicateULTDB.run('06596326', 5000, 5100);
+ *
+ * Created By  : Abhishek Pandey
+ * Created Date: 17/03/2026
+ ***************************************************************************/
+public without sharing class R4C_KTBR_TI_DuplicateULTDB {
+
+    private static final String CLASS_NAME = 'R4C_KTBR_TI_DuplicateULTDB';
+
+    public static void run(String caseNumber, Integer lineStart, Integer lineEnd) {
+        System.debug('==== ' + CLASS_NAME + ' START | Case: ' + caseNumber
+            + ' | Range: ' + lineStart + '-' + lineEnd + ' ====');
+
+        try {
+            List<Customer_Sales_Issue_Request_Line__c> lines =
+                R4C_KTBR_Util.queryLinesInRange(caseNumber, lineStart, lineEnd);
+            if (lines.isEmpty()) { System.debug('No lines found in range.'); return; }
+
+            Id caseId = R4C_KTBR_Util.getCaseId(caseNumber);
+            System.debug('step 2.');
+            R4C_KTBR_Util.CaseContext ctx = R4C_KTBR_Util.buildCaseContext(caseNumber);
+            Map<Id, Boolean[]> ultCpnFlags = R4C_KTBR_Util.buildULTCPNFlagsMap(lines, ctx);
+            if (caseId == null) return;
+            System.debug('step 3.');
+            System.debug('line :' + lines);
+
+            List<String> ultList = new List<String>();
+            for (Customer_Sales_Issue_Request_Line__c line : lines) {
+                if (line.Sales_Issue_Line_Item_Status__c != R4C_KTBR_Util.DECLINED_STATUS
+                        && String.isNotBlank(line.Sales_Issue_Prd_Unique_Id__c)) {
+                    ultList.add(line.Sales_Issue_Prd_Unique_Id__c.toUpperCase());
+                }
+                System.debug('Status: ' + line.Sales_Issue_Prd_Unique_Id__c);
+            }
+            System.debug('step 4.');
+            if (ultList.isEmpty()) { return; }
+            System.debug('step 5.');
+
+            R4C_AG_POSearch_Controller.duplicateULTWrapper dataWrapper =
+                R4C_AG_POSearch_Controller.getCaseWithUlt(ultList, null, (String) caseId);
+
+            List<Customer_Sales_Issue_Request_Line__c>    sfLines    =
+                dataWrapper?.lines    ?? new List<Customer_Sales_Issue_Request_Line__c>();
+            List<Customer_Sales_Issue_Request_Subline__c> sfSublines =
+                dataWrapper?.sublines ?? new List<Customer_Sales_Issue_Request_Subline__c>();
+
+            Map<Id, List<String>> caseIdToULTsMap = new Map<Id, List<String>>();
+            List<SObject> allRecords = new List<SObject>();
+            allRecords.addAll((List<SObject>) sfLines);
+            allRecords.addAll((List<SObject>) sfSublines);
+
+            for (Customer_Sales_Issue_Request_Line__c sfLine : sfLines) {
+                String ult      = (sfLine.Sales_Issue_Prd_Unique_Id__c ?? '').toUpperCase();
+                Id     sfCaseId = sfLine.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__c;
+                if (String.isBlank(ult) || sfCaseId == null) continue;
+                if (!caseIdToULTsMap.containsKey(sfCaseId))
+                    caseIdToULTsMap.put(sfCaseId, new List<String>());
+                caseIdToULTsMap.get(sfCaseId).add(ult);
+            }
+
+            for (Customer_Sales_Issue_Request_Subline__c sfSub : sfSublines) {
+                String ult      = (sfSub.Sales_Issue_Serial_Number__c ?? '').toUpperCase();
+                Id     sfCaseId = sfSub.Sales_Issue_Line_Number__r
+                    ?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__c;
+                String lineUlt  = (sfSub.Sales_Issue_Line_Number__r
+                    ?.Sales_Issue_Prd_Unique_Id__c ?? '').toUpperCase();
+                if (String.isBlank(ult) || sfCaseId == null || ult == lineUlt) continue;
+                if (!caseIdToULTsMap.containsKey(sfCaseId))
+                    caseIdToULTsMap.put(sfCaseId, new List<String>());
+                caseIdToULTsMap.get(sfCaseId).add(ult);
+            }
+
+            Set<String>          processedULTCasePairs = new Set<String>();
+            Map<String, String>  SFULTCaseNumbersMap   = new Map<String, String>();
+            Set<String>          duplicateULTs         = new Set<String>();
+
+            for (SObject obj : allRecords) {
+                String ult;
+                Id     sfCaseId;
+                String sfCaseNum;
+
+                if (obj instanceof Customer_Sales_Issue_Request_Line__c) {
+                    Customer_Sales_Issue_Request_Line__c sfLine =
+                        (Customer_Sales_Issue_Request_Line__c) obj;
+                    ult       = (sfLine.Sales_Issue_Prd_Unique_Id__c ?? '').toUpperCase();
+                    sfCaseId  = sfLine.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__c;
+                    sfCaseNum = sfLine.Sales_Issue_Cst_Return_Request_Number__r
+                        ?.Sales_Issue_CaseNumber__r?.CaseNumber;
+                } else if (obj instanceof Customer_Sales_Issue_Request_Subline__c) {
+                    Customer_Sales_Issue_Request_Subline__c sfSub =
+                        (Customer_Sales_Issue_Request_Subline__c) obj;
+                    ult       = (sfSub.Sales_Issue_Serial_Number__c ?? '').toUpperCase();
+                    sfCaseId  = sfSub.Sales_Issue_Line_Number__r
+                        ?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__c;
+                    sfCaseNum = sfSub.Sales_Issue_Line_Number__r
+                        ?.Sales_Issue_Cst_Return_Request_Number__r
+                        ?.Sales_Issue_CaseNumber__r?.CaseNumber;
+                    String lineUlt = (sfSub.Sales_Issue_Line_Number__r
+                        ?.Sales_Issue_Prd_Unique_Id__c ?? '').toUpperCase();
+                    if (String.isNotBlank(lineUlt) && lineUlt == ult) continue;
+                } else {
+                    continue;
+                }
+
+                if (String.isBlank(ult) || sfCaseId == null || String.isBlank(sfCaseNum)) continue;
+                if (!caseIdToULTsMap.containsKey(sfCaseId)) continue;
+
+                List<String> ultsInCase = caseIdToULTsMap.get(sfCaseId);
+                Integer ultCount = 0;
+                for (String u : ultsInCase) { if (u == ult) ultCount++; }
+
+                if (ultCount == 1 && sfCaseId == caseId) continue;
+
+                if (ultCount > 1 || sfCaseId != caseId) {
+                    String pairKey = ult + '_' + sfCaseNum;
+                    if (processedULTCasePairs.contains(pairKey)) continue;
+                    processedULTCasePairs.add(pairKey);
+                    if (SFULTCaseNumbersMap.containsKey(ult)) {
+                        SFULTCaseNumbersMap.put(ult, SFULTCaseNumbersMap.get(ult) + ', ' + sfCaseNum);
+                    } else {
+                        SFULTCaseNumbersMap.put(ult, sfCaseNum);
+                    }
+                    duplicateULTs.add(ult);
+                }
+            }
+
+            List<Customer_Sales_Issue_Request_Line__c> linesToUpdate =
+                new List<Customer_Sales_Issue_Request_Line__c>();
+            List<String> csvRows = new List<String>();
+            csvRows.add('LineNumber,MM,ULT,Status,DuplicateCaseNumbers,IsULTRequired,IsCPNRequired');
+
+            for (Customer_Sales_Issue_Request_Line__c line : lines) {
+                String  ult      = (line.Sales_Issue_Prd_Unique_Id__c ?? '').toUpperCase();
+                String  status   = 'Pass';
+                String  dupCases = '';
+                Boolean[] flags  = ultCpnFlags.get(line.Id);
+                Boolean ultReq   = flags != null && flags[0];
+                Boolean cpnReq   = flags != null && flags[1];
+
+                if (String.isNotBlank(ult) && duplicateULTs.contains(ult)) {
+                    dupCases = SFULTCaseNumbersMap.get(ult);
+                    line.Sales_Issue_Line_Item_Status__c = R4C_KTBR_Util.DECLINED_STATUS;
+                    line.Line_item_error_messages__c     =
+                        'Duplicate ULT - Case(s): ' + (String.isNotBlank(dupCases) ? dupCases : '');
+                    status = R4C_KTBR_Util.DECLINED_STATUS;
+                    linesToUpdate.add(line);
+                }
+
+                csvRows.add(
+                    R4C_KTBR_Util.escapeCSV(line.Name)                           + ',' +
+                    R4C_KTBR_Util.escapeCSV(line.Sales_Issue_Item__c)             + ',' +
+                    R4C_KTBR_Util.escapeCSV(line.Sales_Issue_Prd_Unique_Id__c)    + ',' +
+                    R4C_KTBR_Util.escapeCSV(status)                               + ',' +
+                    R4C_KTBR_Util.escapeCSV(dupCases)                             + ',' +
+                    R4C_KTBR_Util.escapeCSV(String.valueOf(ultReq))               + ',' +
+                    R4C_KTBR_Util.escapeCSV(String.valueOf(cpnReq))
+                );
+            }
+
+            R4C_KTBR_Util.updateLines(linesToUpdate, CLASS_NAME);
+
+            R4C_KTBR_Util.createCaseAttachment(
+                caseId,
+                'KTBR_TI_DuplicateULT_DB_' + caseNumber + '_' + lineStart + '_' + lineEnd,
+                csvRows
+            );
+
+            System.debug(CLASS_NAME + ' complete. Declined: '
+                + linesToUpdate.size() + ' | Total: ' + lines.size());
+
+        } catch (Exception ex) {
+            R4C_KTBR_Util.logError(CLASS_NAME, 'run', ex);
+        }
+    }
+}
+
+
+____________________________________________________________________-
+
+
+/***************************************************************************
+ * Class Name  : R4C_KTBR_TI_POHistoryCheck
+ * Description : KTBR - PO History Check.
+ *               Reads the warranty CSV from R4C_KTBR_TI_WarrantyEntitlementCheck,
+ *               appends PO history columns, and writes a new CSV.
+ *
+ * USAGE :
+ *   R4C_KTBR_TI_POHistoryCheck.run(caseNumber, lineStart, lineEnd);
+ *
+ * Created By  : Abhishek Pandey
+ * Created Date: 9/05/2026
+ ***************************************************************************/
+public without sharing class R4C_KTBR_TI_POHistoryCheck {
+
+    private static final String  CLASS_NAME        = 'R4C_KTBR_TI_POHistoryCheck';
+    private static final Integer CHUNK_SIZE         = 600;
+    private static final Integer HTTP_SUCCESS_CODE  = 200;
+    private static final String  API_TYPE_BAG       = 'BAG';
+    private static final String  API_TYPE_VIZID     = 'VIZID';
+    private static final String  BILLING_DOC_ZF2    = 'ZF2';
+    private static final String  BILLING_DOC_ZF2ZFV = 'ZF2,ZFV';
+    private static final String  CPU_POH_REJECTION  =
+        R4C_Generic_Configurations__c.getValues('CPU_POH_Rejection')?.Value__c
+        ?? 'CPU_POH_Rejection';
+
+    private static final List<String> NEW_HEADERS = new List<String>{
+        'BillingDate', 'CustomerPONumber', 'SalesOrderNumber', 'SalesOrderLineNbr',
+        'CustomerBillingDocId', 'CustomerItemNbr', 'SoldToCustomerId',
+        'BillingQty', 'CurrencyCd', 'BillingDocLineNbr', 'BatchId',
+        'POUnitPrice', 'POIsValid', 'POHistoryStatus', 'POHistoryErrorReason'
+    };
+
+    public static void run(
+        String caseNumber,
+        Integer lineStart,
+        Integer lineEnd
+    ) {
+        System.debug('==== ' + CLASS_NAME + ' START | Case: ' + caseNumber
+            + ' | Range: ' + lineStart + '-' + lineEnd + ' ====');
+
+        try {
+            if (String.isBlank(caseNumber) || lineStart == null || lineEnd == null) {
+                System.debug('Invalid input parameters.');
+                return;
+            }
+
+            List<Customer_Sales_Issue_Request_Line__c> lines =
+                R4C_KTBR_Util.queryLinesInRange(caseNumber, lineStart, lineEnd);
+            if (lines.isEmpty()) { System.debug('No lines found.'); return; }
+
+            Id caseId = R4C_KTBR_Util.getCaseId(caseNumber);
+            if (caseId == null) { System.debug('Case not found.'); return; }
+
+            R4C_KTBR_Util.CaseContext ctx = R4C_KTBR_Util.buildCaseContext(caseNumber);
+            if (ctx == null) { System.debug('Could not build case context.'); return; }
+
+            List<Customer_Sales_Issue_Request_Line__c> activeLines =
+                R4C_KTBR_Util.filterActiveLines(lines);
+            if (activeLines.isEmpty()) { System.debug('No active lines.'); return; }
+
+            String warrantyAttachmentName =
+                'KTBR_TI_WarrantyEntitlementCheck_' + caseNumber + '_' + lineStart + '_' + lineEnd;
+            R4C_KTBR_Util.CSVReadResult previous =
+                R4C_KTBR_Util.readPreviousStepCSV(caseId, warrantyAttachmentName);
+
+            if (previous.isEmpty()) {
+                System.debug('No warranty data found. Ensure warranty entitlement step was executed.');
+                return;
+            }
+
+            List<String> lineOrder = new List<String>();
+            for (Customer_Sales_Issue_Request_Line__c line : lines) {
+                lineOrder.add(line.Name);
+            }
+
+            Map<String, WarrantyInfo> warrantyInfoMap = buildWarrantyInfoMap(previous.rows);
+
+            Map<Id, Boolean[]> matrixFlags = R4C_KTBR_Util.buildULTCPNFlagsMap(activeLines, ctx);
+
+            String startDate = getPOHistoryStartDate(ctx.serviceType);
+            String endDate   = getPOHistoryEndDate();
+
+            List<Customer_Sales_Issue_Request_Line__c> bagLines   =
+                new List<Customer_Sales_Issue_Request_Line__c>();
+            List<Customer_Sales_Issue_Request_Line__c> vizidLines =
+                new List<Customer_Sales_Issue_Request_Line__c>();
+            List<Customer_Sales_Issue_Request_Line__c> noUltLines =
+                new List<Customer_Sales_Issue_Request_Line__c>();
+
+            for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+                WarrantyInfo w = warrantyInfoMap.get(line.Name);
+                if (w == null || !w.hasULT || w.isUnderCEPDays) {
+                    noUltLines.add(line);
+                } else if (w.isVISID) {
+                    vizidLines.add(line);
+                } else {
+                    bagLines.add(line);
+                }
+            }
+            System.debug('BAG=' + bagLines.size()
+                + ' | VIZID=' + vizidLines.size()
+                + ' | NoULT=' + noUltLines.size());
+
+            Boolean hasEW = false;
+            for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+                WarrantyInfo w = warrantyInfoMap.get(line.Name);
+                if (w != null && w.warrantyTypeCode == '2') { hasEW = true; break; }
+            }
+            String billingDocTypeCd = hasEW ? BILLING_DOC_ZF2ZFV : BILLING_DOC_ZF2;
+            List<String> cmfList    = buildCMFList(ctx);
+
+            Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>> bagResp =
+                new Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>>();
+            if (!bagLines.isEmpty()) {
+                bagResp = callAPI(buildBagMMKeys(bagLines, warrantyInfoMap),
+                    API_TYPE_BAG, billingDocTypeCd, startDate, endDate, cmfList);
+            }
+
+            Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>> vizidResp =
+                new Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>>();
+            if (!vizidLines.isEmpty()) {
+                vizidResp = callAPI(buildVizidMMKeys(vizidLines, warrantyInfoMap),
+                    API_TYPE_VIZID, billingDocTypeCd, startDate, endDate,
+                    new List<String>());
+            }
+
+            Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>> noUltResp =
+                new Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>>();
+            if (!noUltLines.isEmpty()) {
+                noUltResp = callAPI(buildNoUltMMKeys(noUltLines, warrantyInfoMap),
+                    API_TYPE_BAG, billingDocTypeCd, startDate, endDate, cmfList);
+            }
+
+            List<Customer_Sales_Issue_Request_Line__c> linesToUpdate =
+                new List<Customer_Sales_Issue_Request_Line__c>();
+            Map<String, Map<String, String>> newValues =
+                new Map<String, Map<String, String>>();
+
+            for (Customer_Sales_Issue_Request_Line__c line : activeLines) {
+                WarrantyInfo wInfo  = warrantyInfoMap.get(line.Name);
+                Boolean isCPNReq   = matrixFlags.containsKey(line.Id)
+                    && matrixFlags.get(line.Id)[1];
+
+                Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>> respMap;
+                if (wInfo != null && wInfo.hasULT && !wInfo.isUnderCEPDays && wInfo.isVISID) {
+                    respMap = vizidResp;
+                } else if (wInfo != null && wInfo.hasULT && !wInfo.isUnderCEPDays) {
+                    respMap = bagResp;
+                } else {
+                    respMap = noUltResp;
+                }
+
+                POHistoryResult result = validateLine(line, respMap, isCPNReq, wInfo);
+
+                if (result.status == R4C_KTBR_Util.DECLINED_STATUS) {
+                    line.Sales_Issue_Line_Item_Status__c = (wInfo != null && wInfo.isVISID)
+                        ? CPU_POH_REJECTION
+                        : R4C_KTBR_Util.DECLINED_STATUS;
+                    line.Line_item_error_messages__c = result.reason;
+                } else {
+                    applyResultToLine(line, result);
+                }
+
+                linesToUpdate.add(line);
+                newValues.put(line.Name, buildPONewValueMap(result));
+            }
+
+            if (!linesToUpdate.isEmpty()) {
+                R4C_KTBR_Util.updateLines(linesToUpdate, CLASS_NAME);
+                System.debug('Updated ' + linesToUpdate.size() + ' lines.');
+            }
+
+            List<String> csvRows = R4C_KTBR_Util.appendColumnsToCSV(
+                previous, lineOrder, NEW_HEADERS, newValues
+            );
+            R4C_KTBR_Util.createCaseAttachment(
+                caseId,
+                'KTBR_TI_POHistoryCheck_' + caseNumber + '_L' + lineStart + '_' + lineEnd,
+                csvRows
+            );
+
+            System.debug('==== ' + CLASS_NAME + ' COMPLETED ====');
+
+        } catch (Exception ex) {
+            R4C_KTBR_Util.logError(CLASS_NAME, 'run', ex);
+        }
+    }
+
+
+    private static Map<String, String> buildPONewValueMap(POHistoryResult r) {
+        return new Map<String, String>{
+            'BillingDate'           => r.billingDate,
+            'CustomerPONumber'      => r.customerPONumber,
+            'SalesOrderNumber'      => r.salesOrderNumber,
+            'SalesOrderLineNbr'     => r.salesOrderLineNbr,
+            'CustomerBillingDocId'  => r.customerBillingDocId,
+            'CustomerItemNbr'       => r.customerItemNbr,
+            'SoldToCustomerId'      => r.soldToCustomerId,
+            'BillingQty'            => r.billingQty,
+            'CurrencyCd'            => r.currencyCd,
+            'BillingDocLineNbr'     => r.billingDocLineNbr,
+            'BatchId'               => r.batchId,
+            'POUnitPrice'           => r.unitPrice != null ? String.valueOf(r.unitPrice) : '0',
+            'POIsValid'             => r.isValid ? 'true' : 'false',
+            'POHistoryStatus'       => r.status,
+            'POHistoryErrorReason'  => r.reason
+        };
+    }
+
+
+    private static Map<String, WarrantyInfo> buildWarrantyInfoMap(
+        Map<String, Map<String, String>> csvRows
+    ) {
+        Map<String, WarrantyInfo> result = new Map<String, WarrantyInfo>();
+        for (String lineNumber : csvRows.keySet()) {
+            Map<String, String> row = csvRows.get(lineNumber);
+            WarrantyInfo info = new WarrantyInfo();
+            info.lineNumber                  = lineNumber;
+            info.mm                          = row.get('MM')                          ?? '';
+            info.ult                         = row.get('ULT')                         ?? '';
+            info.warrantyTypeCode            = row.get('WarrantyTypeCode')             ?? '';
+            info.statusCode                  = row.get('ProdUniqueIdStatusCode')       ?? '';
+            info.vizIdStatusCode             = row.get('VizIdStatusCode')              ?? '';
+            info.creditPeriodCount           = row.get('CreditPeriodCount')            ?? '';
+            info.cepEndDate                  = row.get('CEPEndDate')                   ?? '';
+            info.isInWarranty                = row.get('IsInWarranty')                 ?? '';
+            info.status                      = row.get('WarrantyStatus')               ?? '';
+            info.errorReason                 = row.get('WarrantyErrorReason')          ?? '';
+            info.oldMM                       = row.get('OldMM')                        ?? '';
+            info.baseWarrantyStartDate       = row.get('BaseWarrantyStartDate')        ?? '';
+            info.extendedWarrantyStartDate   = row.get('ExtendedWarrantyStartDate')    ?? '';
+            info.extendedWarrantyEndDate     = row.get('ExtendedWarrantyEndDate')      ?? '';
+            info.serviceContractNumber       = row.get('ServiceContractNumber')        ?? '';
+            info.entitlementCMFSalesOrgCode  = row.get('EntitlementCMFSalesOrgCode')   ?? '';
+            info.entitlementCMFDistiChannelCode = row.get('EntitlementCMFDistiChannelCode') ?? '';
+            info.deliveryNoteNumber          = row.get('DeliveryNoteNumber')           ?? '';
+            info.enttlSoldToPartyId          = row.get('EnttlSoldToPartyId')           ?? '';
+            info.creditEligibilityEndDate    = row.get('CEPEndDate')                   ?? '';
+            info.hasULT         = String.isNotBlank(info.ult);
+            info.isUnderCEPDays = info.isInWarranty == 'true';
+            info.isVISID        = info.vizIdStatusCode?.toUpperCase() == 'VISID';
+            result.put(lineNumber, info);
+        }
+        return result;
+    }
+
+
+    private static Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>> callAPI(
+        List<String> mmKeys,
+        String apiType,
+        String billingDocTypeCd,
+        String startDate,
+        String endDate,
+        List<String> cmfList
+    ) {
+        Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>> result =
+            new Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>>();
+        if (mmKeys.isEmpty()) return result;
+
+        R4C_APIGEE_Settings__mdt settings =
+            R4C_APIGEE_Settings__mdt.getInstance('R4C_POHistory_API');
+        if (settings == null) {
+            System.debug('ERROR: R4C_POHistory_API MDT not found.');
+            return result;
+        }
+        Boolean isIAO   = Boolean.valueOf(R4C_KTBR_Util.IS_IAO_FLAG);
+        String endpoint = isIAO
+            ? settings.IAO_Named_Credential__c
+            : settings.Consuming_Class_Name__c;
+        if (String.isBlank(endpoint)) {
+            System.debug('ERROR: Endpoint blank for ' + apiType);
+            return result;
+        }
+
+        for (List<String> chunk : R4C_KTBR_Util.chunkList(mmKeys, CHUNK_SIZE)) {
+            R4C_API_POsearch_HANAConsumingClass.PoSearchRequestWrapper req =
+                new R4C_API_POsearch_HANAConsumingClass.PoSearchRequestWrapper();
+            req.apiType                       = apiType;
+            req.CustomerBillingDocumentTypeCd = billingDocTypeCd;
+            req.startDate                     = startDate;
+            req.endDate                       = endDate;
+            req.availableCMFList              = cmfList;
+            req.mmListbyInput                 = chunk;
+            req.poListbyInput                 = new List<String>();
+            req.soListbyInput                 = new List<String>();
+
+            try {
+                String reqBody = JSON.serialize(req);
+                String txId    = R4C_API_MessageLogAndAttachment.generateTransactionId();
+                HttpResponse res = new Http().send(
+                    R4C_KTBR_Util.buildHttpRequest(endpoint, reqBody));
+                Integer statusCode = res.getStatusCode();
+                String  resBody    = res.getBody();
+                R4C_KTBR_Util.logAPIRequest(CLASS_NAME, txId, reqBody);
+                R4C_KTBR_Util.logAPIResponse(CLASS_NAME, txId, statusCode, resBody);
+
+                if (statusCode == HTTP_SUCCESS_CODE && String.isNotBlank(resBody)) {
+                    R4C_API_POsearch_HANAConsumingClass.SOResponse wrapper =
+                        (R4C_API_POsearch_HANAConsumingClass.SOResponse)
+                        JSON.deserialize(resBody,
+                            R4C_API_POsearch_HANAConsumingClass.SOResponse.class);
+                    if (wrapper?.elements != null) {
+                        for (R4C_API_POsearch_HANAConsumingClass.responseElements el
+                                : wrapper.elements) {
+                            if (String.isNotBlank(el.ItemId)) {
+                                if (!result.containsKey(el.ItemId)) {
+                                    result.put(el.ItemId,
+                                        new List<R4C_API_POsearch_HANAConsumingClass.responseElements>());
+                                }
+                                result.get(el.ItemId).add(el);
+                            }
+                        }
+                    }
+                } else {
+                    System.debug('WARNING: ' + apiType + ' API returned status ' + statusCode);
+                }
+            } catch (Exception ex) {
+                R4C_KTBR_Util.logError(CLASS_NAME, 'callAPI.' + apiType, ex);
+            }
+        }
+        for (String mm : result.keySet()) {
+            result.get(mm).sort(new R4C_KTBR_Util.POHistoryDateSorter());
+        }
+        return result;
+    }
+
+    private static POHistoryResult validateLine(
+        Customer_Sales_Issue_Request_Line__c line,
+        Map<String, List<R4C_API_POsearch_HANAConsumingClass.responseElements>> respMap,
+        Boolean isCPNRequired,
+        WarrantyInfo wInfo
+    ) {
+        POHistoryResult result = new POHistoryResult();
+        String mm = line.Sales_Issue_Item__r?.Name;
+
+        if (String.isBlank(mm)) {
+            result.status = R4C_KTBR_Util.DECLINED_STATUS;
+            result.reason = 'Missing MM.';
+            return result;
+        }
+
+        List<R4C_API_POsearch_HANAConsumingClass.responseElements> responses = respMap.get(mm);
+        if ((responses == null || responses.isEmpty())
+                && wInfo != null && String.isNotBlank(wInfo.oldMM)) {
+            responses = respMap.get(wInfo.oldMM);
+        }
+        if (responses == null || responses.isEmpty()) {
+            result.status = R4C_KTBR_Util.DECLINED_STATUS;
+            result.reason = 'No PO history data found for MM: ' + mm;
+            return result;
+        }
+
+        R4C_API_POsearch_HANAConsumingClass.responseElements best =
+            findMatchingResponse(responses, wInfo);
+        if (best == null) {
+            result.status = R4C_KTBR_Util.DECLINED_STATUS;
+            result.reason = 'PO history date window mismatch for MM: ' + mm;
+            return result;
+        }
+
+        if (wInfo == null || !wInfo.hasULT || wInfo.isUnderCEPDays) {
+            if (best.CustomerBillingDocumentDt != null
+                    && String.isNotBlank(wInfo?.creditEligibilityEndDate)) {
+                try {
+                    Date billingDt = best.CustomerBillingDocumentDt;
+                    Date cepEnd    = Date.valueOf(wInfo.creditEligibilityEndDate.left(10));
+                    if (billingDt > Date.today() || billingDt < cepEnd) {
+                        result.status = R4C_KTBR_Util.DECLINED_STATUS;
+                        result.reason = 'Billing date outside CEP window for MM: ' + mm;
+                        return result;
+                    }
+                } catch (Exception e) {
+                    System.debug(CLASS_NAME + ': WARNING — CEP date parse failed: ' + e.getMessage());
+                }
+            }
+        }
+
+        if (isCPNRequired
+                && String.isBlank(line.Sales_Issue_Customer_Part_Number__c)
+                && String.isBlank(best.CustomerItemNbr)) {
+            result.status = R4C_KTBR_Util.DECLINED_STATUS;
+            result.reason = 'CPN required but missing on line and PO history.';
+            return result;
+        }
+
+        Decimal price = 0;
+        if (String.isNotBlank(best.SalesOrderLineNetPriceAmt)) {
+            try { price = Decimal.valueOf(best.SalesOrderLineNetPriceAmt); } catch (Exception e) {}
+        }
+        if (String.isNotBlank(best.ContraRevenueAdjustmentRequestlineNetPriceAmt)) {
+            try {
+                Decimal contra = Decimal.valueOf(
+                    best.ContraRevenueAdjustmentRequestlineNetPriceAmt);
+                if (contra > 0) price = contra;
+            } catch (Exception e) {}
+        }
+        if (price == 0) {
+            result.status = R4C_KTBR_Util.DECLINED_STATUS;
+            result.reason = 'Unit price is zero in PO history.';
+            return result;
+        }
+
+        result.billingDate          = best.CustomerBillingDocumentDt != null
+            ? String.valueOf(best.CustomerBillingDocumentDt) : '';
+        result.customerPONumber     = best.CustomerPurchaseOrderNbr;
+        result.salesOrderNumber     = best.SalesOrderId;
+        result.salesOrderLineNbr    = best.SalesOrderLineNbr;
+        result.customerBillingDocId = best.CustomerBillingDocumentId;
+        result.customerItemNbr      = best.CustomerItemNbr;
+        result.soldToCustomerId     = best.SoldToCustomerId;
+        result.billingQty           = best.BillingQty;
+        result.currencyCd           = best.SalesOrderCurrencyCd;
+        result.billingDocLineNbr    = best.CustomerBillingDocumentLineNbr;
+        result.batchId              = best.BatchId;
+        result.unitPrice            = price;
+        result.isValid              = true;
+        return result;
+    }
+
+    private static R4C_API_POsearch_HANAConsumingClass.responseElements findMatchingResponse(
+        List<R4C_API_POsearch_HANAConsumingClass.responseElements> responses,
+        WarrantyInfo wInfo
+    ) {
+        if (responses == null || responses.isEmpty()) return null;
+        if (wInfo == null) return responses[0];
+
+        for (R4C_API_POsearch_HANAConsumingClass.responseElements resp : responses) {
+            Boolean matched = false;
+
+            if (wInfo.isVISID) {
+                String expected =
+                    processDate(wInfo.baseWarrantyStartDate) + '_'
+                    + processDate(wInfo.creditEligibilityEndDate) + '_'
+                    + (String.isBlank(wInfo.deliveryNoteNumber) ? ''
+                        : wInfo.deliveryNoteNumber.leftPad(10, '0'));
+                String actual =
+                    (resp.ItemEffectiveStartDt ?? '') + '_'
+                    + (resp.ItemEffectiveEndDt  ?? '') + '_'
+                    + (String.isBlank(resp.DeliveryNoteNbr) ? ''
+                        : resp.DeliveryNoteNbr.leftPad(10, '0'));
+                matched = (expected == actual);
+
+            } else if (!wInfo.hasULT || wInfo.isUnderCEPDays) {
+                String todayStr  = processDate(String.valueOf(Date.today()));
+                String creditStr = String.isNotBlank(wInfo.creditEligibilityEndDate)
+                    ? processDate(wInfo.creditEligibilityEndDate) : todayStr;
+                String expected  = processPoHistoryDates(creditStr, todayStr);
+                String actual    = (resp.ItemEffectiveStartDt ?? '') + (resp.ItemEffectiveEndDt ?? '');
+                matched = (expected == actual);
+
+            } else if (wInfo.warrantyTypeCode == '2') {
+                String expected = processPoHistoryDates(
+                    wInfo.extendedWarrantyStartDate, wInfo.extendedWarrantyEndDate);
+                String actual   = (resp.ItemEffectiveStartDt ?? '') + (resp.ItemEffectiveEndDt ?? '');
+                matched = (expected == actual)
+                    && (resp.SalesOrderId == wInfo.serviceContractNumber);
+
+            } else {
+                String expected = processPoHistoryDates(
+                    wInfo.baseWarrantyStartDate, wInfo.creditEligibilityEndDate);
+                String actual   = (resp.ItemEffectiveStartDt ?? '') + (resp.ItemEffectiveEndDt ?? '');
+                matched = (expected == actual);
+            }
+
+            if (matched) return resp;
+        }
+        return null;
+    }
+
+    private static void applyResultToLine(
+        Customer_Sales_Issue_Request_Line__c line,
+        POHistoryResult result
+    ) {
+        if (String.isNotBlank(result.billingDate)) {
+            try {
+                line.Sales_Issue_Billing_Date__c =
+                    Date.valueOf(result.billingDate.substring(0, 10));
+            } catch (Exception e) {}
+        }
+        if (String.isNotBlank(result.customerPONumber))
+            line.Sales_Issue_Cst_PO_Number__c = result.customerPONumber;
+        if (String.isNotBlank(result.salesOrderNumber))
+            line.Sales_Issue_Sales_Order_Number__c = result.salesOrderNumber;
+        if (String.isNotBlank(result.salesOrderLineNbr))
+            line.Sales_Issue_Sales_Order_Line_Number__c = result.salesOrderLineNbr;
+        if (String.isNotBlank(result.customerBillingDocId))
+            line.Sales_Issue_Invoice_Number__c = result.customerBillingDocId;
+        if (String.isNotBlank(result.customerItemNbr))
+            line.Sales_Issue_Customer_Part_Number__c = result.customerItemNbr;
+        if (String.isNotBlank(result.billingQty))
+            line.Billing_Quantity__c = Decimal.valueOf(result.billingQty);
+        if (String.isNotBlank(result.currencyCd))
+            line.Sales_Issue_Currency__c = result.currencyCd;
+        if (String.isNotBlank(result.billingDocLineNbr))
+            line.Sales_Issue_Line_Item_Invoice_Number__c = result.billingDocLineNbr;
+        if (String.isNotBlank(result.batchId))
+            line.Sales_Issue_Batch_Id__c = result.batchId;
+        if (result.unitPrice != null && result.unitPrice > 0)
+            line.Sales_Issue_PO_Price__c = result.unitPrice;
+    }
+
+    private static List<String> buildCMFList(R4C_KTBR_Util.CaseContext ctx) {
+        List<String> cmfList = new List<String>();
+        try {
+            List<Customer_Sales_Issue_Request__c> headers = [
+                SELECT sold_to_cmf_number__c
+                FROM Customer_Sales_Issue_Request__c
+                WHERE Id = :ctx.headerId LIMIT 1
+            ];
+            if (!headers.isEmpty() && String.isNotBlank(headers[0].sold_to_cmf_number__c)) {
+                List<Object> raw = (List<Object>)
+                    JSON.deserializeUntyped(headers[0].sold_to_cmf_number__c);
+                List<String> bagEntries = new List<String>();
+                for (Object o : raw) bagEntries.add(String.valueOf(o));
+                cmfList = filterBAGList(bagEntries);
+            }
+            cmfList.add('99991231T00:00:00.000+000_****_**_' + (ctx.soldToCMF ?? ''));
+        } catch (Exception ex) {
+            System.debug(CLASS_NAME + ': WARNING — buildCMFList: ' + ex.getMessage());
+            cmfList.add('99991231T00:00:00.000+000_****_**_' + (ctx.soldToCMF ?? ''));
+        }
+        return cmfList;
+    }
+
+    private static List<String> filterBAGList(List<String> bagEntries) {
+        Map<String, String> latestByKey = new Map<String, String>();
+        for (String entry : bagEntries) {
+            List<String> parts = entry.split('_');
+            if (parts.size() < 4) continue;
+            String ts  = parts[0];
+            String key = parts[1] + '_' + parts[2] + '_' + parts[3];
+            if (!latestByKey.containsKey(key)
+                    || ts.compareTo(latestByKey.get(key).substringBefore('_')) > 0) {
+                latestByKey.put(key, entry);
+            }
+        }
+        return new List<String>(latestByKey.values());
+    }
+
+    private static List<String> buildBagMMKeys(
+        List<Customer_Sales_Issue_Request_Line__c> lines,
+        Map<String, WarrantyInfo> wMap
+    ) {
+        Set<String> keys = new Set<String>();
+        for (Customer_Sales_Issue_Request_Line__c line : lines) {
+            String mm = line.Sales_Issue_Item__r?.Name;
+            if (String.isBlank(mm)) continue;
+            WarrantyInfo w = wMap.get(line.Name);
+            if (w == null) continue;
+            String key;
+            if (w.warrantyTypeCode == '2') {
+                String dates = processPoHistoryDates(
+                    w.extendedWarrantyStartDate, w.extendedWarrantyEndDate);
+                key = mm + '_' + dates + '_' + (w.serviceContractNumber ?? '');
+            } else {
+                String dates = processPoHistoryDates(
+                    w.baseWarrantyStartDate, w.creditEligibilityEndDate);
+                key = mm + '_' + dates + '_********';
+            }
+            keys.add(key);
+            if (String.isNotBlank(w.oldMM)) {
+                String oldKey;
+                if (w.warrantyTypeCode == '2') {
+                    String dates = processPoHistoryDates(
+                        w.extendedWarrantyStartDate, w.extendedWarrantyEndDate);
+                    oldKey = w.oldMM + '_' + dates + '_' + (w.serviceContractNumber ?? '');
+                } else {
+                    String dates = processPoHistoryDates(
+                        w.baseWarrantyStartDate, w.creditEligibilityEndDate);
+                    oldKey = w.oldMM + '_' + dates + '_********';
+                }
+                keys.add(oldKey);
+            }
+        }
+        return new List<String>(keys);
+    }
+
+    private static List<String> buildVizidMMKeys(
+        List<Customer_Sales_Issue_Request_Line__c> lines,
+        Map<String, WarrantyInfo> wMap
+    ) {
+        Set<String> keys = new Set<String>();
+        for (Customer_Sales_Issue_Request_Line__c line : lines) {
+            String mm = line.Sales_Issue_Item__r?.Name;
+            if (String.isBlank(mm)) continue;
+            WarrantyInfo w = wMap.get(line.Name);
+            if (w == null) continue;
+            String startStr  = processDate(w.baseWarrantyStartDate);
+            String endStr    = processDate(w.creditEligibilityEndDate);
+            String delivery  = String.isBlank(w.deliveryNoteNumber) ? ''
+                : w.deliveryNoteNumber.leftPad(10, '0');
+            String soldTo    = String.isBlank(w.enttlSoldToPartyId) ? ''
+                : w.enttlSoldToPartyId.leftPad(10, '0');
+            String key = mm + '_' + startStr + '_' + endStr + '_'
+                + (w.entitlementCMFSalesOrgCode    ?? '') + '_'
+                + (w.entitlementCMFDistiChannelCode ?? '') + '_'
+                + delivery + '_' + soldTo;
+            keys.add(key);
+            if (String.isNotBlank(w.oldMM)) {
+                keys.add(w.oldMM + '_' + startStr + '_' + endStr + '_'
+                    + (w.entitlementCMFSalesOrgCode    ?? '') + '_'
+                    + (w.entitlementCMFDistiChannelCode ?? '') + '_'
+                    + delivery + '_' + soldTo);
+            }
+        }
+        return new List<String>(keys);
+    }
+
+    private static List<String> buildNoUltMMKeys(
+        List<Customer_Sales_Issue_Request_Line__c> lines,
+        Map<String, WarrantyInfo> wMap
+    ) {
+        Set<String> keys    = new Set<String>();
+        String todayStr     = processDate(String.valueOf(Date.today()));
+        for (Customer_Sales_Issue_Request_Line__c line : lines) {
+            String mm = line.Sales_Issue_Item__r?.Name;
+            if (String.isBlank(mm)) continue;
+            WarrantyInfo w   = wMap.get(line.Name);
+            String creditStr = (w != null && String.isNotBlank(w.creditEligibilityEndDate))
+                ? processDate(w.creditEligibilityEndDate) : todayStr;
+            String key = mm + '_' + processPoHistoryDates(creditStr, todayStr) + '_**********';
+            keys.add(key);
+            if (w != null && String.isNotBlank(w.oldMM)) {
+                keys.add(w.oldMM + '_' + processPoHistoryDates(creditStr, todayStr) + '_**********');
+            }
+        }
+        return new List<String>(keys);
+    }
+
+    private static String processDate(String dateInput) {
+        if (String.isBlank(dateInput)) return '';
+        try {
+            Date d  = Date.valueOf(dateInput.left(10));
+            String m  = String.valueOf(d.month()).leftPad(2, '0');
+            String dy = String.valueOf(d.day()).leftPad(2, '0');
+            return String.valueOf(d.year()) + m + dy;
+        } catch (Exception ex) {
+            System.debug(CLASS_NAME + ': WARNING — processDate: ' + dateInput);
+            return '';
+        }
+    }
+
+    private static String processDate(Date d) {
+        if (d == null) return '';
+        return processDate(String.valueOf(d));
+    }
+
+    private static String processPoHistoryDates(String date1, String date2) {
+        return processDate(date1) + processDate(date2);
+    }
+
+    private static String processPoHistoryDates(Date date1, String date2) {
+        return processDate(date1) + processDate(date2);
+    }
+
+    private static String getPOHistoryStartDate(String serviceType) {
+        Integer months = -36;
+        if (serviceType != null) {
+            if (serviceType.containsIgnoreCase('Stock Rotation'))
+                months = -Integer.valueOf(getConfig('PO_Search_Stock_Rotation_Months', '36'));
+            else if (serviceType.containsIgnoreCase('Technical'))
+                months = -Integer.valueOf(getConfig('PO_Search_Technical_Intake_Months', '36'));
+            else if (serviceType.containsIgnoreCase('Quality'))
+                months = -Integer.valueOf(getConfig('PO_Search_Quality_Intake_Months', '36'));
+            else if (serviceType.containsIgnoreCase('Exception'))
+                months = -Integer.valueOf(getConfig('PO_Search_Exception_Intake_Months', '36'));
+            else if (serviceType.containsIgnoreCase('Admin'))
+                months = -Integer.valueOf(getConfig('PO_Search_Admin_Intake_Months', '36'));
+        }
+        return processDate(Date.today().addMonths(months));
+    }
+
+    private static String getPOHistoryEndDate() {
+        return processDate(Date.today());
+    }
+
+    private static String getConfig(String name, String defaultVal) {
+        R4C_Generic_Configurations__c cfg = R4C_Generic_Configurations__c.getValues(name);
+        return (cfg != null && String.isNotBlank(cfg.Value__c)) ? cfg.Value__c : defaultVal;
+    }
+
+    private class WarrantyInfo {
+        public String  lineNumber;
+        public String  mm;
+        public String  ult;
+        public String  warrantyTypeCode;
+        public String  statusCode;
+        public String  vizIdStatusCode;
+        public String  creditPeriodCount;
+        public String  cepEndDate;
+        public String  isInWarranty;
+        public String  status;
+        public String  errorReason;
+        public Boolean hasULT;
+        public Boolean isUnderCEPDays;
+        public Boolean isVISID;
+        public String  baseWarrantyStartDate;
+        public String  creditEligibilityEndDate;
+        public String  extendedWarrantyStartDate;
+        public String  extendedWarrantyEndDate;
+        public String  serviceContractNumber;
+        public String  entitlementCMFSalesOrgCode;
+        public String  entitlementCMFDistiChannelCode;
+        public String  deliveryNoteNumber;
+        public String  enttlSoldToPartyId;
+        public String  oldMM;
+    }
+
+    private class POHistoryResult {
+        public String  status               = 'Pass';
+        public String  reason               = '';
+        public String  billingDate          = '';
+        public String  customerPONumber     = '';
+        public String  salesOrderNumber     = '';
+        public String  salesOrderLineNbr    = '';
+        public String  customerBillingDocId = '';
+        public String  customerItemNbr      = '';
+        public String  soldToCustomerId     = '';
+        public String  billingQty           = '';
+        public String  currencyCd           = '';
+        public String  billingDocLineNbr    = '';
+        public String  batchId              = '';
+        public Decimal unitPrice            = 0;
+        public Boolean isValid              = false;
+    }
+}
