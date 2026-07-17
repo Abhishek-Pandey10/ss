@@ -1,0 +1,1678 @@
+Stock Rotation
+
+<h3>
+  <span data-ccp-props="{}"> 1.<span> </span>
+  </span>
+  <span data-contrast="none">
+    <span data-ccp-parastyle="heading 2">Pre-Requisites</span>
+    <span data-ccp-parastyle="heading 2">:</span>
+  </span>
+</h3>
+<p style="text-align: left;">
+  <span data-contrast="none">
+    <span>To login as an agent, we should have Sandbox access for the required test environment. We have two types of </span>
+    <span>Agents</span>
+    <span> L1 </span>
+    <span>&amp; L2</span>
+    <span>. L1 Agent can login to the Sandbox URL and create a Return Request for Technical Intake. L2 Agent can view the cases assigned to them and can change the case owner.</span>
+  </span>
+  <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:276}"> </span>
+</p>
+<p style="text-align: left;">
+  <strong>
+    <span data-contrast="none">
+      <span>Sandbox Access</span>
+      <span> :</span>
+      <span> </span>
+    </span>
+  </strong>
+</p>
+<p style="text-align: left;">
+  <strong>QA25 Sandbox URL</strong>: <a class="external-link" href="https://isvc--isvcqa25.sandbox.my.salesforce.com/" rel="nofollow">
+    <span data-contrast="none">
+      <span data-ccp-charstyle="Hyperlink">https://isvc--isvcqa2</span>
+      <span data-ccp-charstyle="Hyperlink">5</span>
+      <span data-ccp-charstyle="Hyperlink">.sandbox.my.salesforce.com/</span>
+    </span>
+  </a>
+  <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:276}"> </span>
+</p>
+<p style="text-align: left;">
+  <span>Access related issues, Contact: </span>
+  <a class="external-link" href="mailto:sumukh.c.m@intel.com" rel="nofollow">
+    <span data-ccp-charstyle="Mention">@M, Sumukh C</span>
+  </a>
+  <span> </span>
+  <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:276}"> </span>
+</p>
+<ul style="text-align: left;">
+  <li data-aria-level="1" data-aria-posinset="1" data-font="Symbol" data-leveltext="" data-list-defn-props="{&quot;335552541&quot;:1,&quot;335559685&quot;:720,&quot;335559991&quot;:360,&quot;469769226&quot;:&quot;Symbol&quot;,&quot;469769242&quot;:[8226],&quot;469777803&quot;:&quot;left&quot;,&quot;469777804&quot;:&quot;&quot;,&quot;469777815&quot;:&quot;hybridMultilevel&quot;}" data-listid="54" data-uuid="ae15fec1-1dff-4868-8bc1-d91468479049">
+    <span>Enter the sandbox URL in the browser and login as an L1 Agent with your user credentials.</span>
+  </li>
+</ul>
+<p style="text-align: left;">
+  <span class="confluence-embedded-file-wrapper image-left-wrapper confluence-embedded-manual-size">
+    <ac:image ac:align="left" ac:width="600">
+      <ri:attachment ri:filename="image-2026-6-29_13-5-27.png"/>
+    </ac:image>
+  </span>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<p style="text-align: left;">
+  <br/>
+</p>
+<ul style="text-align: left;">
+  <li data-aria-level="1" data-aria-posinset="2" data-font="Symbol" data-leveltext="" data-list-defn-props="{&quot;335552541&quot;:1,&quot;335559685&quot;:720,&quot;335559991&quot;:360,&quot;469769226&quot;:&quot;Symbol&quot;,&quot;469769242&quot;:[8226],&quot;469777803&quot;:&quot;left&quot;,&quot;469777804&quot;:&quot;&quot;,&quot;469777815&quot;:&quot;hybridMultilevel&quot;}" data-listid="54" data-uuid="eb42fde8-0309-4843-b9f7-dc2850b78021">
+    <span data-contrast="none">
+      <span>After we login to the system, we will be able to see the app “Return for Credit</span>
+      <span>”,</span>
+      <span> and “Home” Tab.</span>
+    </span>
+    <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:276}"> </span>
+  </li>
+</ul>
+<p style="text-align: left;">
+  <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:276}"> <span class="confluence-embedded-file-wrapper confluence-embedded-manual-size">
+      <ac:image ac:width="600">
+        <ri:attachment ri:filename="image-2026-6-29_13-7-39.png"/>
+      </ac:image>
+    </span>
+  </span>
+</p>
+<p style="text-align: left;">
+  <span data-contrast="none">
+    <span>Note: If </span>
+    <span>‘Return</span>
+    <span> for Credit’ app is not displayed directly after </span>
+    <span>login</span>
+    <span>, then click on App launcher (nine dots), search for “Return for credit” and select </span>
+    <span>first</span>
+    <span> option.</span>
+  </span>
+  <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:276}"> </span>
+</p>
+<h3>
+  <span data-contrast="none">
+    <span> 2. </span>
+    <span data-ccp-charstyle="normaltextrun">Case creation:</span>
+  </span>
+  <span data-ccp-props="{&quot;134245418&quot;:true,&quot;134245529&quot;:true,&quot;335559738&quot;:160,&quot;335559739&quot;:80}"> </span>
+</h3>
+<p style="text-align: left;">
+  <strong>Step-by-Step Process</strong>
+</p>
+<ul style="text-align: left;">
+  <li data-aria-level="1" data-aria-posinset="1" data-font="Symbol" data-leveltext="" data-list-defn-props="{&quot;335552541&quot;:1,&quot;335559685&quot;:502,&quot;335559991&quot;:360,&quot;469769226&quot;:&quot;Symbol&quot;,&quot;469769242&quot;:[8226],&quot;469777803&quot;:&quot;left&quot;,&quot;469777804&quot;:&quot;&quot;,&quot;469777815&quot;:&quot;hybridMultilevel&quot;}" data-listid="5" data-uuid="e07a5cc1-de47-4659-8e42-1ccc1510b0f8">
+    <span data-ccp-charstyle="normaltextrun">Select ‘Contact’ from the ‘Navigation items/ Menu’ dropdown</span>
+    <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:276}"> </span>
+  </li>
+</ul>
+<p style="text-align: left;">
+  <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559685&quot;:502,&quot;335559740&quot;:276}"> <span class="confluence-embedded-file-wrapper confluence-embedded-manual-size">
+      <ac:image ac:height="250">
+        <ri:attachment ri:filename="image-2026-6-29_14-24-41.png"/>
+      </ac:image>
+    </span>
+  </span>
+</p>
+<ul style="text-align: left;">
+  <li data-aria-level="1" data-aria-posinset="2" data-font="Symbol" data-leveltext="" data-list-defn-props="{&quot;335552541&quot;:1,&quot;335559685&quot;:502,&quot;335559991&quot;:360,&quot;469769226&quot;:&quot;Symbol&quot;,&quot;469769242&quot;:[8226],&quot;469777803&quot;:&quot;left&quot;,&quot;469777804&quot;:&quot;&quot;,&quot;469777815&quot;:&quot;hybridMultilevel&quot;}" data-listid="5" data-uuid="58885331-bd48-4961-bdb8-e888e1ae0089">
+    <span data-contrast="auto">
+      <span data-ccp-charstyle="normaltextrun">Select a contact from the<span> </span>
+      </span>
+      <span data-ccp-charstyle="normaltextrun">list</span>
+      <span data-ccp-charstyle="normaltextrun">
+        <span> </span>view of contacts to open corresponding contact record.</span>
+    </span>
+    <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:276}"> </span>
+  </li>
+</ul>
+<p style="text-align: left;">
+  <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559685&quot;:720,&quot;335559740&quot;:276}"> <span class="confluence-embedded-file-wrapper confluence-embedded-manual-size">
+      <ac:image ac:height="150">
+        <ri:attachment ri:filename="image-2026-6-29_14-25-14.png"/>
+      </ac:image>
+    </span>
+  </span>
+</p>
+<ul style="text-align: left;">
+  <li data-aria-level="1" data-aria-posinset="3" data-font="Symbol" data-leveltext="" data-list-defn-props="{&quot;335552541&quot;:1,&quot;335559685&quot;:720,&quot;335559991&quot;:360,&quot;469769226&quot;:&quot;Symbol&quot;,&quot;469769242&quot;:[8226],&quot;469777803&quot;:&quot;left&quot;,&quot;469777804&quot;:&quot;&quot;,&quot;469777815&quot;:&quot;hybridMultilevel&quot;}" data-listid="54" data-uuid="cea78a96-56d6-467b-814f-b40c469f32bb">
+    <span>In the contact detail page, we can see “Create R4C Case” link &amp; “New R4C Case” Button, click on one of them.</span>
+    <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559685&quot;:644,&quot;335559740&quot;:276}"> </span>
+  </li>
+</ul>
+<p style="text-align: left;">
+  <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559685&quot;:720,&quot;335559740&quot;:276}"> <span class="confluence-embedded-file-wrapper confluence-embedded-manual-size">
+      <ac:image ac:height="250">
+        <ri:attachment ri:filename="image-2026-6-29_13-10-9.png"/>
+      </ac:image>
+    </span>
+  </span>
+</p>
+<ul style="text-align: left;">
+  <li data-aria-level="1" data-aria-posinset="4" data-font="Symbol" data-leveltext="" data-list-defn-props="{&quot;335552541&quot;:1,&quot;335559685&quot;:720,&quot;335559991&quot;:360,&quot;469769226&quot;:&quot;Symbol&quot;,&quot;469769242&quot;:[8226],&quot;469777803&quot;:&quot;left&quot;,&quot;469777804&quot;:&quot;&quot;,&quot;469777815&quot;:&quot;hybridMultilevel&quot;}" data-listid="54" data-uuid="b243f060-77c2-43c1-8b65-a2cd217a2f66">
+    <span data-contrast="none">
+      <span data-ccp-charstyle="normaltextrun">
+        <span>When Clicking on a contact hyperlink the page opens in a new tab and if clicked on the button then the “Step1 Dialog box for Service type selection “is opened. “Technical” is selected by default, Agent needs to select </span>Stock Rotation<span> for </span>Stock Rotation<span> Service Type.</span>
+      </span>
+    </span>
+  </li>
+</ul>
+<p>
+  <span data-contrast="none">
+    <span data-ccp-charstyle="normaltextrun">
+      <span>
+        <ac:image ac:height="250">
+          <ri:attachment ri:filename="image-2026-7-6_10-50-6-1.png"/>
+        </ac:image>
+      </span>
+    </span>
+  </span>
+</p>
+<ul>
+  <li data-uuid="cf3bb87b-6e89-4d7d-9c8f-c59f491951e8">The New R4C Case subtab will be opened after clicking on the Create button. Fill in the Request header details &amp; Collection Details.</li>
+</ul>
+<h3>
+  <span>3. Blocks scenarios:</span>
+</h3>
+<h3>Export Compliance Block: </h3>
+<ul>
+  <li data-uuid="c6d8b271-4377-48a2-8f39-95c800ea826b">
+    <strong>How to Check Export Compliance on Account</strong>: Click on the Account name in the contact details &gt; Account Page opens in New Sub tab &gt; Go to Details section &gt; See the Compliance information &gt; Observe the “Export Compliance Block” Checkbox. </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_10-52-45-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="39ec5ca8-f8c1-4b4c-b48d-da56e13710ec">
+    <span>We are checking ECB Block at only for the Sold to CMF level Account. </span>
+  </li>
+  <li data-uuid="13e86da9-58c7-471e-926d-d5260e6353d1">
+    <span>In case creation, If the ECB block available then on click of New R4C create button it will display an error message &amp; not able to create case. It is an hard stop.</span>
+  </li>
+  <li data-uuid="c6ff4fc2-914c-49ad-b417-c37d3455dd59">
+    <span>In case Edit, If the ECB block available then on click of Edit button, then it will display an error message &amp; not able to Edit the case.</span>
+  </li>
+</ul>
+<h3>Sold to Block (SAP Blocks): </h3>
+<ul>
+  <li data-uuid="6729a86d-fa2a-4edb-bd02-3d4e31b7e72d">From account record page, go to ‘Related’ tab and there we can see ‘Customer BAG Account Associations’.  Open the related ‘Business Account Group’ (BAG) record. </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_10-52-59-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="e6d345d8-0241-4339-af30-51f6b14b0990">The related ‘BAG’ record open in a new subtab. Open ‘Related’ tab and we can see the ‘Customer CMFs’ associated with the Account in ‘Customer BAG CMF Associations’ </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_10-53-20-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="d235a275-75b7-43ab-be26-4c424de143b3">Click on any “Customer CMF” to open the corresponding record detail page. Navigate to ‘related’ tab and there we can see ‘Customer Partners (Partner CMF)’ records and their corresponding role code. </li>
+  <li data-uuid="5925b472-5019-4623-85d9-3308bfe66444">If the ‘Customer CMF’ record has a related ‘Customer Partner’ record with role code “AG”, then that customer CMF record is eligible as a ‘sold to’ CMF. </li>
+  <li data-uuid="a9e8208a-41e5-4705-bbfc-baba4bb42d97">This means that we have a valid sold to record for creating an R4C case. </li>
+  <li data-uuid="e942bc03-6fbd-4474-b6dd-4cd57d1b0d89">All ‘Customer CMF’ records which have a related ‘Customer Partner’ record (with role code : AG) can be selected as sold to . </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_10-54-30-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="eef701d6-112c-4426-ba0a-cc4794f8a783">SAP blocks which are <strong>Central Order Block</strong>, <strong>Central Billing Block </strong>&amp; <strong>Central Delivery Block</strong>
+  </li>
+</ul>
+<p>
+  <strong>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_10-55-20-1.png"/>
+    </ac:image>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="4b86fd80-de61-428f-8c3c-9d603b9ad096">Check if there is any <span>Central Order Block, Central Billing Block &amp; Central Delivery Block. Otherwise, directly check the blocks at Sales Area Level. (No need to check other blocks at CMF level) </span>
+  </li>
+  <li data-uuid="c6e2e6f6-509e-454d-9fc2-d6445ce6aa98">If <strong>central order block</strong> is present i.e., (Customer Central Order Block = <strong>‘01’ or ‘02’ or ‘03’ or ‘99</strong>’) it is a hard stop and an error toast message will be displayed with the corresponding blocks information. </li>
+  <li data-uuid="e530fa94-1351-4d53-bab8-68f23bb7786f">If <strong>central billing block</strong> is present and billing block value (Customer Central Billing Block=<strong>”99” or “12”</strong>) then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </li>
+  <li data-uuid="86cb22d8-f72b-4a0a-b971-62448cb1b9e4">
+    <span>If <strong>Central Delivery block</strong> is present and Delivery block value (Central Delivery block = “<strong>99</strong>”) then it is a hard stop and an error toast message will be displayed with the corresponding blocks information. </span>
+  </li>
+</ul>
+<p>
+  <span>
+    <strong>Note:</strong>
+  </span>
+  <span> </span>
+</p>
+<ul>
+  <li data-uuid="7e93a586-26c2-4045-aef4-9947159948c9">
+    <span>In Case Edit, If any of the SAP Block is available at Sold to CMF level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+  </li>
+  <li data-uuid="c65d683f-54ab-4a15-b3f3-dc9409769be4">
+    <span>In Case Edit, If any of the SAP Block is available at Sold to CMF level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+    <span>In Case creation, If any of the SAP Block is available at Sold to CMF level then that Sold To CMF will not be displayed in the Sold To selection.</span>
+  </li>
+</ul>
+<h3>Sold To Sales Area Blocks (SAP Blocks): </h3>
+<ul>
+  <li data-uuid="9cd24ebe-ee9a-48a7-95f4-1c5a304d4e30">Based on the selected sold to CMF, we will fetch the corresponding sales area records which are related to sold to ‘Customer CMF’ record. </li>
+  <li data-uuid="668fb998-9f66-4735-a2be-2102870b0675">To view the corresponding sales area records: </li>
+  <li data-uuid="7289bb09-6db1-4b09-9dd7-0c73d99ead89">Open the sold to Customer CMF record and navigate to related tab.</li>
+  <li data-uuid="295d88fa-6fd1-4647-9055-0f7f9e73e0fc">There we can see all the related ‘Customer Sales Area’ records. </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_10-57-56-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="ac2a9745-d3e3-476f-bccb-3336ec7937c5">At the sales area level we can have similar SAP blocks like that of sold to (CMF level): <ul>
+      <li data-uuid="caee2374-cc1f-4bd8-9bff-93f82a2b62d2">Order block </li>
+      <li data-uuid="9fa20ccd-e722-4a5b-a394-60835f66a8d2">
+        <span>Billing block</span>
+      </li>
+      <li data-uuid="b297cc33-73de-429d-8365-b67ed2b10ac0">
+        <span>Delivery block</span>
+      </li>
+    </ul>
+  </li>
+  <li data-uuid="ff4f8eec-296f-4a79-bc17-124b67902daf">To check the blocks at the Sales Area level, Go to CMF &gt; Click on “Related “tab &gt; Click on “Customer Sales Area” &gt; open the Sales area and select the record &gt; Open and see the Block Values </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_10-58-16-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="620028c6-9c08-40dc-8bc7-8a895e9e1bdb">
+    <span>Check if there is any Order Block, Billing Block &amp; Delivery Block at Sold To Sales Area level. </span>
+  </li>
+  <li data-uuid="a39e8722-29e5-43f7-a0b2-5bf83a54bf73">
+    <span>If <strong>order block</strong> is present i.e., (Order Block = <strong>‘01’ or ‘02’ or ‘03’ or ‘99</strong>’) it is a hard stop and an error toast message will be displayed with the corresponding blocks information. </span>
+  </li>
+  <li data-uuid="f428eb69-ccdd-486c-945b-3b94d7294918">
+    <span>If <strong>billing block</strong> is present and billing block value (Billing Block=<strong>”99” or “12”</strong>) then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </span>
+  </li>
+  <li data-uuid="3f83b432-06ec-4e95-b89d-9384fc39338b">
+    <span>If <strong>Delivery block</strong> is present and Delivery block value (Delivery block = “<strong>99</strong>”) then it is a hard stop and an error toast message will be displayed with the corresponding blocks information. </span>
+  </li>
+  <li data-uuid="cc473fc7-78b5-4b30-948f-e0012dfca0c9">
+    <span>
+      <strong>Note:</strong>
+    </span>
+    <span> </span>
+    <ul>
+      <li data-uuid="76cd8aae-d5ea-44b3-b0aa-ea7312486aa5">
+        <span>In Case creation, If any of the above SAP Block is available at Sold to Sales Area level then that Sales Area will not be displayed in the Sales Area selection.</span>
+      </li>
+      <li data-uuid="2e07f122-17ae-4b2f-ba73-3190c72165fc">
+        <span>In Case Edit, If any of the above SAP Block is available at Sold to Sales Area level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+      </li>
+    </ul>
+  </li>
+</ul>
+<h3>Payer CMF Blocks: </h3>
+<ul>
+  <li data-uuid="c4d9cc86-9266-481e-8f14-c930c646fa24">Based on the selected Sold to and Sales area value, we will fetch Payer record from Customer partner record with role code ‘RG’. </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_10-58-36-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="35d467bb-1086-4d75-bca9-9546152a0973">If no Payer record is found then it will be hard stop and  Agent/Portal user will be notified in case of hard stop by error toast message. </li>
+  <li data-uuid="c5c93ed1-a736-4ac7-8216-a53e9b107ee8">If there is at least one Active Payer for the selected Sold To and Sales area combination, then we get the CMF and Sales area record related to Payer record and check for SAP blocks as mentioned below. </li>
+  <li data-uuid="23636915-10db-447e-bb88-0a45384b5cc1">Payer Order block &amp; billing block</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_10-58-53-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="2026dae0-2486-4d35-9188-25ba5ea1d98d">If Central order block = “02” then it is a hard stop and an error message will be displayed with the corresponding blocks information.</li>
+  <li data-uuid="c5f1e510-64d3-439b-ab37-d83ff642a3b1">If Central Billing Block = ‘08’ or ‘12’ or ‘99’, then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </li>
+</ul>
+<p>
+  <span>
+    <strong>Note:</strong>
+  </span>
+  <span> </span>
+</p>
+<ul>
+  <li data-uuid="eb7d55a4-16ad-4bae-bbb3-326ce1423ad1">
+    <span>In Case creation, If any of the above SAP Block is available at Payer CMF level then on selection of the related Sold To it will display an error toast message.</span>
+  </li>
+  <li data-uuid="41899e9c-6e38-48ee-a459-4a3afa1fa1f9">
+    <span> </span>
+    <span>In Case Edit, If any of the above SAP Block is available at Payer CMF level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+  </li>
+</ul>
+<h3>Payer Sales Area Blocks: </h3>
+<ul>
+  <li data-uuid="0d840721-2890-42ed-a3ba-46c923517b06">
+    <span>Based on the selected Sold to and Sales area value, we will fetch Payer record from Customer partner record with role code ‘RG’. </span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_10-59-15-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="a79963d2-029c-454a-91d9-e7a175ae8282">
+    <span>If no Payer record is found then it will be hard stop and  Agent/Portal user will be notified in case of hard stop by error toast message. </span>
+  </li>
+  <li data-uuid="65c88a1d-93ad-453b-a1ce-e5129d622b68">
+    <span>If there is at least one Active Payer for the selected Sold To and Sales area combination, then we get the CMF and Sales area record related to Payer record and check for SAP blocks as mentioned below. </span>
+  </li>
+  <li data-uuid="7b5a2f43-dcff-4150-9862-d14bdde9a28d">
+    <span>Payer Order block &amp; billing block</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_10-59-31-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="2b0f5209-61c0-4951-b57d-3bfd2858d9a1">
+    <span>If order block = “02” then it is a hard stop and an error message will be displayed with the corresponding blocks information. </span>
+  </li>
+  <li data-uuid="b12b3acd-e31b-4b65-a250-f2ed5bdf27ac">
+    <span>If Billing Block = ‘08’ or ‘12’ or ‘99’, then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </span>
+  </li>
+</ul>
+<p>
+  <span>
+    <strong>Note:</strong>
+  </span>
+  <span> </span>
+</p>
+<ul>
+  <li data-uuid="179b0d82-b9af-4bb1-a2b4-5a2f9c331b36">
+    <span>In Case creation, If any of the above SAP Block is available at Payer Sales Area level then on selection of the related Sold To it will display an error toast message.</span>
+  </li>
+  <li data-uuid="edfb396d-cb9a-4d7c-8801-14e853a49242">
+    <span> </span>
+    <span>In Case Edit, If any of the above SAP Block is available at Payer Sales Area level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+  </li>
+</ul>
+<h3>Ship To CMF blocks: </h3>
+<ul>
+  <li data-uuid="ea2af2df-fddd-4ebb-a019-a412ecfd448c">If there are no hard blocks present at payer level, then the Ship To options are determined and populated based on selected Sold To and Sales Area records with role code ‘WE’.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-0-0-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-0-10-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="ff327cd3-0d00-497e-862e-74328087df6d">
+    <span>If order block = “02” then it is a hard stop and an error message will be displayed with the corresponding blocks information. </span>
+  </li>
+  <li data-uuid="267635f3-b33f-4c3f-8547-f195e94ddd81">
+    <span>If Delivery Block = ‘99’, then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </span>
+  </li>
+</ul>
+<p>
+  <span>
+    <strong>Note:</strong>
+  </span>
+  <span> </span>
+</p>
+<ul>
+  <li data-uuid="f479e4e6-4798-4845-b0d8-caefeb5b87c6">
+    <span>In Case creation, If any of the above SAP Block is available at Ship to CMF level then that Ship To CMF will not be displayed in the Ship To selection.</span>
+  </li>
+  <li data-uuid="846203ad-4a0d-4584-abfa-00b77cc472b0">
+    <span> </span>
+    <span>In Case Edit, If any of the above SAP Block is available at Ship to CMF level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+  </li>
+</ul>
+<h3>Ship To Sales Area blocks: </h3>
+<ul>
+  <li data-uuid="2e07bfb0-6c55-435d-b620-af320e6d6d80">
+    <span>If there are no hard blocks present at payer level, then the Ship To options are determined and populated based on selected Sold To and Sales Area records with role code ‘WE’. </span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-0-30-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<p>
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-0-37-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="7b990bba-0edb-437b-b5d8-c82dd5cedceb">
+    <span>If order block = “02” then it is a hard stop and an error message will be displayed with the corresponding blocks information. </span>
+  </li>
+  <li data-uuid="b9603e24-3cd1-446e-930a-dee1cbe441f0">
+    <span>If Delivery Block = ‘99’, then it is a hard stop, and an error toast message will be displayed with the corresponding blocks information. </span>
+  </li>
+</ul>
+<p>
+  <span>
+    <strong>Note:</strong>
+  </span>
+  <span> </span>
+</p>
+<ul>
+  <li data-uuid="57d4fc50-3f67-45fd-8575-efa7ec2a58b2">
+    <span>In Case creation, If any of the above SAP Block is available at Ship to Sales Area level then that Ship To CMF will not be displayed in the Ship To selection.</span>
+  </li>
+  <li data-uuid="54c60e19-39ad-4075-b45a-426877b6c979">
+    <span>In Case Edit, If any of the above SAP Block is available at Ship to Sales Area level then on click of Case Edit button, it will display an error toast message &amp; not able to Edit the case.</span>
+  </li>
+</ul>
+<h3> 4. Request Header Details:</h3>
+<ul>
+  <li data-uuid="90c765ca-dee8-492e-bb5e-6ed09a30674d">User should fill in all the mandatory fields which are marked with the red colour asterisk symbol (*) and until all mandatory fields are entered, next button should be disabled.</li>
+</ul>
+<p>
+  <ac:image ac:height="244">
+    <ri:attachment ri:filename="image-2026-7-6_11-0-55-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="735f26a9-e2a2-486b-be6a-2ea0044cf2fd">Contact Name &amp; Account Name will be auto populated as Hyperlinks. The selected Service Type is shown as the text field.</li>
+  <li data-uuid="574f0105-4f5c-4664-8e79-5b927df33616">
+    <span>
+      <strong>Sold To: </strong>
+    </span>
+    <span>All the ‘Customer CMF’ records which are related to the account which have a related ‘Customer Partner’ record (with role code : AG) can be selected as valid sold to.</span>
+  </li>
+  <li data-uuid="88968710-cc4a-4844-8cd1-cde2feceeb9f">For selecting Sold To, we have a wild card search functionality which makes it easy to search and get the required CMF value instead of going through all the values in a dropdown.</li>
+  <li data-uuid="d5439e3e-c1b7-4a6e-91da-4a2c1b70edb5">
+    <span>Based on the Selected Sold To Value, all other Values will be populated in the dropdowns.</span>
+  </li>
+  <li data-uuid="3eb628e6-7bc5-441f-b33a-eb06351e348c">
+    <span>When Sold To is selected, all the other details are auto populated based on the selected ‘Sold to’ value. Values are auto populated based on the most recent case created using that particular ‘Sold To’ if there is historical data of case being created using that Sold To CMF.</span>
+  </li>
+  <li data-uuid="bcc83148-79a8-4ce1-9e41-5bd4d895e577">
+    <span>All other fields in Request header details are dropdowns, if any dropdown contains a single value, it would be auto populated when agent selects a value on dependent dropdown for that dropdown.</span>
+  </li>
+  <li data-uuid="dae9b8e9-6cde-47e9-a617-13a3674155a1">
+    <span>
+      <strong>Payer: </strong>
+    </span>
+    <span>Based on the selected Sold To and Sales area value, Payer record from Customer partner object with role code ‘RG’ are fetched. If no record is found or if it has SAP/ Account ECB blocks, It will be hard or soft stop based on blocks and customer will be notified in case of hard stop by error toast message.</span>
+  </li>
+  <li data-uuid="08080982-6c18-491c-80ad-ba80f482141c">Sold To Address values are determined and populated from the ‘Customer Physical Address’ records which are related to selected Sold To CMF having address type as ‘Sold to’.</li>
+  <li data-uuid="54f7f126-5eec-4f8b-89fa-b127a497700d">The available sales areas for the selected Sold To are shown in the “Sales Area”</li>
+</ul>
+<p>(Sales Area= Sales org Code –Sales org Name/Distributional Code-Distribution channel name, e.g., EU02-U.K./02-Industrial Disti) dropdown.</p>
+<ul>
+  <li data-uuid="697a7e91-91e0-42d0-8d06-a87eb7ae370d">
+    <span>
+      <strong>Ship To:</strong>
+    </span>
+    <span> All the ‘Customer CMF’ records which are related to the account which have a related ‘Customer Partner’ record (with role code : WE) can be selected as valid sold to.</span>
+  </li>
+  <li data-uuid="2c180642-c7d1-43a8-a39c-73b5693745a2">
+    <span>These values are dependent on the Selected Sold To &amp; Sales Area. Hence, when the Sold To/Sales Area is changed the other fields should be refreshed/reset.</span>
+  </li>
+  <li data-uuid="2b26a248-edd1-4964-9325-e934399f9383">
+    <span>
+      <strong>Note: </strong>
+    </span>
+    <span>We have wildcard search functionality present for ‘Ship To’ field also, which works similar to ‘Sold To’ search.</span>
+  </li>
+  <li data-uuid="db4285a4-912e-40db-bf68-9420e1695e5a">
+    <strong>Remedy: </strong>For Service type “Stock Rotation” is “Credit”; hence the value will be auto populated in the dropdown.</li>
+  <li data-uuid="4dbb5451-3776-4d69-908d-a9744fa5ba3e">The Address available for the selected Sold To/ Ship To are displayed in the dropdown.</li>
+  <li data-uuid="961bdb31-05b7-4b00-8aaa-eebd9d8e9a0d">The contacts available for the selected Addresses are displayed in the dropdown.</li>
+  <li data-uuid="c0160730-0881-47e3-a498-2fbcd0188d04">
+    <strong>Return Reason:</strong> Values are fetched from ‘Customer Return reason’ Object based on the service type and Remedy values.</li>
+  <li data-uuid="b0bac739-f065-42cb-b941-461364b5000b">
+    <strong>Note: Populating return reason options in UI</strong>
+    <ul>
+      <li data-uuid="dd543391-cd4c-4f54-83cc-ec6c96e30e66">For SR, the options are also dependent on<ul>
+          <li data-uuid="1c4672e1-455f-4a84-b615-86d38654fc6e">The selected Sold To &amp; Sales area combination.</li>
+          <li data-uuid="81567723-dec4-40a9-b9f6-e4deddd84355">The amount in allowance records should be greater than zero.</li>
+          <li data-uuid="26fc6d76-adf7-4d95-93fc-8e328e9e4b49">The Start Date should be less than or equal to current date and End date should be greater than or equal to current date.</li>
+        </ul>
+      </li>
+      <li data-uuid="1bcd8dc7-4ab3-459f-9e75-b34e45f26fc0">if no allowance records are found based on above validation for particular return reason, then that Return reason should not be displayed in the dropdown.</li>
+      <li data-uuid="3500357e-8149-4364-9894-74c4136a65a4">When Sold To/Sales area is changed the Return reason should be reset.</li>
+      <li data-uuid="2da93bb1-ed65-4189-bbae-2ce65256f349">
+        <strong>Description</strong>: Agent can provide the issue details in case notes field.</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <br/>
+</p>
+<p>
+  <span>Note:</span>
+  <span> </span>
+  <span> </span>
+  <span>
+    <strong>Add/Edit/Delete Contact:</strong>
+  </span>
+  <span> </span>
+</p>
+<ul>
+  <li data-uuid="ad2b36e2-5ecf-4d2c-bb1d-6f212b1366af">
+    <span>Agent has the option to add new ‘Sold To Contact or ‘Ship To Contact’ contacts and edit or delete the previously existing contacts by selecting ‘Add, Edit and Delete Contact’ option from either ‘Sold To Contact or ‘Ship To Contact’ dropdowns respectively.</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-2-31-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="19eef474-5f58-4187-8039-f6c3574ab745">
+    <span>While creating new contact record associated to the related address record First Name, Email and Phone Number are mandatory fields.</span>
+  </li>
+</ul>
+<h3>5. Collection Details:</h3>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-2-58-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="0ace5c27-03dc-4f92-acae-6e56284572fb">
+    <span> </span>
+    <span>Agent should be unable to select anything in ‘Collection details’ section as it will be disabled until all the required fields in the ‘Request Header Details’ section are filled.</span>
+  </li>
+  <li data-uuid="a576f708-aecd-429b-aa21-16e0011b8341">
+    <span> </span>
+    <span>Once all the required fields in ‘Required header details’ are filled, agent would be able to select ‘Return to Customer Address’ value from the dropdown in ‘Collection Details’. These address are determined from the Sold To ‘Customer CMF’ record.</span>
+  </li>
+  <li data-uuid="3f3f7c6b-12a2-4e47-bed4-7bf9df9db92b">
+    <span>
+      <strong>Return to Customer Address</strong>
+    </span>
+    <span>: Options are det</span>ermined and populated from the ‘Customer Physical Address’ records which are related to selected Sold To CMF having address type as ‘Return To Customer’.</li>
+  <li data-uuid="62831f64-2c19-475f-b018-79af6069753b">
+    <span> </span>
+    <span>Agent has search options from the dropdown to select Return to Customer address, can search by Name , Country, State &amp; Postal Code.</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="176">
+      <ri:attachment ri:filename="image-2026-7-6_11-3-18-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="0699e019-a3da-41a2-90ff-19ab31767eeb">To see the address records related to selected Sold To: Go to the sold to ‘Customer CMF record’ &gt; Open the Related tab &gt; Customer Physical Addresses &gt; See the address Type as ‘Return To Customer’. All the active address records would be displayed for agent to choose from.</li>
+  <li data-uuid="beb4e087-a01b-461e-827d-76040a10baa7">
+    <span> </span>
+    <span>
+      <strong>Return to Customer Contact</strong>
+    </span>
+    <span>: These contact values are fetched based on the selected ‘Return to Customer Address. </span>
+  </li>
+  <li data-uuid="06ca0292-028c-42eb-ae58-c07b283c846e">To see the contact records related to selected <span>‘Return to Customer Address’</span>: Go to the sold to ‘Customer CMF record’ &gt; Open the Related tab &gt; Customer Physical Addresses &gt; Open the selected ‘Return To Customer’ address record &gt; Open the Related tab &gt; Physical Address Contacts. All the active contact records would be displayed for agents to choose from.</li>
+  <li data-uuid="b72dc032-11e0-4db7-a3de-34753dac5208">
+    <strong>Freight Type: </strong>Once ‘Return to Customer Address’ is selected, Freight type values are determined and populated from <strong>‘Sales Freight Determination Matrix’</strong>.<ul>
+      <li data-uuid="3dad4b0f-4571-47d1-bfd3-5b5d58fe1520">
+        <strong>Sales Freight Determination Matrix: </strong>Freight Determination<strong> </strong>is fetched from matrix based on below parameters, record from the matrix with least priority number and matching criteria is fetched<ul>
+          <li data-uuid="91c0d005-1c00-4a04-a1bb-ace55d2924c0">
+            <strong>Service Type</strong>
+          </li>
+          <li data-uuid="87124bda-e217-4c96-8448-63988c6d205b">
+            <strong>Remedy Type</strong>
+          </li>
+          <li data-uuid="18d16e47-f4e2-4ae8-ae9f-0fc73d6d27ae">
+            <strong>Country</strong>
+          </li>
+          <li data-uuid="fec0c9c5-6f51-403d-aee6-ccc2a74271fb">
+            <strong>Return Reason</strong>
+          </li>
+          <li data-uuid="7601fc88-ad74-44c2-96e7-0b37ea441a98">
+            <strong>Geography</strong>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li data-uuid="b0a6fe0c-9a9e-4653-90d5-f35fc9cd2165">The values are populated from filtering the matrix records by passing Remedy, Service Type, Return Reason, Geo, Country (RTC Address Country) fields in the matrix. If no record is found, we exclude Country and fetch the record. If still no record is found, we exclude Return Reason and fetch the record.</li>
+</ul>
+<ul>
+  <li data-uuid="56b96c88-2ebe-49ac-a31d-1dc5a3f89034" style="list-style-type: none;">
+    <ul>
+      <li data-uuid="8da58619-1cd6-42e0-8b4c-57c0aa26be6f">
+        <strong>Freight Type-IMF (Intel Managed Freight):</strong>
+        <ul>
+          <li>If the customer selects the freight type as IMF (Intel Managed Freight), then all collection details fields are mandatory to proceed further.</li>
+          <li>After selecting the Collection Address, the collection date field is enabled, and date is auto populated.</li>
+          <li>
+            <strong>Collection Date</strong> is auto populated based on <strong>Geo Lead Time Matrix</strong> for IMF.</li>
+          <li>For APAC / APJ - 5 days are considered as ‘Lead Time’. Here the 5<sup>th</sup> day from current day/ case creation day will be auto populated in the collection date. Apart from that the 4<sup>th</sup> day would be enabled for Customer to choose from and the next 8 days would also be enabled for a total of 10 enabled days. These dates are all excluding weekends.</li>
+          <li>For all other regions – ‘Lead Time’ is 3 days. Therefore, 3<sup>rd</sup> day from current day would be auto populated, 2<sup>nd</sup> day would be enabled along with the next 8 days succeeding ‘Lead Time’ excluding weekends.</li>
+          <li>Example- Let Case creation date is 14<sup>th</sup> Mar 2023, the date auto populated for Geo APJ would be 22<sup>nd</sup> Mar 2023 if there is no holiday for the selected collection Address. If there is holiday for that country on 22<sup>nd</sup> Mar 2023, then it would be auto populated as 23<sup>rd</sup> Mar 2023.</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<ul>
+  <li data-uuid="478458dc-f4b3-4f84-aeff-7704f7c2accf" style="list-style-type: none;">
+    <ul>
+      <li data-uuid="47cfc1f1-db3a-4b3b-950c-2c51623f490d">
+        <strong>Incoterm Determination:</strong> When freight type is IMF, Incoterm value is determined by checking for the exact matching record by passing Remedy, Service Type, Return Reason, Geo, Country(Collection Address Country) fields to ‘Incoterm Determination Matrix’. If no record is found, we exclude Country and fetch the record. If still no record is found, we exclude Return Reason and fetch the record.</li>
+    </ul>
+  </li>
+</ul>
+<ul>
+  <li style="list-style-type: none;">
+    <ul>
+      <li data-uuid="66cec97a-0071-48d1-a0d4-237d637a7c19">
+        <strong>Freight Type-CRF (</strong>
+        <strong>Customer Routed Freight)</strong>
+        <strong>:</strong>
+        <ul>
+          <li data-uuid="2030f072-50e9-4765-b523-dbe3ecef2f80">If the user selects the freight type as CRF (Customer Routed Freight), the collection date, Return to Customer address &amp; Return to customer contact fields are mandatory to proceed further.</li>
+          <li data-uuid="b10b8c8e-15ec-43c1-8e8c-b60fe9a02732">
+            <strong>Collection date</strong> will auto-populate to the current day/case creation day as soon as the user selects freight type as “CRF” and all the succeeding days would be enabled for the Customer to choose from including weekends.</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<ul>
+  <li data-uuid="44345f50-926b-4c9d-ab43-f9eb8e22c688">
+    <span> </span>
+    <span>
+      <strong>Note:</strong>
+    </span>
+    <span>
+      <strong> </strong>
+    </span>For IMF,<strong> <span>‘Collection date’</span>
+    </strong>
+    <span> would be reset if the case is edited and the collection date is not equal to current date.</span>
+  </li>
+  <li data-uuid="16f73dbb-dd34-4054-8dd0-0decb9db04a8">
+    <span> </span>
+    <strong>Note:</strong> Customer cannot Edit the case one day prior to collection date. (IAO change)</li>
+  <li data-uuid="612fc479-6162-4589-88c9-1e9f16d9be1a">
+    <strong>Collection Address: </strong>Collection address and collection contact fields are only mandatory if Freight type is selected as IMF. Collection address values are determined and fetched similar to ‘Return to Customer Address’ values.</li>
+  <li data-uuid="3d8ba308-6b8d-4d2b-9268-66760e86d9c8">
+    <span>The options are det</span>ermined and populated from the ‘Customer Physical Address’ records which are related to selected Sold To CMF having address type as ‘Collection’.</li>
+  <li>
+    <span>Agent have search option to select Collection address from the dropdown , can search by Name , Country, State &amp; Postal Code.</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="205">
+      <ri:attachment ri:filename="image-2026-7-6_11-8-23-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="984102d7-f138-44c6-a670-0865c14458d5">
+    <span>Also, the addresses are filtered based on the Geo value of the selected Return to customer address</span>
+    <span>.</span>
+  </li>
+  <li data-uuid="a802535e-d8e3-434c-abdc-9962f506ff51">
+    <span> </span>
+    <strong>Collection Contact: </strong>These contacts<span> are fetched based on the selected ‘Collection Address’. </span>
+  </li>
+  <li data-uuid="1701c981-a252-4f92-800d-7cea4d801286">To see the contact records related to selected <span>‘Collection Address’</span>: Go to the sold to ‘Customer CMF record’ &gt; Open the Related tab &gt; Customer Physical Addresses &gt; Open the selected ‘<span>Collection Address’</span> record &gt; Open the Related tab &gt; Physical Address Contacts. All the active contacts would be displayed for agent to choose from.</li>
+  <li data-uuid="98acfd13-3a8c-4a21-8c19-91ae8f242b3c">
+    <strong>Origin Bond:</strong>
+    <ul>
+      <li>If the selected RTC/Collection Address is belongs to India/China then only User can see the Origin Bonded option in UI &amp; this value is selected as ‘Non-Bonded’ by default. Customer can select ‘Bonded’ value according to the requirements.</li>
+      <li>If the selected RTC/Collection Address is not belongs to India/China then Origin Bonded option is not visible in UI &amp; by default it will consider as ‘Non-Bonded’</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <ac:image ac:height="197">
+    <ri:attachment ri:filename="image-2026-7-6_11-8-42-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="3c7e5d7a-5c8d-43dd-9a19-5c74cc4cf162">
+    <strong>Return Location: </strong>Return location value is determined from ‘Sales Return Location Matrix’ by using the selected Remedy, Service Type, Sold To CMF, Bonded Zone Indicator, Country(IMF- Collection Country, CRF - RTC Country)</li>
+  <li data-uuid="773b7e02-801e-4184-9c47-3f59baadf294">If no match is found with above combination, then Sold To CMF is excluded and Return Location value fetched again.</li>
+  <li data-uuid="1eb4f377-1ebd-439c-8270-82a266e2c523">If no match is found it’s a hard stop and agent is notified by relevant error toast message.</li>
+</ul>
+<p>
+  <ac:image ac:height="198">
+    <ri:attachment ri:filename="image-2026-7-6_11-9-11-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="8c712031-411c-4f7d-b186-f37b3ffb7423">
+    <strong>Note: Add/Edit/Delete Address:</strong>
+    <ul>
+      <li>Agent has the option to add new ‘Return to Customer’ or ‘Collection’ address and edit or delete the previously existing addresses by selecting ‘Add, Edit and Delete Address’ option from either ‘Return to Customer Address’ or ‘Collection Address’ dropdowns respectively.</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-9-33-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <span>
+    <strong>Note</strong>
+  </span>
+  <span>
+    <strong>: </strong>
+  </span>
+  <span>
+    <u>Address autocomplete for Google API:</u>
+  </span>
+</p>
+<ul>
+  <li data-uuid="39985448-309b-41a8-a0cc-c8fe57f5d34d">
+    <span> </span>While creating new address C/O Name, Country, Street 1 and City are mandatory fields.</li>
+  <li data-uuid="4642be37-3eca-4f42-b19b-2c76c611feb1">
+    <span> </span>
+    <span>Whenever user creates new address or edits an existing address based on the address entered at Street 1 predictions (Top 5) from google address API are displayed.</span>
+  </li>
+  <li data-uuid="db1eb2b4-3bab-468b-aa96-f6269a4d2768">
+    <span> </span>
+    <span>Upon selection of any address from dropdown State, Street 2, City and Postal code are populated.</span>
+  </li>
+</ul>
+<ul>
+  <li data-uuid="77b29e8f-d89e-4572-8ba2-7f20c5e743d5">
+    <span>When using this functionality for ‘Collection Address’ field, user can create/edit any addresses, but if the address that user tries to save doesn’t have the same Geo as RTC address, then the address is not saved.</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <strong>Note: </strong>If User wants to select Collection Address with LAR country (LAR Countries: Brazil, Argentina, Chile, Colombia, Costa Rica, Dominica, Dominican Rep, Ecuador, Mexico, Panama, Puerto Rico, El Salvador, Venezuela, Guatemala, Peru) then RTC Address should be selected as United States country Address. Otherwise it will display an error message shown below.</span>
+</p>
+<p>
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-10-5-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="529e8877-a65b-4ae3-b1f7-5dd80edaba5c">
+    <strong>Note: Add/Edit/Delete Contact:</strong>
+    <ul>
+      <li>Agent has the option to add new ‘Return to Customer’ or ‘Collection’ contacts and edit or delete the previously existing contacts by selecting ‘Add, Edit and Delete Contact’ option from either ‘Return to Customer Contact’ or ‘Collection Contact’ dropdowns respectively.</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-10-29-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="9ca642a7-d146-4833-89e7-351d0610f16f">While creating new contact record associated to the related address record First Name, Email and Phone Number are the mandatory fields.</li>
+</ul>
+<p>
+  <strong>Note: </strong>While User creating new contact for the China country Address either Collection Address or RTC Address then User should select the <strong>Consent Confirmation</strong> check box otherwise contact will</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-10-47-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="909da63f-c818-40c0-98a6-31b57611f536">After selecting all mandatory fields ‘Next’ button will be enabled</li>
+  <li data-uuid="b23f7bb9-d131-4250-8583-a8cf1ecc6211">By clicking on the ‘Next’ button agent can proceed further.</li>
+  <li data-uuid="4e02b7f3-c5f8-4252-b6da-8ccad829fa2a">By clicking on the ‘Cancel’ button user can stop the case creation process and navigate back to the contact page.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-11-8-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="0896b6f1-226b-4e10-80e6-0686c1d8d092">
+    <strong>Note: Embargo check (GTS Screening):</strong>
+  </li>
+  <li data-uuid="63011e42-7146-4169-9c8d-62ad98cee782">When agent clicks on ‘Next’ button or ‘Save for Later’, Country values from both ‘Return to Customer’, ‘Collection’, ‘Sold to address’, ‘Ship to Address’ and ‘Payer’ addresses are validated from local database check.</li>
+  <li data-uuid="634eda4d-247a-4ab4-8f5f-18d269215313">If a country is an embargo country, that respective address would be a hard stop and agent would be notified by error toast message with details.</li>
+  <li data-uuid="2a975083-9882-406f-a6fa-ee268fcfb7e8">
+    <span> </span>If both countries pass GTS screening, then agent would be redirected to the next stage or case detail page respectively.</li>
+</ul>
+<h3>6. Search/Upload Line Item:</h3>
+<p>After clicking on the “Next” button, Agent will be directed to ‘Search/Upload Line Item’ under the “Case Description and Detail” section, which has two options namely: ‘Search By’ and ‘Upload Line Item’.</p>
+<p>The Request header details, Collection details, and Case Description &amp; Detail sections can be expanded and collapsed by clicking on the ‘&gt;’ and ‘V’ arrows beside the section names respectively.</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-12-32-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="bc1699a5-e09a-4570-a17a-7114faec2cc7">Search By option is further divided into:<ul>
+      <li>Purchase/Sales Order search using:<ul>
+          <li>PO Number (Purchase Order Number)</li>
+          <li>SO Number (Sales Order Number)</li>
+        </ul>
+      </li>
+      <li>Product Search using:<ul>
+          <li>MM (Material Master identification)</li>
+          <li>CPN (Customer Part Number)</li>
+        </ul>
+      </li>
+      <li>Upload: User can able to download MMCPN/ULT Templates &amp; can able to upload here using Bulk Upload option.</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <strong>
+    <u>Purchase/Sales Order Search:</u>
+  </strong>
+</p>
+<p>
+  <strong>
+    <u>
+      <ac:image ac:height="250">
+        <ri:attachment ri:filename="image-2026-7-6_11-12-59-1.png"/>
+      </ac:image>
+    </u>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="a0f542d4-772f-4ca6-9f02-6e21770289f3">By using the above interface, agent can search for line items using single or multiple comma separated ‘PO Numbers’ or ‘SO Numbers’ along with the optional Start Date and End Date parameters.</li>
+  <li data-uuid="dc934f0a-5c21-4682-9864-337011cb1b48">If no Start date or End Date parameters are specified, default date range is taken as 12 months prior from current date to current date to filter data using ‘Sales Order Create date’.</li>
+  <li data-uuid="9cda2739-6a66-4617-8b3e-4fe39f88c2b6">After agent enters the PO or SO number(s), that data is sent to ‘ECA View via Orchestration API’ by clicking on the “Search” button to get line items from ‘ECA View via Orchestration API’.</li>
+  <li data-uuid="ce6cab4c-08b0-4bc3-b442-1fe48375d11c">If no response is obtained, it is a hard stop, and agent is notified via error toast message ‘Records not found/Please check your PO number which you entered’.</li>
+  <li data-uuid="4752a3d8-62aa-4ab5-a524-afee179542c4">The line-item data obtained as response from API is again validated using Item Type ‘FERT’. If Item type of line items is not ‘FERT’, those line items are disabled.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-13-15-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="2d1915f2-cf39-489d-acd6-0334c0be6eac">Agent can select the line items from valid line-item data, at which point ‘Next’ and ‘Save for Later’ buttons would be enabled for agent to proceed to next step ‘Product Validation’.</li>
+  <li data-uuid="8ac63146-40d1-49c9-b5af-fbdc2e5ff5cb">Agent can reset the line-item data by clicking on the “Reset” button.</li>
+  <li data-uuid="a92403b7-56e2-4658-9a54-f1b90e17bdc3">
+    <strong>
+      <u>Note</u>
+    </strong>: Users can proceed only with up to 999 lines. If more than 999 lines are present after search/upload and clicking Next, an error appears: “You can only proceed with 999 lines”.</li>
+</ul>
+<p>
+  <strong>
+    <u>Product Search:</u>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="d970c907-e7d1-442e-942f-cb00e89c35d0">When agent selects the product search option, he is presented with the following interface where agent has to select one option to search with from the 3 options given:</li>
+</ul>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-6_11-13-41-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="3aea6716-bac9-4c94-94af-4cc55db3df5b">Agent can search with one or more MM or CPN by selecting respective radio button.</li>
+  <li data-uuid="62378c54-1839-42e4-b0fb-faa16b39247e">After agent selects one option and enters the related data, he can get the related line items data by clicking on the “Search” button.</li>
+  <li data-uuid="c7a4a37c-2cc9-4d70-98cf-fecb0b4cc0eb">If agent searches using MM, the data inputted by the agent would be validated in the SF database and then valid MM numbers are sent to MM-CPN API to get the respective CPN numbers for the MMIDs.</li>
+</ul>
+<h3>
+  <span>
+    <strong>Note: Multiple CPN Scenario:</strong>
+  </span>
+  <span> </span>
+</h3>
+<ul>
+  <li data-uuid="36baf15b-652c-43de-bd48-d10856592b21">
+    <span>For some MM’s, there’s a chance of getting multiple CPN numbers for single MM from MM-CPN API.</span>
+  </li>
+  <li data-uuid="ae334f12-c923-4f4b-9d31-3bdcdc53bbe1">
+    <span>In this scenario, Agent is shown a popup of MM and corresponding CPNs. Customer can select any CPN from dropdown and submit. Then the selected CPNs will be populated and used for respective line items.</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-6_11-14-25-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="ae1d5da1-9885-4cb5-a88c-6042d3cd24c5">If agent searches using CPN, data is sent to MM-CPN API to get the required MMIDs and all the valid MMs obtained will again be validated in the database.</li>
+  <li data-uuid="78b0557d-fed6-4f31-b90d-51f50e83806d">The line-item data obtained as response from API is again validated using Item Type ‘FERT’. If Item type of line items is not ‘FERT’, those line items are disabled.</li>
+  <li data-uuid="1a2b77d0-c117-406c-8a5f-602009902ee3">Then the valid line items would be displayed in the table with related product information obtained from database.</li>
+  <li data-uuid="a3891672-956c-4b04-a7b1-502f8daabc46">The line items which fail in validation would be shown in disabled state and validation error would be shown on ‘i’ icon in validation column.</li>
+  <li data-uuid="34d0320d-aa0a-4e36-93b3-c3c4842901f6">If all entered data fails validation, it is a hard stop, and agent is notified via error toast message.</li>
+</ul>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-6_11-14-41-1.png"/>
+  </ac:image>
+</p>
+<p>Agent can select the required line items and then should click on ‘PO History’ button to get the required PO data for the selected line items (Validation from Orchestration BAG API).</p>
+<ul>
+  <li data-uuid="d9d674ef-2f78-4dbc-9705-3f974db4fa82">Agent can also enter the PO numbers manually in the input box for each valid line item. The entered PO number would be validated from API.</li>
+</ul>
+<p>
+  <strong>
+    <u>Validate PO :</u>
+  </strong>
+</p>
+<ul>
+  <li data-uuid="ce208e2a-525a-4779-8c61-df7e14af25b7">Agent can also enter the PO numbers manually in the input box for each valid line item. The entered PO number would be validated when click on Validate PO button.</li>
+  <li data-uuid="47cc9133-b408-404b-aaa7-c226d9d5ed87">Validate PO Number line will be bypassed at PO History step , if line failed at Validate PO step lineitem will be Hardstop.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-15-7-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="21100a7e-46e5-4fee-b6ed-b6e17d2d9efb">Until PO validation is done, agent cannot proceed further. If all entered data fails validation, it is a hard stop and agent is notified via error toast message.</li>
+  <li data-uuid="6ddafc50-bbb8-455d-84fd-8c4dea2841a1">Agent can reset the data which he entered by clicking on the “Reset” button.</li>
+  <li data-uuid="faff1151-4854-4430-928c-aa92f70dbd8c">Once PO History check is done, Agent can proceed to next step by clicking on ‘Next’. Agent would be navigated to the ‘Product validation screen’.</li>
+</ul>
+<ul>
+  <li data-uuid="9d961def-0ee3-42cb-9d9d-7be63d456f15">
+    <strong>
+      <u>Bulk Upload:</u>
+    </strong>
+  </li>
+  <li data-uuid="f56c99c6-925a-44c8-8dbd-a0a56d7a017b">Along with search functionality agent can also upload the line items data by using ‘Bulk upload’ functionality.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-15-31-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="53b8cbcb-2a70-4ad5-a2a7-de10a8ecf56a">Agent is provided the option to download the CSV template and enter the required line-item data.</li>
+  <li data-uuid="e947473b-47dc-4ef3-a70c-6ccab8a793f5">Then agent can upload the file by either clicking on the upload file button and selecting the file or he can also drag and drop the CSV file near the ‘drop files’ area to upload it.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-16-19-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="e41029bf-573b-4b03-8577-5c49cdfbb1a2">
+    <u>Template sample:</u>
+  </li>
+</ul>
+<p>
+  <u>
+    <ac:image ac:height="150" ac:thumbnail="true">
+      <ri:attachment ri:filename="image-2026-7-6_11-16-33-1.png"/>
+    </ac:image>
+  </u>
+</p>
+<ul>
+  <li data-uuid="7583bc9d-149f-4645-880f-66d98b9c403e">Here for each line-item data entered, MM number or CPN number and Box condition should be mandatorily entered along with quantity.</li>
+  <li data-uuid="bddda035-44e6-4750-988a-91cafa6ca37c">All other fields are optional, and data entered will be mapped to the particular line-item column in further stages respectively.</li>
+  <li data-uuid="04f85be9-d274-4a08-8f24-f00a4e717430">If agent wants to specify ‘Return Package Conditions’, the acceptable values are ‘Outer Box Opened – Product Unsealed’ and ‘Box closed – Factory sealed’. All other values would be invalid and default condition ‘Box closed – Factory sealed’ is considered.</li>
+  <li data-uuid="61661ad4-ef8f-4e1b-9567-e67fd6565c55">Once agent uploads the CSV file, he has to click on ‘Validate’ button for line-item data to be read and validated.</li>
+  <li data-uuid="93002483-5040-4c36-aeef-ba0233dcaaad">
+    <u>Validation Scenarios:</u>
+  </li>
+  <li data-uuid="d0623cff-c873-4191-8d56-6262916d8ab1">If an empty file or file with format other than ‘.csv’ is uploaded, agent is notified with error toast message.</li>
+  <li data-uuid="6f111e9b-97f4-4ba5-b220-f4f49657f9c6">The agent can upload only 750 lines per bulk upload. It is the maximum limit, and more than 750 lines cannot be uploaded at once.</li>
+  <li data-uuid="4da1d468-51a4-49ed-9340-858f2e24c8c9">The agent can upload only 750 lines per bulk upload. Since the case submission limit is 999 lines, the remaining 249 lines can be uploaded after the initial 750 lines are processed.</li>
+  <li data-uuid="efd3a326-d3ea-4c6f-a41c-f37d8ef7f0b2">Uploading more than 750 lines through bulk upload will show an error message saying:<br/>“Please search/upload a file with a maximum of 750 lines only.”</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-17-0-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="7955279b-8ada-4ee0-95a2-523af5202cb0">If file is missing any required field for any Line item, agent is notified with an error in Toast Message as well as an Error Description Screen will be shown right under the upload UI as below, where agent is notified with line numbers of the errors in file and there is an option to download the file by clicking on the Bulk_Upload_Results.csv that agents uploaded and in file also we will be able to see the error message attributed in each line item in an additional column if any exists.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-17-18-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-17-32-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="302b5cfe-ebd5-46b3-84a1-6a81471b3871">If no validation errors are present and line-item data containing only MM numbers is uploaded, data is fetched using MM-CPN API to get the respective CPN numbers for the entered MM numbers.</li>
+  <li data-uuid="d9cada89-a44e-494b-9d18-17b252981cf9">Similarly, if line-item data containing only CPN numbers is uploaded, data is fetched using MM-CPN API to get the respective MM numbers for the entered CPN numbers.</li>
+  <li data-uuid="22049fd9-fbaa-4f40-8d05-a4b19d34bcd6">If data uploaded is a combination of MM numbers and CPNs, we get the respective required CPNs and MMs.</li>
+  <li data-uuid="a502c5bd-933f-4444-a923-fadde0050f14">If data uploaded other MM Number with other CPN number</li>
+  <li data-uuid="2aa517ac-f9a0-4625-afc3-35463b21a2ba">After uploading and validating the data, Agent will receive a pop-up template that shows the MM number replaced with another MM number, as shown below.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-17-52-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="c40ff223-67f4-4f78-85d9-747f53fa3bef">Next the MM data which is entered or obtained is validated against the database including validation using Item Type ‘FERT’. If Item type of line items is not ‘FERT’, those line items are disabled.</li>
+  <li data-uuid="4185c5e6-e360-4a5a-a011-d37aed88a147">For all the valid line-items, related product data is fetched and displayed as shown below.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-18-9-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <strong>
+    <u>Note</u>
+  </strong>: Users can proceed only with up to 999 lines. If more than 999 lines are present after search/upload and clicking Next, an error appears: “You can only proceed with 999 lines”.</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-18-37-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="50c81499-3937-404a-bf12-d17eb2b6f9d2">Agent can select the required line items and then should click on ‘PO History’ button to get the required PO data for the selected line items (validation from HANA BAG API).</li>
+  <li data-uuid="430371db-e04e-4d4c-ad9d-1630f050cdc9">Agent can also enter the PO numbers manually in the input box for each valid line item. The entered PO number would be validated from API.</li>
+</ul>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-6_11-20-24-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <strong>Note:</strong> PO History validation will be bypass for the line items which are coming from PO Search and lines which were are done validation using Validate PO function .</p>
+<h3>7. Product Validation:</h3>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-6_11-20-55-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="f7a87ef2-b908-402f-8a57-5fed182da1aa">If the Product Status is “35, 45, 75, 65, 25, 55”, it will pass the product validation step , if the status is not out of these then the line item is disabled. (Hard Stop)</li>
+  <li data-uuid="68663e9f-b960-48f1-8809-15d3e9c0b233">if the Product status is <strong>15 </strong>and <strong>05 </strong>the line item is disabled. (Hard Stop) with a error message saying “current status is 15 (Pre-Active)” / “current status is 05 (Not Implemented)”</li>
+  <li data-uuid="e7e3e0b0-67b4-4923-9e29-ed5cb640efea">If the Product status is “45 (End of Life)”, then “Get Last Order Entry Date, PCN date and Last Return Dates from MDG”.<ul>
+      <li>If “LOE and PCN date” are not available, then disable the line item (Hard Stop)</li>
+      <li>If “LOE and PCN date” available, then check “Last Order date is &gt;= 4 months since PCN/PDN publish date”.<ul>
+          <li>If yes, then “LOE Date= what is in PCN”</li>
+          <li>If no, then “last order date by taking PCN/PDN publish date + 120 days”</li>
+        </ul>
+      </li>
+      <li>Check if Last Return date available.<ul>
+          <li>If available, then check “Current date is within Last Return date?”. If not matches, then hard stop.</li>
+          <li>If not available, then “Last Return Date = Last Order Entry date + 30 days” and see if it is matching “Current date is within Last Return date?”. If matches proceed with checking for Spec code.</li>
+        </ul>
+      </li>
+      <li>If the Product status is “35 (Active)”, then directly check for Spec Codes.<ul>
+          <li>If the Spec Code is either of these “Q”, then the line item is disabled (Hard Stop)</li>
+          <li>If the Spec Code is not from any of the above, then proceed further.</li>
+        </ul>
+      </li>
+      <li>If the MM is “CTO” /” HPC” then it is Hard Stop.</li>
+    </ul>
+  </li>
+  <li data-uuid="ee8a5a2f-bdd3-472d-a4e3-29a96b57e7ca">Validating allowance record for each line item as follows<ul>
+      <li data-uuid="7171fa52-d22e-499a-8486-07215b39fa22">Based on product/OPID of each line item</li>
+      <li data-uuid="efe9da13-9af2-4f0b-ab43-6e09837c3d6b">Selected Sold To &amp; Sales area combination.</li>
+      <li data-uuid="c1a77065-5847-422d-9f73-87455fd31ef2">The amount in allowance records should be greater than zero.</li>
+      <li data-uuid="6d966249-ccff-4961-b479-b7e2ddbea555">The Start Date should be less than or equal to current date and End date should be greater than or equal to current date.</li>
+    </ul>
+  </li>
+  <li data-uuid="23e37e1a-3a81-4841-8242-ea605a9d61ae">if no allowance records are found based on above validation for particular line item, then it will be a hard stop.</li>
+  <li data-uuid="fc7dd440-077a-4e1a-bd2e-cae1ade3d18e">If the Product Validations are success, then it shows “success” in the line-item table “validated” column and it shows “green”.</li>
+  <li data-uuid="5fa65b3c-5e13-4cc6-8e8e-6b3500b68bce">If any of the line item fails, then it shows valid message, and the Validated column shows “X” in red colour.</li>
+  <li data-uuid="2b606efa-4309-4a08-90c2-787f98f7a113">
+    <span>Click on the Next button for the ‘Credit Price Validation’.</span>
+    <p>If the Product status is not valid or empty (null) will display an error message saying</p>
+    <p>“No valid product status were found” it is a Hardstop</p>
+  </li>
+</ul>
+<h1>
+  <span>NCNR check at Product Validation:</span>
+</h1>
+<p>
+  <span>NCNR check will happen in Stock Rotation at product validation step (To validate a product's eligibility based on its NCNR (Non-Cancellable Non-Returnable) status during case creation)</span>
+</p>
+<p>
+  <span>Fields to be validated: Status: Disti channel Product Status code</span>
+</p>
+<p>
+  <span> Custom SKU: Custom Indicator (New field from Product master)</span>
+</p>
+<p>
+  <span>Order Confirmation flag: If true then check NCNR flag</span>
+</p>
+<p>
+  <span>NCNR_FLAG: If true then it is a Hard stop</span>
+</p>
+<p>
+  <span>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-6_11-29-57-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<p>
+  <span>on click of Product validation it should fetch the record from the NCNR matrix for the given MM combination if NCNR flag is true, line item will be disabled with proper error message "Record is NCNR"</span>
+</p>
+<p>
+  <span>
+    <ac:image ac:height="150">
+      <ri:attachment ri:filename="image-2026-7-6_11-30-11-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<p>so, this validation is based on MM, like we check fields that match with NCNR martrix record values if match it is a hardstop.</p>
+<h3>8. Credit Price Validation:</h3>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-30-47-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="5d11297b-e125-4a90-b3e2-e31165ecb519">In “Credit Price Validation” section agent can see “Get Credit Price” button enabled for all selected line items.</li>
+  <li data-uuid="b204cc13-70a9-401c-8ca0-30fb006ad163">
+    <span>Select Box Condition and Enter the Return Quantity for each line item as it is mandatory field. Return Po &amp; Debit Reference number are optional fields. </span>
+  </li>
+  <li data-uuid="ff2350b8-e075-45b2-9b9a-f573f2f81abd">Once agent clicks on ‘Get Credit Price’ button, selected MMs, selected Sold to CMF and sales org data is sent to PIC API and price data is obtained from PIC API and populated for respective line items.</li>
+  <li data-uuid="300961c3-4d12-42f6-a082-4593e2e295d2">
+    <span> </span>
+    <span>If no credit price value is fetched from PIC API, then the agent has the option to enter the price and Reason in the input columns.</span>
+  </li>
+  <li data-uuid="77e99755-ae35-4ae3-b9dc-311cbdbd953d">
+    <span>
+      <strong>Portal</strong>: <span class="TextRun SCXW79719867 BCX0" data-contrast="none" style="color:var(--ds-text,#000000);">
+        <span class="NormalTextRun SCXW79719867 BCX0">If no credit price value is fetched from PIC API, then that credit price is blank and net credit price shown as ‘$0’. Customer can </span>
+        <span class="NormalTextRun SCXW79719867 BCX0">submit</span>
+        <span class="NormalTextRun SCXW79719867 BCX0"> case but </span>
+        <span class="NormalTextRun SCXW79719867 BCX0">it’s</span>
+        <span class="NormalTextRun SCXW79719867 BCX0"> status would be ‘Pending Agent Action</span>
+        <span class="NormalTextRun SCXW79719867 BCX0">’.</span>
+      </span>
+      <span class="EOP Selected SCXW79719867 BCX0" data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:259}" style="color:var(--ds-text,#000000);"> </span>
+    </span>
+  </li>
+</ul>
+<h3>PIC System Price Zero Scenarios: </h3>
+<ul>
+  <li data-uuid="26b1dc7e-ef4a-4694-b4cd-2fabf44647cd">In the credit price step at the line-item level, when user clicks on credit price validation, if the Distribution channel is any value other than 01-Direct, i.e., 02-Industrial Distribution, then the Credit price of every line item is fetched by making a callout to the PIC API and passing the required Parameters. </li>
+</ul>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-6_11-31-3-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="1519b83a-e28f-4ba8-9411-76962fe91b97">If no credit price is fetched from the PIC API for a particular line-item, then the agent has the ability to manually enter the credit price in the input field. </li>
+  <li data-uuid="1bb73b56-88be-4433-8b7d-3a9022f6b58d">Also, the agent needs to fill in the ‘Reason for the price change’ field if he enters the credit price manually. </li>
+  <li data-uuid="8179573e-c63c-4451-8991-2db5e715bd74">Without filling out the Credit Price and Reason for price change, the agent can’t proceed to the next step with that line-item; these validations will be checked on click of  "Save and view summary" button. </li>
+  <li data-uuid="1e453766-0455-41f3-b53b-f425ab3b2eee">If the agent enters the credit price and Reason for price change for all required line-items, then on click of "Save and View summary" button, the agent will get the below popup to enter the Header Level comments for price change. </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-31-38-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="c9d82762-5e3a-45ef-a1a8-c2b55ce4d0ed">This is a mandatory field to proceed further. Once the agent fills in the Reason for Price Change and clicks on Submit, case will be created and user will be navigated to the View Summary page.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-32-4-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="00133d12-982b-431a-9c0c-282999cca201">Agent can see “Edit”, “Cancel” and “Submit” buttons. </li>
+  <li data-uuid="d6d44767-79fc-4d29-a0be-f647085bbb89">In case of any soft blocks (SAP blocks or other), ‘Submit’ button will be disabled and agent would be notified by a toast message about the presence of soft blocks.</li>
+</ul>
+<p>
+  <u>On click of Edit Button:</u> </p>
+<ul>
+  <li data-uuid="52506428-be3f-4588-a43a-72dd758246bb">Agent can edit the case and modify the details as needed. </li>
+</ul>
+<p>
+  <u>On click of Cancel Button:</u> </p>
+<ul>
+  <li data-uuid="e9ec6294-6c3a-4899-96f1-b5583ca3213b">Agent is redirected to the ‘Case Detail Page’ of particular case. </li>
+</ul>
+<p>
+  <u>On click of Submit button:</u> </p>
+<ul>
+  <li data-uuid="f3107fda-e2b1-47ec-8e63-dfe7ddbb35c8">If net credit value of line items whose credit price was manually entered is greater than $25,000; Agent will have to get approval from an L3 agent. </li>
+  <li data-uuid="9927fbba-344e-464e-9230-300f5b3eef7a">Agent will get below popup to select the L3 Approver, to whom the email will be triggered for Approval of price overridden line items. </li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-32-28-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="b031b069-7ba6-4e83-951d-3e3322ab14ba">After selection the case is submitted with case status as “Pending Approval” and agent is redirected to the ‘Case Detail Page’. </li>
+</ul>
+<p>
+  <br/>
+</p>
+<p>
+  <strong>Note: Once L3 Approver approves the price overridden line items, then the actual Approval </strong>
+  <strong>email can be triggered to the actual approver based on Net value and Service type.</strong> </p>
+<ul>
+  <li data-uuid="8f48dd7e-7437-48a3-a333-77ef982185b1">If the L3 Approves declines the price override line items, then the case status will be set to ‘Declined’. </li>
+  <li data-uuid="db00eaa5-b460-4dad-b7c3-e67c953856d6">For price overridden line items, if the net value is less than $25,000: </li>
+  <li data-uuid="563e00e1-923a-4bf5-a0e2-2ab37af40fae">Based on service type and Net value, the case gets submitted with case status as “Pending Approval” or “RMA Authorized” and email will be triggered to approver if it is ‘Pending Approval’. </li>
+  <li data-uuid="d4395af1-2d61-4c7c-a312-cf3fa4d6bd40">‘Net credit Value’ of each valid line item is calculated as ‘Return Quantity’ * ‘Credit Price’ and displayed in ‘Net credit value’ column.</li>
+  <li data-uuid="a94baff3-f203-4e7d-96ec-c47ba2af40a5">Agent also has the option to select the ‘Box Condition’ of each line item. Default condition ‘Box closed – Factory sealed’ is considered. If agent selects ‘Outer Box Opened – Product Unsealed’, then below prompt is displayed for agent.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-33-4-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="a5ba86e6-4969-4778-90b3-e888c8d14d3a">If we select the box condition as ‘Outer Box Opened – Product Unsealed’, if the “Open Box Allowance” is not available then the line item will be disabled.</li>
+</ul>
+<p>
+  <ac:image>
+    <ri:attachment ri:filename="image-2026-7-6_14-24-27.png"/>
+  </ac:image>
+</p>
+<p>
+  <br/>
+</p>
+<ul>
+  <li data-uuid="2958b270-7d1f-404a-8268-d601f335caa7">After successfully obtaining credit price, ‘Next’ and ‘Save for later’ buttons are enabled so agent can move to next section or save case to edit again later.</li>
+  <li data-uuid="8e7ecd06-e7d2-42a6-b548-1fe97dbc6401">
+    <strong>Note:</strong> Once credit price validation is done for particular line item(s), credit price validation button will be disabled and obtained credit price value will be considered valid for current day. So, if agent edits case or comes back to ‘Credit Validation’ stage on same day, he will not need to call credit price API for same line items again.</li>
+  <li data-uuid="828f5023-583c-4e8f-af09-53ea2b59e0fb">
+    <strong>Note: </strong>Agent also has the ability to <strong>clone</strong> line-items in this stage, on click of ‘Clone’ button, a prompt will be displayed asking for clone confirmation. If agreed, all the selected line items would be cloned. This allows agent to have multiple line-items with same MM value but different ‘Box Condition’ and ‘Return quantity’ values.</li>
+</ul>
+<h3>9. Allowance Validation:</h3>
+<ul>
+  <li data-uuid="562775c0-9d8b-4e99-aa26-feb2f710f396">After clicking on “next” button in Credit price validation. Agent is navigated to “Allowed Matrix Validation” page.</li>
+  <li data-uuid="5c31484e-5b5c-4c96-9500-2048e5214978">After clicking on Validate allowance, the Stock rotation allowance availability is validated.</li>
+  <li data-uuid="307cbfd6-d938-43b9-a609-35af117cbdc8">User can see the available Quarter Balance amount for each line on mouse hover on the Return quantity “i” icon </li>
+</ul>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-6_11-33-41-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="55649dae-733d-4062-ae35-0e2cf6bbf850">If the “net credit value” of the line item is exceeding with the available “stock rotation allowance” then it shows error message in the validated column and allows to adjust the return quantity accordingly.</li>
+</ul>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-6_11-33-56-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-34-7-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <strong>Note:</strong>
+  <strong> </strong>For CPN Support Customer, If the CPN is not available for line items then MMCPN API will call on click of ‘Save for Later’ &amp; ‘Save &amp; View Summary’ buttons &amp; populate the CPN at line item level otherwise the line items which are not having CPN are disabled with error message &amp; User not able to create Case with non-CPN line items.</p>
+<h3>10. View Summary Page:</h3>
+<ul>
+  <li data-uuid="7f8ae493-a3e5-48cf-a665-7290c35094be">If the Validate allowance is successful, then “Save &amp; View Summary” button is enabled.</li>
+  <li data-uuid="7a1a2bdc-d74f-48b0-9d01-ee075eebfe08">On clicking the button, agent is navigated to ‘Save &amp; View summary’/’Ready to Submit’ page.</li>
+  <li data-uuid="292b2d3a-a37c-428f-b92e-a4d7a9a11c40">Here agent can see all the case details at a glance and confirm if everything is correct before he can submit the case.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-34-36-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="4e1fa001-72bc-45a1-a38a-502ee3b688e8">Agent can see “Edit”, “cancel” and “Submit” buttons.</li>
+  <li data-uuid="e2490196-88f2-47c1-841d-52cc20b81094">In case of any soft blocks (SAP blocks or other), ‘Submit’ button will be disabled and agent would be notified by a toast message about the presence of soft blocks.</li>
+  <li data-uuid="cc2c8b37-ead9-4a84-b9e3-5f0dc9091a79">Then agent can edit the case again or continue and submit the case if no soft blocks present.</li>
+  <li data-uuid="05dc3d8f-7905-4713-af4c-7a29e78258f6">If price override scenario has occurred in credit price validation step. we check the total price override amount. If the amount exceeds 25k then the price override line items have to be approved from L3 Approver for the case to be “RMA Authorized”</li>
+  <li data-uuid="e0e71c45-0777-47b0-8940-4d98c6b11018">If No price override approval scenario then, On click of Submit button, the case is submitted with case status as “RMA Authorized” and agent is redirected to the ‘Case Detail Page’.</li>
+  <li data-uuid="545bccfa-7031-4828-9ebf-655daecd3029">If agent clicks on cancel then the case is saved with “Open, Unsubmitted” status and agent is redirected to the related ‘Contact Detail Page’.</li>
+  <li data-uuid="1dc9ba61-4681-4276-b0a4-bff1103f1b31">
+    <strong> </strong>
+    <strong>Note: Price Override Scenario:</strong>
+    <ul>
+      <li>
+        <span>If net credit value of line items whose credit price was manually entered is greater than $25,000; Agent will have to get approval from an L3 agent.</span>
+      </li>
+      <li>
+        <span>Agent will get below popup to select the L3 Approver, to whom the email will be triggered for Approval of price overridden line items.</span>
+      </li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-35-1-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="dc3eda9b-4998-41e4-a094-4d7e39404620">
+    <span> </span>
+    <span>After selection the case is submitted with case status as “Pending Approval” and agent is redirected to the ‘Case Detail Page’.</span>
+  </li>
+  <li data-uuid="c2dc5617-67ab-473e-9ce4-bfb705d32b0a">
+    <span>If the L3 Approver Approves the price override line items, then the case status will be set to ‘RMA Authorized”.</span>
+    <span> </span>
+  </li>
+  <li data-uuid="20f1f9f3-03af-4d8b-8ae8-8dcff8c52220">
+    <span>If the L3 Approver declines the price override line items, then the case status will be set to ‘Declined’.</span>
+    <span> And the allowance Amount deduction changes will be reverted.</span>
+  </li>
+</ul>
+<h3>11. Stock Rotation Allowance Validation:</h3>
+<ul>
+  <li data-uuid="0c42d44a-92a0-4929-87d8-4bdc32bd3922">When the case status is “RMA Authorized” or “Pending Approval”, then only allowance will be deducted from the specific record.</li>
+  <li data-uuid="1436ae88-aa42-4736-ad8a-128f6c662097">Stock Rotation allowance record can be determined in two ways:<ul>
+      <li>Search for the MM in global search. Go to Related tab, see if any stock rotation allowance records available. Go to “Stock Rotation Allowance Matrix” in the Home Dropdown. Filter with “MM, Stock Rotation category, Sold To, Sales Org/Distribution channel, Return Reason, valid date range”</li>
+      <li>When Stock Rotation allowance is not available for the MM table, then we search through Stock Rotation category.<ul>
+          <li>Take the “Operation Business unit code” from the MM and get the Stock Rotation category.</li>
+          <li>Go to “Stock Rotation Allowance Matrix” in the Home Dropdown and filter with “Stock Rotation category, Sold TO, Sales Org/Distribution channel, Return Reason, valid date range”</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <span>Check for the right record and open the record from “SR Allowance matrix list view” and see if the allowance amount used in line items/Products are deducted. And Consumed allowance should be updated.</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-35-49-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<p>
+  <br/>
+</p>
+<h3>12. Case View:</h3>
+<ul>
+  <li data-uuid="6b204843-425f-443f-84db-bb437bbc7139">Once case is submitted, agent is navigated to the ‘Case Detail page’ of the submitted case.</li>
+  <li data-uuid="94870292-1eab-4aa3-a5ed-b2503c80b721">The submitted case opens in a sub tab and shows the case number in the header.</li>
+  <li data-uuid="8bd25ba5-30f6-4c24-8ecf-d0a1ef550cf2">Under Details, can see the Case Status, case owner, case record type, origin.</li>
+  <li data-uuid="f9c67216-d062-43ff-9e78-90e9ec92424e">Under R4C Case header, we can see the “Request Header details”, “Collection details”, and ‘line-item’ data along with additional information.</li>
+  <li data-uuid="a8e59c44-225e-4d4e-bb3b-d1dbfc84067a">
+    <span>As the case is submitted and goes to RMA Authorized, it shows the detail page.</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-36-23-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="1026731b-138b-4882-bdb5-c73487781125">
+    <span>In R4c Case header tab, we can see the Header details, collection details &amp; Line items list view.</span>
+  </li>
+</ul>
+<p>
+  <span>
+    <ac:image ac:height="250">
+      <ri:attachment ri:filename="image-2026-7-6_11-36-35-1.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-uuid="3ef35e73-e3a8-4953-8818-5cf1a875e05d">We can see the “Edit” button and when clicked on edit button, agent will be redirected to ‘Edit Case’ window only if the case status is ‘Open, Unsubmitted’ or ‘Submitted, pending action’.</li>
+</ul>
+<h3>13. Case Edit:</h3>
+<ul>
+  <li data-uuid="b80198e2-5f50-47bf-bf6c-7328e92a9d29">When the case status is “RMA Authorized”, case edit is not allowed.</li>
+  <li data-uuid="91314ea0-a9b9-4cb8-b371-616ca2cd408a">
+    <strong>For Pending Agent Action cases,</strong> we do check Blocks on Load when the Edit R4C button is clicked, and if any hard blocks existing or if any inactive records are part of case, then it’s a hard stop and Agents can’t edit the case else if no blocks and no inactive CMFs Agent can edit all the Collection details as well as Line Items</li>
+  <li data-uuid="ea291eb7-6a24-485d-aba1-29453f831f48">The Default landing page for the line items is Search/Upload Line Items Page, line items can be cancelled by using dropdown or unselect the line items, in the data base, the line items get cancelled but not deleted after the save operation.<ul>
+      <li>
+        <u>Cancel Line Items:</u>
+      </li>
+      <li>In Edit Case tab, we have an additional column ‘Line items status’ where agent can select to cancel line items.</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-6_11-37-11-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li style="list-style-type: none;">
+    <ul>
+      <li data-uuid="b4a436ee-ebc1-4c7d-aa36-524024bc03ac">If agent selects ‘cancel’, then he will be shown a prompt to confirm if he really wants to cancel the line item.</li>
+      <li data-uuid="8392dcff-0038-4864-ba0e-506d0dc54632">Agent can also unselect the line items which will have same functionality as selecting ‘cancel’ status.</li>
+    </ul>
+  </li>
+</ul>
+<ul>
+  <li data-uuid="0d519c8c-d1cd-4bd7-8466-19cb6cd9aeb5">
+    <strong>For Pending Approval Cases, </strong>Only RTC Address, RTC Contact fields can be edited, additionally If Freight Type is IMF, Collection Date can also be edited.</li>
+  <li data-uuid="56f2c305-0bc9-4506-b296-41c53fdfbbdb">If case is being edited and the earlier and line items are gone beyond Credit Price Validation step and earlier detected credit price is on same day, then credit price validation API call is bypassed for existing line items.</li>
+  <li data-uuid="8509eacf-f0fb-4f5e-836a-7ecb992d64ee">
+    <strong>RTC/Collection, Date Edit scenarios</strong>: After clicking on Edit button, agent can be able to edit RTC/Collection address, Date fields for the RMA Authorized cases.</li>
+</ul>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-6_11-37-43-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="bb1a295e-7a23-4b19-8c05-9eeee2b7b794">RTCAddressChange, CollectionAddressChange, CollectionDateChange indicators will get updated in ECC at header level.</li>
+  <li data-uuid="be0f7211-9013-4c2d-a1b2-e7b0ec9fed32">ECC will update the records once case submitted in SF.</li>
+</ul>
+<p>
+  <ac:image ac:height="230">
+    <ri:attachment ri:filename="image-2026-7-6_11-37-58-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <br/>
+</p>
+<h3>
+  <span>
+    <strong>14. CPN Indicator Check: </strong>
+  </span>
+</h3>
+<ul>
+  <li data-uuid="c5ac17d2-621c-4863-b336-65077a7e1bab">
+    <span>When user clicks on ‘Save &amp; View Summary’ or ‘Save for Later’, additional validation called as ‘CPN Indicator check’ is done. For the selected Sold To CMF, the value of ‘Is CPN required?’ field is fetched.</span>
+  </li>
+  <li data-uuid="38cd41ff-8870-4512-be9f-cb92653b5c43">
+    <span>If the field value is ‘True’, then all the line items are validated for CPN values.</span>
+  </li>
+  <li data-uuid="1b7442ee-9346-4c28-8fa4-5e169b0e2a2f">
+    <span>Any line item that doesn’t have CPN value is disabled and shown to agent. The corresponding error message can be seen in the validation column for the disabled line items.</span>
+  </li>
+</ul>
+<h3>
+  <span>
+    <strong>15. Export to CSV:</strong>
+  </span>
+  <span>
+    <strong> </strong>
+  </span>
+</h3>
+<ul>
+  <li data-uuid="910aba00-f932-4eb4-8531-4cd8ce958a6f">In the ‘Case details and description’ section where we add and validate the line items, customer has the option to export all the line items present in that particular stage.</li>
+</ul>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-38-40-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="9ec00aa7-6bb3-42b0-b857-73026f272b19">When customer clicks on ‘Export to CSV’, all the line-items present on the screen will be formatted into CSV, which would then be downloaded automatically.</li>
+  <li data-uuid="40b9d54d-f422-47c9-93db-73edc703a525">For ‘Stock Rotation’, customer will be able to the see the button in ‘Product validation’, ‘Credit price validation’ and ‘Allowance matrix validation’ stages.</li>
+  <li data-uuid="d05d0d09-df3f-4502-bcca-0b1ba593c511">Customer is allowed to export before and after the validation on that particular stage. The downloaded file will display the corresponding success and error messages for line items after validation.</li>
+</ul>
+<p>
+  <ac:image ac:height="150">
+    <ri:attachment ri:filename="image-2026-7-6_11-38-54-1.png"/>
+  </ac:image>
+</p>
+<ul>
+  <li data-uuid="4f97e8f3-b77d-45f2-aa26-93e402a093a9">All the details which customer is able to see on the UI will be available in the downloaded sheet including details shown in ‘More info’ icon.</li>
+</ul>
+<h3>
+  <strong>16. Duplicate MM:</strong>
+</h3>
+<ul>
+  <li data-uuid="bd10dfe6-b532-4b01-9cea-4c481bd179df">Agent has the option to create additional line items using any previously used MM number.</li>
+  <li data-uuid="deb3ea76-67a1-49cd-95cf-8298a85f2adf">Agent can do multiple searches and re trigger the same search multiple times using same set of data.</li>
+  <li data-uuid="96c99151-8711-4420-beff-1efaf7fdd700">He should be able to search with the same MM and allow to add multiple line items for the same MM.</li>
+  <li data-uuid="ae2a6d5f-e0f3-4e30-b287-b76c05cfab0e">To make this functionality feasible, Invoice Number is used in to calculate uniqueness, it is a unique number created for each line item.</li>
+  <li data-uuid="5265d0a1-fb69-494a-95bb-011f1b318eae">We will add 6-digit random number at start of invoice number that will make it unique even if duplicate MMs are received.</li>
+</ul>
+<h3>
+  <strong>17. SF &lt;-&gt; </strong>
+  <strong>S/4</strong>
+</h3>
+<p>Once the case is submitted in salesforce and the status is “RMA Authorized”. The case is sent to S/4 via MULE middleware system every 15mins by Auto-sys job.</p>
+<p>After 15 mins, the outbound job is run by ECC and the Delivery Note number, Case line status, Order MSGV1 &amp; Order MSGV2 are updated.</p>
+<p>If there are any errors, GTS blocks received from S4 then the Case details will have the consolidated error messages for each line item, like displayed in below Screenshot.</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-39-49-1.png"/>
+  </ac:image>
+</p>
+<p>Once the Shipment order is created in S/4 side, the Bill of lading Number is sent to Salesforce. The shipment tracking information will be shown under shipment tracking tab.</p>
+<p>Open the Shipment tracking tab opens can see all the line items. Line items that has the Status as “IN Transit”/ “Delivered” will have the link to go the shipment information.</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-40-18-1.png"/>
+  </ac:image>
+</p>
+<p>
+  <br/>
+</p>
+<p>Click on the “In Transit” link and see the Shipment and tracking details information opening. All the events that are occurred will be displayed in the table.</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-40-52.png"/>
+  </ac:image>
+</p>
+<h3>
+  <strong>18. Searching the Matrices:</strong>
+</h3>
+<p>To search for a desired information within a Matrix, open the matrix from the Home dropdown menu. Click on the filter icon on the right side of the page</p>
+<p>
+  <ac:image ac:height="248">
+    <ri:attachment ri:filename="image-2026-7-6_11-41-50-1.png"/>
+  </ac:image>
+</p>
+<p>User can filter the matrix using any field information. Eg., Customer ID, Sales organization, Service Type.</p>
+<p>This search is applicable for any matrices in the R4c App.</p>
+<p>
+  <ac:image ac:height="250">
+    <ri:attachment ri:filename="image-2026-7-6_11-42-4-1.png"/>
+  </ac:image>
+</p>
+<h3>
+  <span data-ccp-parastyle="heading 1">19. Authorization Form:</span>
+  <span data-ccp-props="{&quot;134245418&quot;:true,&quot;134245529&quot;:true,&quot;201341983&quot;:0,&quot;335559738&quot;:240,&quot;335559739&quot;:0,&quot;335559740&quot;:256}"> </span>
+</h3>
+<ul>
+  <li data-aria-level="1" data-aria-posinset="1" data-font="Symbol" data-leveltext="" data-list-defn-props="{&quot;335552541&quot;:1,&quot;335559685&quot;:720,&quot;335559991&quot;:360,&quot;469769226&quot;:&quot;Symbol&quot;,&quot;469769242&quot;:[8226],&quot;469777803&quot;:&quot;left&quot;,&quot;469777804&quot;:&quot;&quot;,&quot;469777815&quot;:&quot;hybridMultilevel&quot;}" data-listid="9" data-uuid="00b903b8-d1d3-4832-b379-0f77bfaba5d8">
+    <span>Once RMA Authorized Cases created from the Customer Portal then User can see the </span>
+    <strong>
+      <span>Authorization Form</span>
+    </strong>
+    <span data-contrast="none">
+      <span> </span>
+      <span>button</span>
+      <span> in Case details page</span>
+    </span>
+    <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:256,&quot;469777462&quot;:[2825],&quot;469777927&quot;:[0],&quot;469777928&quot;:[1]}"> </span>
+  </li>
+</ul>
+<p>
+  <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:256,&quot;469777462&quot;:[2825],&quot;469777927&quot;:[0],&quot;469777928&quot;:[1]}"> <ac:image>
+      <ri:attachment ri:filename="image-2026-7-6_14-13-41.png"/>
+    </ac:image>
+  </span>
+</p>
+<ul>
+  <li data-aria-level="1" data-aria-posinset="1" data-font="Symbol" data-leveltext="" data-list-defn-props="{&quot;335552541&quot;:1,&quot;335559685&quot;:720,&quot;335559991&quot;:360,&quot;469769226&quot;:&quot;Symbol&quot;,&quot;469769242&quot;:[8226],&quot;469777803&quot;:&quot;left&quot;,&quot;469777804&quot;:&quot;&quot;,&quot;469777815&quot;:&quot;hybridMultilevel&quot;}" data-listid="8" data-uuid="4cd3f66d-ef97-4211-a25f-8ebe922f8841">
+    <span>On Click of </span>
+    <strong>
+      <span>Authorization Form </span>
+    </strong>
+    <span>button then Authorization Form will be Open in new tab &amp; User can verify all the data &amp; User can also download the Authorization Form in pdf format.</span>
+    <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:256,&quot;469777462&quot;:[2825],&quot;469777927&quot;:[0],&quot;469777928&quot;:[1]}"> </span>
+  </li>
+</ul>
+<ul>
+  <li data-aria-level="1" data-aria-posinset="2" data-font="Symbol" data-leveltext="" data-list-defn-props="{&quot;335552541&quot;:1,&quot;335559685&quot;:720,&quot;335559991&quot;:360,&quot;469769226&quot;:&quot;Symbol&quot;,&quot;469769242&quot;:[8226],&quot;469777803&quot;:&quot;left&quot;,&quot;469777804&quot;:&quot;&quot;,&quot;469777815&quot;:&quot;hybridMultilevel&quot;}" data-listid="8" data-uuid="e961d951-171b-4c1d-8a6c-b570acd60789">
+    <span>If in case, for the created Case is having any Price Masking at Sold To/Ship To/RTC/Collection level then the following fields should not be available in the Authorization Form: Total Price, Estimated Credit Price, Unit Credit Price.</span>
+    <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:256,&quot;469777462&quot;:[2825],&quot;469777927&quot;:[0],&quot;469777928&quot;:[1]}"> </span>
+  </li>
+</ul>
+<p>
+  <span data-ccp-props="{&quot;201341983&quot;:0,&quot;335559740&quot;:256,&quot;469777462&quot;:[2825],&quot;469777927&quot;:[0],&quot;469777928&quot;:[1]}"> <ac:image>
+      <ri:attachment ri:filename="image-2026-7-6_14-13-47.png"/>
+    </ac:image>
+  </span>
+</p>
+<p>
+  <br/>
+</p>
+
+  
+  
