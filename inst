@@ -1,0 +1,57 @@
+Hi Team,
+
+Key Discussion Points
+1. Wiki Audience & Purpose
+Wiki should act as a single source of truth primarily for Developers and QA teams.
+Each wiki page should include a brief introduction/overview explaining:
+What the topic is.
+Its purpose.
+Topics covered in the page.
+A short summary at the top will help users quickly understand page content.
+2. Introduction & Access Information
+Login/access details can be retained if required.
+Avoid referencing specific individuals for access requests.
+Use generic references instead of personal names.
+Links that may change over time should either be:
+Referred to generically, or
+Marked as TBD until finalized.
+3. Reusable Content Strategy
+Common sections such as:
+Block Scenarios
+Address/Contact Management
+Product Validations
+API related wiki pages
+Should be maintained as separate reusable wiki pages and referenced through links from intake-specific pages.
+This approach improves maintainability and reduces duplication.
+4. Documentation Standards
+Need uniformity across all wiki pages:
+Consistent font type.
+Consistent heading hierarchy.
+Consistent font sizes.
+Consistent colors.
+Consistent alignment and formatting.
+Spell-check before publishing.
+Uniform terminology and naming conventions across all pages.
+Avoid mixing hyphens, spaces, capitalization, quotes, and formatting styles within the same documentation set.
+6. Content Quality Expectations
+Wiki should not be a direct copy of user manuals.
+Team should:
+Review and understand existing documentation.
+Add business rules and functional logic.
+Capture tribal knowledge and hidden dependencies.
+Include troubleshooting and operational knowledge wherever applicable
+7. Technical Content Inclusion
+Approved additions:
+SOQL queries.
+Object API names.
+Field API names.
+Custom setting details.
+Integration/API references via linked pages.
+Functional and technical dependencies
+8. Security Considerations
+Do not document:
+Passwords.
+Keys.
+Secrets.
+Confidential credentials.
+Any sensitive integration authentication details.
