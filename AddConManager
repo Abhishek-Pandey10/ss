@@ -1,0 +1,290 @@
+<h2 data-nh-numbering="1.1. ">
+    <ac:structured-macro ac:macro-id="10000000-0000-0000-0000-000000000001" ac:name="toc" ac:schema-version="1">
+        <ac:parameter ac:name="indent">10px</ac:parameter>
+    </ac:structured-macro>
+</h2>
+<h2 data-nh-numbering="1.2. "><span style="color: rgb(255,0,0);">#Fix</span> Overview</h2>
+<p>
+    This page documents the Sold To / Ship To resolution rules and the Collection Details logic (Return to Customer
+    Address, Collection Address, Freight Type, Incoterm Determination, Return Location, Origin Bond) that R4C
+    evaluates for every intake case, regardless of Service Type.
+</p>
+<p>
+    <strong>Purpose:</strong> Give Developers and QA a single, accurate reference for how Sold To/Ship To CMF and
+    address records are resolved, how Return to Customer/Collection addresses and contacts are determined, and how
+    Freight Type, Incoterm and Return Location are derived, so this logic is documented once instead of once per
+    intake page.
+</p>
+<ac:structured-macro ac:macro-id="10000000-0000-0000-0000-000000000002" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Reusable page: link here, do not copy</ac:parameter>
+    <ac:rich-text-body>
+        <p>
+            This content used to be duplicated across the Admin, Exception, Quality, Stock Rotation, Technical and
+            Miscellaneous intake pages. It is now maintained in one place. Intake pages should link to this page for
+            Sold To/Ship To/Address/Collection Details logic instead of repeating it: if a rule changes, it only
+            needs to be updated here. Service-Type-specific content (Remedy options, CIRS Number rules, Return
+            Reason Justification, Warranty Entitlement Check for Exchange, etc.) stays on each intake page.
+        </p>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<h2 data-nh-numbering="1.3. ">Sold To / Ship To CMF Resolution</h2>
+<ul>
+    <li><strong>Sold To:</strong> All the 'Customer CMF' records which are related to the contact/account which have
+        a related 'Customer Partner' record (with role code: AG) can be selected as valid Sold To.</li>
+    <li>For selecting Sold To, we have a wild card search functionality which makes it easy to search and get the
+        required CMF value instead of going through all the values in a dropdown.</li>
+    <li>Based on the selected Sold To value, all other data will be fetched for other dropdowns.</li>
+    <li>When Sold To is selected, all the other details are auto populated based on the selected 'Sold To' value.
+        Values are auto populated based on the most recent case created using that particular 'Sold To'.</li>
+    <li>All other fields in Request Header Details are dropdowns; if any dropdown contains a single value, it would
+        be auto populated when the agent selects a value on a dependent dropdown for that dropdown.</li>
+    <li>Sold To Address values are determined and populated from the 'Customer Physical Address' records which are
+        related to the selected Sold To CMF having address type as 'AG/WE/RG'.</li>
+    <li>From Agent UI, we can see the address records related to selected Sold To: Go to the Sold To 'Customer CMF
+        record' &gt; Open the Related tab &gt; Customer Physical Addresses &gt; See the address Type as 'AG/WE/RG'.
+        All the active addresses would be displayed for the user to choose from.</li>
+    <li>The available sales areas for the selected Sold To are shown in the "Sales Area" (Sales Area = Sales org
+        Code&ndash;Sales org Name/Distribution Code-Distribution channel name, e.g., EU02-U.K./02-Industrial Disti)
+        dropdown.</li>
+    <li><strong>Ship To:</strong> All the 'Customer CMF' records which are related to the selected Sold To and
+        selected Sales Area which have a related 'Customer Partner' record (with role code: WE) can be selected as
+        valid Ship To.</li>
+    <li>These values are dependent on the selected Sold To &amp; Sales Area. Hence, when the Sold To/Sales Area is
+        changed, the other fields should be refreshed/reset.</li>
+</ul>
+<ac:structured-macro ac:macro-id="10000000-0000-0000-0000-000000000003" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Note</ac:parameter>
+    <ac:rich-text-body>
+        <p>We have wildcard search functionality present for 'Ship To' field also, which works similar to 'Sold To'
+            search.</p>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<h2 data-nh-numbering="1.4. ">Return to Customer Address &amp; Contact</h2>
+<ul>
+    <li><strong>Return to Customer Address:</strong> Options are determined and populated from the 'Customer
+        Physical Address' records which are related to the selected Sold To CMF having address type as 'Return To
+        Customer'.</li>
+    <li>Agent has search options from the dropdown to select Return to Customer address, can search by Name,
+        Country, State &amp; Postal Code.</li>
+    <li>To see the address records related to selected Sold To: Go to the Sold To 'Customer CMF record' &gt; Open
+        the Related tab &gt; Customer Physical Addresses &gt; See the address Type as 'Return To Customer'. All the
+        active address records would be displayed for agent to choose from.</li>
+    <li><strong>Return to Customer Contact:</strong> These contact values are fetched based on the selected 'Return
+        to Customer Address'.</li>
+    <li>To see the contact records related to selected 'Return to Customer Address': Go to the Sold To 'Customer
+        CMF record' &gt; Open the Related tab &gt; Customer Physical Addresses &gt; Open the selected 'Return To
+        Customer' address record &gt; Open the Related tab &gt; Physical Address Contacts. All the active contact
+        records would be displayed for agents to choose from.</li>
+</ul>
+<h2 data-nh-numbering="1.5. ">Collection Address &amp; Contact</h2>
+<ul>
+    <li><strong>Collection Address:</strong> Collection address and collection contact fields are only mandatory if
+        Freight Type is selected as IMF. Collection address values are determined and fetched similar to 'Return to
+        Customer Address' values.</li>
+    <li>The options are determined and populated from the 'Customer Physical Address' records which are related to
+        the selected Sold To CMF having address type as 'Collection'.</li>
+    <li>Agent has a search option to select Collection address from the dropdown, can search by Name, Country,
+        State &amp; Postal Code.</li>
+    <li>The addresses are also filtered based on the Geo value of the selected Return to Customer address.</li>
+    <li><strong>Collection Contact:</strong> These contacts are fetched based on the selected 'Collection Address'.</li>
+    <li>To see the contact records related to selected 'Collection Address': Go to the Sold To 'Customer CMF
+        record' &gt; Open the Related tab &gt; Customer Physical Addresses &gt; Open the selected 'Collection
+        Address' record &gt; Open the Related tab &gt; Physical Address Contacts. All the active contacts would be
+        displayed for agent to choose from.</li>
+</ul>
+<h2 data-nh-numbering="1.6. ">Freight Type (IMF / CRF)</h2>
+<ac:structured-macro ac:macro-id="10000000-0000-0000-0000-000000000008" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Matrix record prioritization applies to every matrix, not just Freight</ac:parameter>
+    <ac:rich-text-body>
+        <p>
+            Every matrix lookup in R4C (Freight Determination, Return Location, Incoterm, NPR Rule, Approval, MRB,
+            Geography-to-Queue, Pending, NCNR) resolves ties the same way: when more than one matrix record matches
+            the passed-in filter criteria, the record with the <strong>lowest
+            <code>Sales_Issue_Rule_Prioritization_Number__c</code> value wins</strong> (records with no value sort
+            last). This tie-breaking rule applies uniformly across every matrix lookup on this page and in Product
+            Validation, not only Freight Determination. Worth knowing before assuming "no matching record" when
+            actually a lower-priority record was silently preferred.
+        </p>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<p>
+    Once 'Return to Customer Address' is selected, Freight Type values are determined and populated from the
+    <strong>Sales Freight Determination Matrix</strong>. Freight Determination is fetched from the matrix based on
+    the following parameters, and the record from the matrix with the least priority number and matching criteria
+    is fetched:
+</p>
+<ul>
+    <li><strong>Service Type</strong></li>
+    <li><strong>Remedy Type</strong></li>
+    <li><strong>Country</strong></li>
+    <li><strong>Return Reason</strong></li>
+    <li><strong>Geography</strong></li>
+</ul>
+<p>
+    The values are populated by filtering the matrix records by passing Remedy, Service Type, Return Reason, Geo and
+    Country (RTC Address Country) fields to the matrix. If no record is found, we exclude Country and fetch the
+    record. If still no record is found, we exclude Return Reason and fetch the record.
+</p>
+<ul>
+    <li><strong>Freight Type – IMF (Intel Managed Freight):</strong>
+        <ul>
+            <li>If the customer selects the Freight Type as IMF, then all Collection Details fields are mandatory to
+                proceed further.</li>
+            <li>After selecting the Collection Address, the Collection Date field is enabled, and the date is auto
+                populated.</li>
+        </ul>
+    </li>
+    <li><strong>Freight Type – CRF (Customer Routed Freight):</strong>
+        <ul>
+            <li>If the user selects the Freight Type as CRF, the Collection Date, Return to Customer address &amp;
+                Return to Customer contact fields are mandatory to proceed further.</li>
+            <li><strong>Collection Date</strong> will auto-populate to the current day/case creation day as soon as
+                the user selects Freight Type as CRF, and all the succeeding days would be enabled for the customer
+                to choose from, including holidays and weekends.</li>
+        </ul>
+    </li>
+</ul>
+<ac:structured-macro ac:macro-id="10000000-0000-0000-0000-000000000004" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Note</ac:parameter>
+    <ac:rich-text-body>
+        <p>For IMF, <strong>'Collection Date'</strong> would be reset if the case is edited the next day.</p>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<ac:structured-macro ac:macro-id="10000000-0000-0000-0000-000000000005" ac:name="warning" ac:schema-version="1">
+    <ac:parameter ac:name="title">The "Geo Lead Time Matrix" / APAC-APJ day-count rule is not implemented</ac:parameter>
+    <ac:rich-text-body>
+        <p>
+            Several intake pages (Admin, Quality, and others) previously documented that Collection Date for IMF is
+            auto-populated from a "Geo Lead Time Matrix," with a specific APAC/APJ 5-day vs. other-regions 3-day
+            rule and a worked example. There is no Lead Time matrix in the system: R4C's matrix types are Required
+            Field, Return Location, Freight Determination, NPR Rule, Incoterm, Approval, MRB, Geography-to-Queue,
+            Pending, and NCNR, and no code anywhere references Lead Time, APAC, or APJ. This logic is defunct or
+            was never implemented as documented, and has been removed from this page rather than carried forward as
+            fact. Confirm with whoever owns Collection Date auto-population how it actually determines the date
+            today before documenting a replacement.
+        </p>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<h2 data-nh-numbering="1.7. ">Incoterm Determination</h2>
+<p>
+    When Freight Type is IMF, the Incoterm value is determined by checking for the exact matching record, passing
+    Remedy, Service Type, Return Reason, Geo and Country (Collection Address Country) fields to the <strong>Incoterm
+    Determination Matrix</strong>. If no record is found, we exclude Country and fetch the record. If still no
+    record is found, we exclude Return Reason and fetch the record.
+</p>
+<h2 data-nh-numbering="1.8. ">Return Location</h2>
+<ul>
+    <li>Return Location value is determined from the <strong>Sales Return Location Matrix</strong> using the
+        selected Remedy, Service Type, Sold To CMF, Bonded Zone Indicator, and Country (IMF – Collection Country,
+        CRF – RTC Country).</li>
+    <li>If no match is found with the above combination, Sold To CMF is excluded and the Return Location value is
+        fetched again.</li>
+    <li>If no match is found, it's a hard stop and the agent is notified by a relevant error toast message.</li>
+</ul>
+<h2 data-nh-numbering="1.9. ">Origin Bond (Bonded Zone)</h2>
+<ul>
+    <li>If the selected RTC/Collection Address belongs to India/China, only then can the user see the Origin Bonded
+        option in UI, and this value is selected as 'Non-Bonded' by default. Customer can select 'Bonded' according
+        to the requirements.</li>
+    <li>If the selected RTC/Collection Address does not belong to India/China, the Origin Bonded option is not
+        visible in UI and, by default, it is considered 'Non-Bonded'.</li>
+</ul>
+<h2 data-nh-numbering="1.10. ">LAR Country Rule</h2>
+<p>
+    If a user wants to select a Collection Address with an LAR country (LAR Countries: Brazil, Argentina, Chile,
+    Colombia, Costa Rica, Dominica, Dominican Rep, Ecuador, Mexico, Panama, Puerto Rico, El Salvador, Venezuela,
+    Guatemala, Peru), then the RTC Address should be selected as a United States country address. Otherwise, an
+    error message is displayed.
+</p>
+<h2 data-nh-numbering="1.11. ">Address &amp; Contact Add/Edit/Delete</h2>
+<ul>
+    <li>Agent has the option to add a new 'Return to Customer' or 'Collection' address and edit or delete previously
+        existing addresses by selecting the 'Add, Edit and Delete Address' option from either the 'Return to
+        Customer Address' or 'Collection Address' dropdowns respectively.</li>
+    <li>Customer has the option to add new 'Sold To Contact' or 'Ship To Contact' contacts and edit or delete
+        previously existing contacts by selecting the 'Add, Edit and Delete Contact' option from either the 'Sold To
+        Contact' or 'Ship To Contact' dropdowns respectively.</li>
+    <li>While creating a new contact record associated with the related address record, First Name, Email and Phone
+        Number are mandatory fields.</li>
+    <li>While creating a new address, C/O Name, Country, Street 1 and City are mandatory fields.</li>
+</ul>
+<h2 data-nh-numbering="1.12. ">Google Address Autocomplete API</h2>
+<ul>
+    <li>Whenever a user creates a new address or edits an existing address, based on the address entered at Street
+        1, predictions (Top 5) from the Google Address API are displayed.</li>
+    <li>Upon selection of any address from the dropdown, State, Street 2, City and Postal Code are populated.</li>
+    <li>When using this functionality for the 'Collection Address' field, the user can create/edit any address, but
+        if the address the user tries to save doesn't have the same Geo as the RTC address, the address is not
+        saved.</li>
+</ul>
+<h2 data-nh-numbering="1.13. ">China Contact Consent Confirmation</h2>
+<p>
+    While a user is creating a new contact for a China country address, either Collection Address or RTC Address,
+    the user should select the <strong>Consent Confirmation</strong> checkbox, otherwise the contact will not be
+    saved.
+</p>
+<h2 data-nh-numbering="1.14. ">Embargo Check (GTS Screening)</h2>
+<ac:structured-macro ac:macro-id="10000000-0000-0000-0000-000000000006" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Note: Embargo check (GTS Screening)</ac:parameter>
+    <ac:rich-text-body>
+        <ul>
+            <li>When the agent clicks the 'Next' button or 'Save for Later', Country values from Sold To, Ship To,
+                'Return to Customer' and 'Collection' addresses are sent to 'Embargo GTS Check' in SF to check if
+                the selected country is on the 'Embargo list'.</li>
+            <li>If a country is an embargo country, that respective address would be a hard stop and the agent would
+                be notified by an error toast message with details.</li>
+            <li>If all countries pass GTS screening, the agent is redirected to the next stage or case detail page
+                respectively.</li>
+        </ul>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<ac:structured-macro ac:macro-id="10000000-0000-0000-0000-000000000007" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Check per Service Type</ac:parameter>
+    <ac:rich-text-body>
+        <p>
+            Some intake pages describe this as a single combined check across all five address types, while others
+            describe a two-step flow (an API check followed by a separate local-database check). Confirm the exact
+            behavior on the specific intake page rather than assuming it here.
+        </p>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<h2 data-nh-numbering="1.15. ">Where this is used</h2>
+<p>
+    Link to this page from the Request Header Details / Collection Details sections of every intake page instead of
+    duplicating it. Pages that link here: Admin Intake, Exception Intake, Quality Intake, Stock Rotation Intake,
+    Technical Intake, Miscellaneous Intake. Each intake page keeps its own
+    Service-Type-specific content (Remedy dropdown options, Return Reason, CIRS Number rules, and any
+    Service-Type-specific sub-flows) inline.
+</p>
+<h2 data-nh-numbering="1.16. ">Revisions</h2>
+<table class="wrapped">
+    <tbody>
+        <tr>
+            <td><p><strong>Version</strong></p></td>
+            <td><p><strong>Date</strong></p></td>
+            <td><p><strong>Amendment</strong></p></td>
+        </tr>
+        <tr>
+            <td><p>1.0</p></td>
+            <td><p>18/07/2026</p></td>
+            <td>
+                <p>
+                    Initial release. Consolidated from the duplicated Sold To/Ship To/Address/Collection Details
+                    sections in Admin, Exception, Quality, Stock Rotation, Technical and Miscellaneous intake pages
+                    into one reusable page.
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td><p>1.1</p></td>
+            <td><p>18/07/2026</p></td>
+            <td>
+                <p>
+                    Removed the "Geo Lead Time Matrix" / APAC-APJ Collection Date day-count rule. It is not
+                    implemented anywhere in the current system. Exception Intake's page had flagged this internally
+                    as no longer called, and that flag was correct.
+                </p>
+            </td>
+        </tr>
+    </tbody>
+</table>
