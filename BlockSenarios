@@ -1,0 +1,457 @@
+<h2 data-nh-numbering="1.1. ">
+    <ac:structured-macro ac:macro-id="00000000-0000-0000-0000-000000000001" ac:name="toc" ac:schema-version="1">
+        <ac:parameter ac:name="indent">10px</ac:parameter>
+    </ac:structured-macro>
+</h2>
+<h2 data-nh-numbering="1.2. ">Overview</h2>
+<p>
+    This page documents the SAP Block checks (Export Compliance, Order, Billing and Delivery blocks) that R4C
+    evaluates during Case creation and Case edit, for every party level involved in a Return for Credit case: Sold To,
+    Payer and Ship To.
+</p>
+<p>
+    <strong>Purpose:</strong> Give Developers and QA a single, accurate reference for which block fields are checked,
+    at which party/level, what values are treated as hard stops, and how the system behaves differently between Case
+    creation and Case edit.
+</p>
+<ac:structured-macro ac:macro-id="00000000-0000-0000-0000-000000000002" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Reusable page: link here, do not copy</ac:parameter>
+    <ac:rich-text-body>
+        <p>
+            This section used to be duplicated across the Admin, Exception, Quality, Stock Rotation and Technical
+            intake pages. It is now maintained in one place. Intake pages should link to this page for block logic
+            instead of repeating it: if a block rule changes, it only needs to be updated here.
+        </p>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<h2 data-nh-numbering="1.3. ">Quick Reference: Block Values</h2>
+<table class="wrapped">
+    <tbody>
+        <tr>
+            <td>
+                <p><strong>Level</strong></p>
+            </td>
+            <td>
+                <p><strong>Role Code</strong></p>
+            </td>
+            <td>
+                <p><strong>Block Type</strong></p>
+            </td>
+            <td>
+                <p><strong>Hard-Stop Value(s)</strong></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Sold To CMF (Account)</p>
+            </td>
+            <td>
+                <p>AG</p>
+            </td>
+            <td>
+                <p>Export Compliance Block (ECB)</p>
+            </td>
+            <td>
+                <p>Checkbox = checked</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Sold To CMF</p>
+            </td>
+            <td>
+                <p>AG</p>
+            </td>
+            <td>
+                <p>Central Order Block</p>
+            </td>
+            <td>
+                <p>'01', '02', '03', '99'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Sold To CMF</p>
+            </td>
+            <td>
+                <p>AG</p>
+            </td>
+            <td>
+                <p>Central Billing Block</p>
+            </td>
+            <td>
+                <p>'99', '12'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Sold To CMF</p>
+            </td>
+            <td>
+                <p>AG</p>
+            </td>
+            <td>
+                <p>Central Delivery Block</p>
+            </td>
+            <td>
+                <p>'99'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Sold To Sales Area</p>
+            </td>
+            <td>
+                <p>AG</p>
+            </td>
+            <td>
+                <p>Order Block</p>
+            </td>
+            <td>
+                <p>'01', '02', '03', '99'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Sold To Sales Area</p>
+            </td>
+            <td>
+                <p>AG</p>
+            </td>
+            <td>
+                <p>Billing Block</p>
+            </td>
+            <td>
+                <p>'99', '12'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Sold To Sales Area</p>
+            </td>
+            <td>
+                <p>AG</p>
+            </td>
+            <td>
+                <p>Delivery Block</p>
+            </td>
+            <td>
+                <p>'99'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Payer CMF</p>
+            </td>
+            <td>
+                <p>RG</p>
+            </td>
+            <td>
+                <p>Central Order Block</p>
+            </td>
+            <td>
+                <p>'02'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Payer CMF</p>
+            </td>
+            <td>
+                <p>RG</p>
+            </td>
+            <td>
+                <p>Central Billing Block</p>
+            </td>
+            <td>
+                <p>'08', '12', '99'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Payer Sales Area</p>
+            </td>
+            <td>
+                <p>RG</p>
+            </td>
+            <td>
+                <p>Order Block</p>
+            </td>
+            <td>
+                <p>'02'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Payer Sales Area</p>
+            </td>
+            <td>
+                <p>RG</p>
+            </td>
+            <td>
+                <p>Billing Block</p>
+            </td>
+            <td>
+                <p>'08', '12', '99'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Ship To CMF</p>
+            </td>
+            <td>
+                <p>WE</p>
+            </td>
+            <td>
+                <p>Order Block</p>
+            </td>
+            <td>
+                <p>'02'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Ship To CMF</p>
+            </td>
+            <td>
+                <p>WE</p>
+            </td>
+            <td>
+                <p>Delivery Block</p>
+            </td>
+            <td>
+                <p>'99'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Ship To Sales Area</p>
+            </td>
+            <td>
+                <p>WE</p>
+            </td>
+            <td>
+                <p>Order Block</p>
+            </td>
+            <td>
+                <p>'02'</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Ship To Sales Area</p>
+            </td>
+            <td>
+                <p>WE</p>
+            </td>
+            <td>
+                <p>Delivery Block</p>
+            </td>
+            <td>
+                <p>'99'</p>
+            </td>
+        </tr>
+    </tbody>
+</table>
+<ac:structured-macro ac:macro-id="00000000-0000-0000-0000-000000000003" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Object / Field API names: TBD</ac:parameter>
+
+</ac:structured-macro>
+<h2 data-nh-numbering="1.4. ">Export Compliance Block</h2>
+<ul>
+    <li>
+        <strong>How to check:</strong> Account record &gt; Details section &gt; Compliance information &gt; "Export
+        Compliance Block" checkbox.
+    </li>
+    <li>Export Compliance Block (ECB) is checked only at the Sold To CMF level.</li>
+    <li>
+        <strong>Case creation:</strong> if ECB is set, clicking "New R4C" displays an error and the case cannot be
+        created. Hard stop.
+    </li>
+    <li>
+        <strong>Case edit:</strong> if ECB is set, clicking "Edit" displays an error and the case cannot be edited.
+        Hard stop.
+    </li>
+</ul>
+<h2 data-nh-numbering="1.5. ">Sold To Block Determination</h2>
+<ul>
+    <li>
+        From the Account record, open the related Business Account Group (BAG) record via 'Customer BAG Account
+        Associations'.
+    </li>
+    <li>
+        From the BAG record's Related tab, open 'Customer BAG CMF Associations' to see the related Customer CMF
+        records.
+    </li>
+    <li>
+        Open a Customer CMF record and check its related 'Customer Partners (Partner CMF)' records for role code.
+    </li>
+    <li>
+        A Customer CMF record is a valid Sold To only if it has a related Customer Partner record with role code
+        <strong>AG</strong>.
+    </li>
+</ul>
+<h3 data-nh-numbering="1.5.1. ">Sold To CMF Blocks</h3>
+<ul>
+    <li>
+        Three SAP blocks apply at CMF level: <strong>Central Order Block</strong>, <strong>Central Billing
+            Block</strong>, <strong>Central Delivery Block</strong>.
+    </li>
+    <li>
+        If no CMF-level block is present, blocks are checked directly at Sales Area level instead (see below). CMF
+        and Sales Area blocks are not both checked when CMF is already clear.
+    </li>
+    <li>Central Order Block = '01', '02', '03' or '99' &rarr; hard stop, error toast with block details.</li>
+    <li>Central Billing Block = '99' or '12' &rarr; hard stop, error toast with block details.</li>
+    <li>Central Delivery Block = '99' &rarr; hard stop, error toast with block details.</li>
+</ul>
+<ac:structured-macro ac:macro-id="00000000-0000-0000-0000-000000000004" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Note</ac:parameter>
+    <ac:rich-text-body>
+        <ul>
+            <li>
+                Case creation: a Sold To CMF with any of the above blocks is excluded from the Sold To selection
+                list entirely (it never becomes visible to select).
+            </li>
+            <li>
+                Case edit: if any of the above blocks is present, clicking "Edit" shows an error toast and the case
+                cannot be edited.
+            </li>
+        </ul>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<h3 data-nh-numbering="1.5.2. ">Sold To Sales Area Blocks</h3>
+<ul>
+    <li>
+        Based on the selected Sold To CMF, fetch the related Customer Sales Area records (CMF &gt; Related &gt;
+        Customer Sales Area).
+    </li>
+    <li>
+        The same three block types apply at Sales Area level: Order Block, Billing Block, Delivery Block, checked
+        only when no CMF-level block was found.
+    </li>
+    <li>Order Block = '01', '02', '03' or '99' &rarr; hard stop, error toast with block details.</li>
+    <li>Billing Block = '99' or '12' &rarr; hard stop, error toast with block details.</li>
+    <li>Delivery Block = '99' &rarr; hard stop, error toast with block details.</li>
+</ul>
+<ac:structured-macro ac:macro-id="00000000-0000-0000-0000-000000000005" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Note</ac:parameter>
+    <ac:rich-text-body>
+        <ul>
+            <li>
+                Case creation: a Sales Area with any of the above blocks is excluded from the Sales Area selection
+                list.
+            </li>
+            <li>
+                Case edit: if any of the above blocks is present, clicking "Edit" shows an error toast and the case
+                cannot be edited.
+            </li>
+        </ul>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<h2 data-nh-numbering="1.6. ">Payer Blocks</h2>
+<ul>
+    <li>
+        Based on the selected Sold To and Sales Area, the Payer is the related Customer Partner record with role
+        code <strong>RG</strong>.
+    </li>
+    <li>
+        If no Payer record is found, it is a hard stop and the Agent/Portal user is notified by an error toast.
+    </li>
+    <li>
+        If at least one active Payer exists for the Sold To/Sales Area combination, its CMF and Sales Area records
+        are checked for the blocks below.
+    </li>
+</ul>
+<h3 data-nh-numbering="1.6.1. ">Payer CMF Blocks</h3>
+<ul>
+    <li>Central Order Block = '02' &rarr; hard stop, error message with block details.</li>
+    <li>Central Billing Block = '08', '12' or '99' &rarr; hard stop, error toast with block details.</li>
+</ul>
+<h3 data-nh-numbering="1.6.2. ">Payer Sales Area Blocks</h3>
+<ul>
+    <li>Order Block = '02' &rarr; hard stop, error message with block details.</li>
+    <li>Billing Block = '08', '12' or '99' &rarr; hard stop, error toast with block details.</li>
+</ul>
+<ac:structured-macro ac:macro-id="00000000-0000-0000-0000-000000000006" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Note</ac:parameter>
+    <ac:rich-text-body>
+        <ul>
+            <li>
+                Case creation: if any Payer-level block (CMF or Sales Area) is present, selecting the related Sold
+                To triggers an error toast.
+            </li>
+            <li>
+                Case edit: if any Payer-level block is present, clicking "Edit" shows an error toast and the case
+                cannot be edited.
+            </li>
+        </ul>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<h2 data-nh-numbering="1.7. ">Ship To Blocks</h2>
+<ul>
+    <li>
+        If no hard block exists at the Payer level, Ship To options are populated from Customer CMF records related
+        to the selected Sold To/Sales Area with role code <strong>WE</strong>.
+    </li>
+</ul>
+<h3 data-nh-numbering="1.7.1. ">Ship To CMF Blocks</h3>
+<ul>
+    <li>Order Block = '02' &rarr; hard stop, error message with block details.</li>
+    <li>Delivery Block = '99' &rarr; hard stop, error toast with block details.</li>
+</ul>
+<h3 data-nh-numbering="1.7.2. ">Ship To Sales Area Blocks</h3>
+<ul>
+    <li>Order Block = '02' &rarr; hard stop, error message with block details.</li>
+    <li>Delivery Block = '99' &rarr; hard stop, error toast with block details.</li>
+</ul>
+<ac:structured-macro ac:macro-id="00000000-0000-0000-0000-000000000007" ac:name="info" ac:schema-version="1">
+    <ac:parameter ac:name="title">Note</ac:parameter>
+    <ac:rich-text-body>
+        <ul>
+            <li>
+                Case creation: a Ship To CMF/Sales Area with any of the above blocks is excluded from the Ship To
+                selection list.
+            </li>
+            <li>
+                Case edit: if any of the above blocks is present, clicking "Edit" shows an error toast and the case
+                cannot be edited.
+            </li>
+        </ul>
+    </ac:rich-text-body>
+</ac:structured-macro>
+<h2 data-nh-numbering="1.8. ">Where this is used</h2>
+<p>
+    Link to this page from the Block Scenarios section of every intake page instead of duplicating it. Pages that
+    link here: Admin Intake, Exception Intake, Quality Intake, Stock Rotation Intake, Technical Intake.
+</p>
+<h2 data-nh-numbering="1.9. ">Revisions</h2>
+<table class="wrapped">
+    <tbody>
+        <tr>
+            <td>
+                <p><strong>Version</strong></p>
+            </td>
+            <td>
+                <p><strong>Date</strong></p>
+            </td>
+            <td>
+                <p><strong>Amendment</strong></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>1.0</p>
+            </td>
+            <td>
+                <p>17/07/2026</p>
+            </td>
+            <td>
+                <p>
+                    Initial release. Consolidated from the duplicated "SAP Blocks scenarios" sections in Admin,
+                    Exception, Quality, Stock Rotation and Technical intake pages into one reusable page.
+                </p>
+            </td>
+        </tr>
+    </tbody>
+</table>
