@@ -1,0 +1,841 @@
+import { LightningElement, track, api } from "lwc";
+import { NavigationMixin } from "lightning/navigation";
+import LightningConfirm from "lightning/confirm";
+import getCurrentContact from "@salesforce/apex/R4C_AG_CaseHeader_Controller.getCurrentContact";
+import saveForLater from "@salesforce/apex/R4C_AG_ViewSummaryController.saveCase";
+import getServicetype from "@salesforce/apex/R4C_AG_CaseHeader_Controller.getServicetype";
+import getLoginUserInfo from "@salesforce/apex/R4C_AG_CaseHeader_Controller.returnLoginUserInfo";
+import { ShowToastEvent } from "lightning/platformShowToastEvent"; // Show Toast Message
+// Importing custom labels
+import r4c_CustomLabels from "c/r4c_CustomLabels";
+import { StringFormatter } from 'c/r4c_stringFormatter';
+import {
+  setCaseTypeDetails, doEmbargoCheck
+} from "c/r4c_AG_Utill";
+import { getUCDtoggle } from "c/iCS_UCD_getMetadata"; // Getting Toggle Value - Shipra
+
+export default class R4c_AG_CaseHeader extends NavigationMixin(LightningElement) {
+  contactdetails;
+  servicetyperec;
+  casemode = "Create";
+  caseType = {
+    isTechnicalService() {
+      return this.serviceType === "Technical";
+    },
+
+    isStockRotation() {
+      return this.serviceType === "Stock Rotation";
+    },
+    isQualityService() {
+      return this.serviceType === "Quality"; //adding service type as quality  -- TWC4621-1359 -- Accellor -- 29th may 2023
+    },
+    isExceptionIntake() {
+      return this.serviceType == "Exception"; // adding service type as Exception 
+    },
+    isAdminService() {
+      return this.serviceType == "Admin";
+    },
+    isMiscellaneousService() {
+      return this.serviceType == "Miscellaneous";
+    }
+  }; //TWC4621-811 -- Furqan -- holds info on case type , remedy,service type
+  collectremedyText;
+  isLoading = false;
+  navigatetoreturnreq = false;
+  caseRecord; //added by Manohar for storing case record
+  poSearchWithMatrixData; //added by Manohar for storing line items data
+  collectionShippingDetails; //added by Manohar for storing request header details
+  collectiondetailsclass = "slds-section slds-is-open";
+  shippingdetailsclass = "slds-section slds-is-open";
+  get isShippingDetailsOpen() {
+    return this.shippingdetailsclass.includes('open');
+  }
+  get isCollectionDetailsOpen() {
+    return this.collectiondetailsclass.includes('open');
+  }
+  get isDescriptionDetailsOpen() {
+    return this.casedescriptiondetailsclass.includes('open');
+  }
+  get getCustomerPriceMaskValue() {
+    if (this?.collectionShippingDetails && this?.collectionShippingDetails?.priceMasking === true || this.isUserPriceMasked || this?.collectionShippingDetails?.addressPriceMask == true) {
+      return true;
+    }
+    return false;
+  }
+  casedescriptiondetailsclass = "slds-section slds-is-open";
+  embargoBlockCountry = ""; //TWC4621-909 -- Manohar -- 12-01-2023
+  embargoBlockedCountriesCount = 0; //TWC4621-909 -- Manohar -- 12-01-2023
+  labels = r4c_CustomLabels.labels; //Assigning custom labels to variable
+  isJustificationRequired = true;
+  @api recordId;
+  @api isCallingFromField;
+  @api serviceType;
+  @api isPortal = false; // added as part of portal -- Furqan
+  @track disableNextButton = true;
+  @track disableSavenSummary = true;
+  @track returnRequestDetails; // Store the value of returnRequestDetails
+  @track salesarea;
+  @track collectionDetails;
+  @track hideBackButton = false;
+  @track hideNextButton = true;
+  @track hidecancelButton = true;
+  @track hideSavenSummaryButton = false;
+  @track showviewsummary = false;
+  @track hideEdit = false;
+  @track hideSubmit = false;
+  @track showPOsearch = false;
+  @track hidecollectionNshippingDetails = true;
+  @track error;
+  @track data;
+  @track poDetails;
+  isUserPriceMasked = false;
+  isEmulatedUser = false; //TWC4621-2010 -- Manohar -- If the login user is Emulated User, Restrict the Save functionality
+  remedyValue;
+  issueRequestRec;
+  returnreasonText;
+  internalCustomerFlow = false; //added for Miscellaneous Intake
+  showWarningMessage = false;// Added for rendering warning message on page load
+  hasRendered =false;// Added for rendering warning message on page load
+  get caseHeader() {
+    return this?.caseRecord?.CaseNumber || this.labels.New_R4C_Case;
+  }
+  // get isTINPRView() { //Bindhuthis.remedyValue == this.genericMessages.Credit_NPR   // //NPR Changes & Exchange Intake - Samuel
+  //   return this.remedyValue == this.genericMessages.Credit_NPR;
+  // }
+  get disableSaveForLater() {
+    if (this.isEmulatedUser && (this.isPortal === true || this.isPortal === "true")) { //TWC4621-2010 -- Manohar -- If the login user is Emulated User, Restrict the Save functionality
+      return true;
+    }
+    return this.disableNextButton;
+  }
+  isUcdOff; // TWC777-2688 -  CIM EOL - PO History API Changes - Shipra
+  connectedCallback() {
+    if (this.isCallingFromField === true) {
+      this.dispathEventToAura();
+    }
+    this.getServicetype();
+    this.getUCDValue(); // TWC777-2688 -  CIM EOL - PO History API Changes - Shipra
+    this.getCurrentContacts();
+    if (this.isPortal === true || this.isPortal === "true") { //TWC4621-2010 -- Manohar -- If the login user is Emulated User, Restrict the Save functionality
+      getLoginUserInfo()
+        .then((result) => {
+          this.isEmulatedUser = result;
+        })
+        .catch((error) => {
+          console.error(error);
+          this.showToast(this?.labels?.Error_Title, this?.labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3040
+        });
+    }
+  }
+  renderedCallback(){      
+    if(!this.hasRendered){
+      const sectionElement = this.template.querySelector('.caseHeader');
+      if(sectionElement){
+        setTimeout(() => {
+               this.hasRendered=true;
+              this.showWarningMessage = true;
+            }, 1000)
+      }
+    }
+  }
+  // TWC777-2688 -  CIM EOL - PO History API Changes - Shipra
+  async getUCDValue() {
+    this.isUcdOff = await getUCDtoggle();
+    console.log(' Ucd Toggle value ', this.isUcdOff);
+  }
+
+
+  //Start -- TWC4517-117 -- Ravi -- 01-08-22 -- apex method to get current contact
+  getCurrentContacts() {
+    getCurrentContact({ recordId: this.recordId })
+      .then((result) => {
+        this.data = result.contactRec;
+        this.genericMessages = result.genericMessages;
+        this.contactdetails = this.data;
+        //to determine internal customer flow
+        if (this.isPortal == true || this.isPortal == 'true') {
+           this.isUserPriceMasked = this.contactdetails?.R4C_Customer_Price_Mask__c;
+        }
+        if (!this.contactdetails?.Name && this.serviceType == "Miscellaneous") {
+          this.internalCustomerFlow = true;
+        }
+        this.navigatetoreturnreq = true;
+      })
+      .catch((error) => {
+        this.data = undefined;
+        this.showToast(this?.labels?.Error_Title, this?.labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3040
+      });
+  }
+  //End -- TWC4517-117 -- Ravi -- 01-08-22 -- apex method to get current contact
+
+  //Start -- TWC4517-117 -- Ravi -- 01-08-22 -- apex method to get service type record
+  getServicetype() {
+    getServicetype({ servicetype: this.serviceType })
+      .then((result) => {
+        this.servicetyperec = result;
+      })
+      .catch((error) => {
+        console.error(error);
+        this.showToast(this?.labels?.Error_Title, this?.labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3040
+      });
+  }
+  //End -- TWC4517-117 -- Ravi -- 01-08-22 -- apex method to get service type record
+
+  //Start -- TWC4517-117 -- Ravi -- 01-08-22 -- handling next button logic
+  async goNext() {
+    this.isLoading = true;
+    let gtsResponse;
+    if (!(this.caseType.isTechnicalExchange() || this.caseType.isNPRCredit())) {
+      gtsResponse = await doEmbargoCheck(this, false, this.collectionShippingDetails);//await this.EmbargoHandler(); //TWC4621-909 -- Manohar -- 12-01-2023 -- Embargo check with API
+    }
+    console.log('172embargo',JSON.stringify(gtsResponse))
+    if ((gtsResponse && gtsResponse?.isEmbargo === false) || this.caseType.isNPRCredit() || this.caseType.isTechnicalExchange()) {
+      // proceeding with PO search to get line items
+      this.headerDataHandler();
+      this.hideBackButton = false;
+      this.hideNextButton = false;
+      this.hidecancelButton = false;
+      this.shippingdetailsclass = "slds-section slds-is-close";
+      this.collectiondetailsclass = "slds-section slds-is-close";
+      this.showPOsearch = true;
+      //adding for accessablity focus on section header
+      setTimeout(() => {
+        const poHistorySection = this.refs.poHistorySection;
+        if (poHistorySection) {
+
+          poHistorySection.focus();
+        }
+      }, 1)
+
+      this.hideSavenSummaryButton = true;
+      this.disableSavenSummary = true;
+    } else if (gtsResponse && gtsResponse?.isEmbargo === true) {
+      // if there is any blocked countries showing toast event
+      let embargoErrorMessage =
+        gtsResponse?.embargoBlockedCountriesCount > 1
+          ? StringFormatter.format(this?.labels?.Countries_are_in_Block, gtsResponse?.embargoBlockCountry.join(", "))
+          : StringFormatter.format(this?.labels?.Country_is_in_Block, gtsResponse?.embargoBlockCountry[0]);
+      this.showToast(this.labels.Error_Title, embargoErrorMessage, "error");
+    }
+    this.isLoading = false;
+  }
+
+  //End -- TWC4517-117 -- Ravi -- 01-08-22 -- handling next button logic
+
+  // Start --- User Story Number TWC4621-211 --- Tushar --- This method is used for handling Save for later ,Here we are calling Apex class and create the case record with draft status
+  async saveForLaterHandler() {
+    this.isLoading = true;
+    let gtsResponse;
+    if (!(this.caseType.isTechnicalExchange())) { //this.caseType.isTechnicalNPRCredit() || Samuel NPR CHanges
+      gtsResponse = await doEmbargoCheck(this, false, this.collectionShippingDetails);//await this.EmbargoHandler(); //TWC4621-909 -- Manohar -- 12-01-2023 -- Embargo check
+    }
+
+    if ((gtsResponse && gtsResponse?.isEmbargo === false) || (this.caseType.isTechnicalNPRCredit() || this.caseType.isTechnicalExchange())) {
+      // saving a case if there is no blocked countries
+      this.isLoading = false;
+      LightningConfirm.open({
+        message: this.labels.Save_for_later_error_message,
+        variant: this.labels.Success_Message,
+        label: this.labels.Confirm_Message
+        // setting theme would have no effect
+      }).then((data) => {
+        if (data) {
+          let emptyList = []; // We are not saving the line items,So this variable store empty array
+          this.headerDataHandler();
+          // Deleting Sales area and Sold CMF from collection and shipping details array
+          delete this.collectionShippingDetails["sales_Area__c"];
+          delete this.collectionShippingDetails["Sold_CMF__C"];
+          //delete this.collectionShippingDetails["contactDetails"];
+          let recordTypeName = this.genericMessages.Case_Stock_Rotation;
+          if (this.caseType.isTechnicalService()) {
+            recordTypeName = this.genericMessages.Technical_Intake_label;
+          } else if (this.caseType.isQualityService()) {
+            recordTypeName = this.genericMessages.Quality_Intake; //Manohar---Quality Intake --TWC4621-1359
+          } else if (this.caseType.isAdminService()) {
+            recordTypeName = this.genericMessages.Admin_Intake;
+          } else if (this.caseType.isExceptionService()) {
+            recordTypeName = this.genericMessages.Exception_Intake;
+          } else if (this.caseType.isMiscellaneousService()) {
+            recordTypeName = this.genericMessages.Miscellaneous_Intake; //to be updated in generic messages
+          }
+
+          let returnReqDetailsWrapper = {
+            customerReturnRequest: this.collectionShippingDetails, //collection and shipping details
+            customerReturnRequestLineWrapperList: emptyList, //selected line item details
+            caserec: this.caserec, //case record
+            casemode: this.casemode, // case mode edit or create
+            caserecTypeName: recordTypeName,
+            isPortal: this.isPortal, // BUG Fix - Portal
+            contactDetails: this.contactdetails,  //Accellor -- 20/03/2023 -- TWC4621-1123 && TWC4621-1124 added contact details to the wrapper and those values are used in case insertion -- as part of data model changes 
+            remedyDetails: this.collectionShippingDetails?.remedyDetails,
+             // Manohar
+            comments: this.collectionShippingDetails?.comments
+          };
+          if (!this.contactdetails?.Id) {//added for Internal Customer flow
+            delete returnReqDetailsWrapper["contactDetails"];
+            delete returnReqDetailsWrapper.customerReturnRequest["contactDetails"];
+          }
+          this.isLoading = true;
+
+
+          // Call saveForLater Apex class method
+          console.log('253',JSON.stringify(returnReqDetailsWrapper))
+          saveForLater({
+            returnReqDetails: returnReqDetailsWrapper,
+            caseStatus: this.genericMessages.Case_Status_Open_Unsubmitted
+          })
+            .then((result) => {
+              this.isLoading = false;
+
+              if (result.errorMessageOfDmlOperation) {
+                    console.error('Apex Error:', result.errorMessageOfDmlOperation);
+                    this.showToast(this.labels.Error_Title, this?.labels?.generic_error_msg, "error");
+                    return;
+                }
+
+              if (this.isPortal == true || this.isPortal == "true") {
+                this[NavigationMixin.Navigate]({
+                  type: "standard__recordPage",
+                  attributes: {
+                    recordId: result.insertR4CCaseRes.Id,
+                    objectApiName: "Case",
+                    actionName: "view"
+                  }
+                });
+                return;
+              }
+              let pagetab;
+              let parenttab;
+              this.invokeWorkspaceAPI("getFocusedTabInfo").then(
+                (focusedTab) => {
+                  if (focusedTab.isSubtab) {
+                    pagetab = focusedTab.tabId;
+                    parenttab = focusedTab.parentTabId;
+                    this.invokeWorkspaceAPI("openSubtab", {
+                      parentTabId: parenttab,
+                      recordId: result.insertR4CCaseRes.Id,
+                      focus: true
+                    }).then((result) => {
+                      this.invokeWorkspaceAPI("closeTab", {
+                        tabId: pagetab
+                      }).then((result) => {
+                        this.invokeWorkspaceAPI("refreshTab", {
+                          tabId: parenttab,
+                          includeAllSubtabs: true
+                        });
+                      });
+                    });
+                  } else {
+                    let tempFocustab = focusedTab.tabId;
+                    this.invokeWorkspaceAPI("openTab", {
+                      recordId: result.insertR4CCaseRes.Id,
+                      focus: true
+                    }).then((result) => {
+                      this.invokeWorkspaceAPI("closeTab", {
+                        tabId: tempFocustab
+                      });
+                    });
+                  }
+                }
+              );
+            })
+            .catch((error) => {
+              console.error("error", error);
+              this.showToast(this?.labels?.Error_Title, this?.labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3040
+              this.isLoading = false;
+            });
+        }
+      });
+    } else if (gtsResponse && gtsResponse?.isEmbargo === true) {
+      // if there is any blocked countries showing toast event
+      let embargoErrorMessage =
+        gtsResponse?.embargoBlockedCountriesCount > 1
+          ? StringFormatter.format(this?.labels?.Countries_are_in_Block, gtsResponse?.embargoBlockCountry.join(", "))
+          : StringFormatter.format(this?.labels?.Country_is_in_Block, gtsResponse?.embargoBlockCountry[0]);
+      this.showToast(this.labels.Error_Title, embargoErrorMessage, "error");
+    }
+    this.isLoading = false;
+  }
+  // End --- User Story Number TWC4621-211 --- Tushar --- This method is used for handling Save for later ,Here we are calling Apex class and create the case record with draft status
+  get disableButton() {
+    //console.log('300')
+  }
+
+  //Start -- TWC4517-117 -- Ravi -- 01-08-22 -- helper method for preparing shipping and collection details
+  headerDataHandler() {
+    this.collectionShippingDetails.contactDetails = this.contactdetails; //Accellor -- 10/03/2023 -- TWC4621-1123 && TWC4621-1124 added contact details to the wrapper and those values are used in case insertion -- as part of data model changes 
+    this.collectionShippingDetails = {
+      ...this.collectionShippingDetails,
+      ...this.collectionDetails
+    };
+    this.salesarea = this.collectionShippingDetails.sales_Area__c;
+
+    let caseExtraDetails = {
+      Sales_Issue_Service_Type__c: this.servicetyperec.Id
+    };
+    this.collectionShippingDetails = {
+      ...this.collectionShippingDetails,
+      ...caseExtraDetails
+    };
+    //TWC4621-811 -- Furqan
+    this.caseType = setCaseTypeDetails(this.collectremedyText, this.servicetyperec.Name, this.collectionShippingDetails?.salesIssueReturnReason);
+  }
+  //End -- TWC4517-117 -- Ravi -- 01-08-22 -- helper method for preparing shipping and collection details
+
+  //Start -- TWC4517-117 -- Ravi -- 01-08-22 -- handling back button logic
+  handlegoBack() {
+    this.hidecollectionNshippingDetails = true;
+    this.showPOsearch = false;
+    this.hideBackButton = false;
+    this.hideSavenSummaryButton = false;
+    this.hideNextButton = true;
+    let caseHeader = this.template.querySelector(".caseHeader");
+    caseHeader.style.display = "block";
+    if (caseHeader) {
+      this.disableNextButton = false;
+    } else {
+      this.disableNextButton = true;
+    }
+    let poSearch = this.template.querySelector(".poSearch");
+    poSearch.style.display = "none";
+  }
+  //End -- TWC4517-117 -- Ravi -- 01-08-22 -- handling back button logic
+
+  //Tushar Garg---TWC4621-19 -- Store Values of returnRequestDetails(shipping details)
+  handleReturnRequest(event) {
+    this.returnRequestDetails = event.detail;
+    this.collectionShippingDetails = event.detail;    
+    if (
+      this.returnRequestDetails &&
+      JSON.stringify(this.returnRequestDetails) !== "{}" &&
+      ((this.collectionDetails &&
+        JSON.stringify(this.collectionDetails) !== "{}") || this.returnRequestDetails.remedyText == this.genericMessages.Credit_NPR)
+    ) {
+      this.disableNextButton = false;      
+    } else {
+      this.showPOsearch = false;
+      let pocmp;
+      pocmp = this.template.querySelector("c-r4c_-a-g_-p-o-search");
+      if (pocmp) {
+        pocmp.handleReset();
+      }
+      this.hidecancelButton = true;
+      this.hideNextButton = true;
+      this.disableNextButton = true;
+    }
+    // TWC4621-1395 - Furqan - refreshing value of case type on remedy change
+    this.caseType = setCaseTypeDetails(this.remedyValue, this.servicetyperec.Name, this.returnreasonText);
+    this.collectremedyText = this.collectionShippingDetails.remedyText;
+  }
+
+  //handling event which is sent by collection details component
+  handleChangeCollectioninput(event) {
+    this.collectionDetails = event.detail; //09-28-2022    
+    if (
+      this.collectionDetails &&
+      JSON.stringify(this.collectionDetails) !== "{}" &&
+      this.returnRequestDetails &&
+      JSON.stringify(this.returnRequestDetails) !== "{}"
+    ) {
+      this.disableNextButton = false;
+      this.collectionShippingDetails = {
+        ...this.collectionShippingDetails,
+        ...this.collectionDetails
+      }; //added by manohar on feb 20th
+    }/*else if (this.returnRequestDetails.remedyText == this.genericMessages.Credit_NPR) { //added by saiRam to fix Next button disable issue on NPR Credit //NPR Changes & Exchange Intake - Samuel
+      this.disableNextButton = false;
+    }*/else {
+
+      this.showPOsearch = false;
+      let pocmp;
+      pocmp = this.template.querySelector("c-r4c_-a-g_-p-o-search");
+      if (pocmp) {
+        pocmp.handleReset();
+      }
+      this.hidecancelButton = true;
+      this.hideNextButton = true;
+      this.disableNextButton = true;
+    }
+
+  }
+
+  // Start --- User Story Number TWC4621-54,72 --- Manohar --- This method is used for handling event which is coming from child(r4c_AG_POSearch)
+  handlecaselineItems(event) {
+    this.caseRecord = event.detail.caserecord;
+    this.poSearchWithMatrixData = event.detail.posearchmatrixdata;
+    if (
+      event.detail.caserecord !== null &&
+      event.detail.caserecord !== undefined
+    ) {
+      let temp = this.template.querySelector(".caseHeader");
+      temp.style.display = "none";
+      this.hideBackButton = false;
+      this.hideNextButton = false;
+      this.hideEdit = true;
+      this.hideSubmit = true;
+      this.showviewsummary = true;
+    }
+  }
+  // End --- User Story Number TWC4621-54,72 --- Manohar --- This method is used for handling event which is coming from child(r4c_AG_POSearch)
+  crrdetails = {};
+
+  handleChangePO(event) {
+    this.poDetails = event.detail;
+    if (this.poDetails) {
+      this.disableSavenSummary = false;
+    } else {
+      this.disableSavenSummary = true;
+    }
+  }
+
+  //event to clear collection details values
+  handleCollectionClear(event) {
+    //if (!this.caseType.isTechnicalNPRCredit()) { //NPR Changes - Samuel
+      this.template.querySelector("c-r4c_-a-g_-collection-details").clear();
+    //}
+  }
+
+  //event handle to trigger collection details
+  handleReturnReason(event) {
+    let shippingResponseData = event.detail.shippingDetails;
+    this.returnreasonText = shippingResponseData?.salesIssueReturnReason;
+    this.issueRequestRec = event.detail.headerRec;
+    this.caseType = setCaseTypeDetails(this.remedyValue, this.servicetyperec.Name, this.returnreasonText);
+    if (shippingResponseData.Sales_Issue_Return_Reason__c /*&& !this.caseType.isTechnicalNPRCredit()*/) { //NPR Changes - Samuel
+      this.template.querySelector("c-r4c_-a-g_-collection-details").clear();
+      if (
+        shippingResponseData.Sales_Issue_Remedy_Type__c &&
+        shippingResponseData.Sales_Issue_Return_Reason__c &&
+        shippingResponseData.Sales_Issue_Sales_Organization__c
+      ) {
+        this.template
+          .querySelector("c-r4c_-a-g_-collection-details")
+          .fetchCollectionData(shippingResponseData, this.servicetyperec.Id);
+      }
+    }
+    this.showPOsearch = false;
+    let pocmp;
+    pocmp = this.template.querySelector("c-r4c_-a-g_-p-o-search");
+    if (pocmp) {
+      pocmp.handleReset();
+    }
+    this.hidecancelButton = true;
+    this.hideNextButton = true;
+    this.disableNextButton = true;
+  }
+
+  //event to handle remedy change
+  handleRemedyChange(event) {
+    this.remedyValue = '';
+    this.returnreasonText = ''
+    this.remedyValue = event.detail.remedyText;
+    this.caseType = setCaseTypeDetails(this.remedyValue, this.servicetyperec.Name, null);
+  }
+
+  //Start -- TWC4621-148 -- Manohar -- 09-09-22 -- custom accordian section logic
+  toggleSection(event) {
+    if (event.currentTarget.dataset.id === "shippingInputs") {
+      if (this.shippingdetailsclass === "slds-section slds-is-close") {
+        this.shippingdetailsclass = "slds-section slds-is-open";
+      } else {
+        this.shippingdetailsclass = "slds-section slds-is-close";
+      }
+    }
+    if (event.currentTarget.dataset.id === "collectionInputs") {
+      if (this.collectiondetailsclass === "slds-section slds-is-close") {
+        this.collectiondetailsclass = "slds-section slds-is-open";
+      } else {
+        this.collectiondetailsclass = "slds-section slds-is-close";
+      }
+    }
+    if (event.currentTarget.dataset.id === "casedescriptiondetailsInputs") {
+      if (this.casedescriptiondetailsclass === "slds-section slds-is-close") {
+        this.casedescriptiondetailsclass = "slds-section slds-is-open";
+      } else {
+        this.casedescriptiondetailsclass = "slds-section slds-is-close";
+      }
+    }
+  }
+  //End -- TWC4621-148 -- Manohar -- 09-09-22 -- custom accordian section logic
+
+  //dispatching an event to aura component to open tab in console app
+  dispathEventToAura() {
+    setTimeout(() => {
+      const tabChangeEvent = new CustomEvent("tabchange", {});
+      this.dispatchEvent(tabChangeEvent);
+    }, 500);
+  }
+
+  //Start -- TWC4621-148 -- Manohar -- 09-09-22-- Navigating to record page
+  cancelRequest(event) {
+    LightningConfirm.open({
+      message: this.labels.Navigating_to_Case_Detail_Page,
+      variant: "success",
+      label: this.labels.Confirm_Message
+    }).then((data) => {
+      if (data) {
+        //added as part of portal -- Furqan
+        if (this.isPortal == true || this.isPortal == "true") {
+          this[NavigationMixin.Navigate]({
+            type: "standard__namedPage",
+            attributes: {
+              pageName: "home"
+            }
+          });
+          return;
+        }
+        this.closetab();
+        this[NavigationMixin.Navigate]({
+          type: "standard__recordPage",
+          attributes: {
+            recordId: this.recordId,
+            objectApiName: "Contact",
+            actionName: "view"
+          }
+        });
+      }
+    });
+  }
+  //End -- TWC4621-148 -- Manohar -- 09-09-22 -- Navigating to record page
+
+  //This method is used to close the tab in console app
+  closetab() {
+    this.invokeWorkspaceAPI("getFocusedTabInfo").then((focusedTab) => {
+      if (focusedTab.tabId) {
+        this.invokeWorkspaceAPI("closeTab", {
+          tabId: focusedTab.tabId
+        });
+      }
+    });
+  }
+  //This method is used to console workspace api methods
+  invokeWorkspaceAPI(methodName, methodArgs) {
+    return new Promise((resolve, reject) => {
+      const apiEvent = new CustomEvent("internalapievent", {
+        bubbles: true,
+        composed: true,
+        cancelable: false,
+        detail: {
+          category: "workspaceAPI",
+          methodName: methodName,
+          methodArgs: methodArgs,
+          callback: (err, response) => {
+            if (err) {
+              return reject(err);
+            } else {
+              return resolve(response);
+            }
+          }
+        }
+      });
+      window.dispatchEvent(apiEvent);
+    });
+  }
+  //Show Toast Message
+  showToast(title, message, variant) {
+    const event = new ShowToastEvent({
+      title: title,
+      message: message,
+      variant: variant
+    });
+    this.dispatchEvent(event);
+  }
+}
+
+_____________________________________________________________________________________________________________________________________________________
+
+
+/* ***********************************************************************************************
+* @Class Name : R4C_AG_CaseHeader_Controller
+* @author : PopcornApps
+* @Purpose: This is the controller class for r4cAGCaseCreation(LWC component).
+* It handles the contacts of particular account is having permission for Export compliance block
+check or not
+* @created date       : 1st August 2022
+* @created by         : Ravivarma Gonaboina
+* @Last modified date : 14 May 2024
+* @Last modified by   : Sai Rohan Dadvai
+* @Test Class Name    : R4C_AG_CaseHeader_Controller_Test (95%)
+*************************************************************************************************
+*/
+public with sharing class R4C_AG_CaseHeader_Controller {
+    
+    /*───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    * Date             Created By                          User-Story   
+    * 14-12-2022       Furqan                       
+    * @description     Return portal user details
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    * @return User record
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    */ 
+    @AuraEnabled
+    public static User returnCurrentPortalUserContact() {
+        User userrec = new User();
+        userrec = [SELECT Id,ContactId,Contact.AccountId,Contact.R4C_Customer_Price_Mask__c,contact.R4C_Customer_Profile_Mask__c FROM User WHERE Id=:userinfo.getUserId() LIMIT 1];            
+        return userrec;
+    }
+    
+    /*───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    * Date             Created By                          User-Story   
+    * 01-08-2022       Ravi                         
+    * @description     This Method is used to check that Contact is having Export compliance block of that particular account or not 
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    * @param String contactId.
+    * @return Contact record
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    */ 
+    @AuraEnabled
+    public static contactWrapper getCurrentContact(Id recordId) {
+        Contact contactRec = new Contact();
+        final contactWrapper contactwrpr = new contactWrapper();
+        if(String.isNotBlank(recordId) && String.isNotEmpty(recordId)) {    //TWC4621-1900 -- 16-11-23 -- Added R4C_Customer_Price_Mask__c       
+            contactRec = [SELECT Id, Name, Account.Name, AccountId, R4C_Customer_Price_Mask__c,R4C_Customer_Profile_Mask__c FROM Contact 
+                          WHERE Id =: recordId AND Account.Core_Export_Compliance_Block__c = false WITH USER_MODE LIMIT 1];
+        }
+        final Map<String,String> genericMessages = getErrorMessages();
+        final List<PermissionSetAssignment> userpermslst = R4C_AG_EditCaseUtil.returnPermsnSetAsnmnt();
+        contactwrpr.contactRec = contactRec;
+        contactwrpr.genericMessages = genericMessages;
+        contactwrpr.userperms = userpermslst;
+        return contactwrpr;
+    }
+    /*───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    * Date             Created By                          User-Story   
+    * 12-09-2022       Manohar                      
+    * @description     This method is used to get the service type record 
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    * @param String servicetype.
+    * @return serviceTypeRec
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+	*/
+    @AuraEnabled
+    public static Sales_Issue_Service_Type__c getServicetype(String servicetype) { 
+        Sales_Issue_Service_Type__c serviceTypeRec = new Sales_Issue_Service_Type__c();
+        if(!String.isEmpty(servicetype)) {           
+            serviceTypeRec = [Select id, name, Sales_Issue_Active_Indicator__c,Sales_Issue_Service_Type_Code__c from Sales_Issue_Service_Type__c where name =: servicetype AND Sales_Issue_Active_Indicator__c = true WITH USER_MODE LIMIT 49999];
+        }
+        return serviceTypeRec;
+    }
+    /*───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    * Date             Created By                          User-Story   
+    * 10-09-2022       Shirisha                         
+    * @description     This method is used to load error messages from Custom Settings
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    * @return errorMessageMap
+    * @Custom Settings - R4C_Generic_Configurations__c
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    */
+    @AuraEnabled(cacheable=true)
+    public static Map<String,String> getErrorMessages() {
+        final Map<String,String> errorMessageMap = new  Map<String,String>();
+        List<R4C_Generic_Configurations__c> genConfgtionLst = new List<R4C_Generic_Configurations__c>();
+        genConfgtionLst = [SELECT Id, Value__c, Description__c,Name FROM R4C_Generic_Configurations__c WITH USER_MODE LIMIT 49999]; //WITH USER_MODE
+        for(R4C_Generic_Configurations__c objgenConfgtion: genConfgtionLst) {
+            system.debug('@@@ objgenConfgtion'+objgenConfgtion);
+            errorMessageMap.put(objgenConfgtion.name,objgenConfgtion.Value__c);
+        } 
+        return errorMessageMap;
+    }
+    
+    @AuraEnabled(cacheable=true)
+    public static String getAlertConfigInfo(String configName) {
+        R4C_Generic_Configurations__c config = R4C_Generic_Configurations__c.getInstance(configName);
+        return config?.Value__c;
+    }
+    //
+    /*───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    * Date             Created By                          User-Story   
+    * 18-09-2022       Ravi                         
+    * @description     This method is used to load radio button values for case type on new r4c case record 
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    * @return caseTypeMap
+    * @Custom Settings - R4C_Generic_Configurations__c
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    */
+    @AuraEnabled(cacheable=true)
+    public static Map<String,String> returnCaseType() {
+        final Map<String,String> caseTypeMap = new Map<String,String>();
+        final R4C_Generic_Configurations__c returnRequest = R4C_Generic_Configurations__c.getValues('Return_Request');
+        caseTypeMap.put(returnRequest.Value__c,returnRequest.Value__c);
+        return caseTypeMap;
+    }
+    /*───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    * Date             Created By                          User-Story   
+    * 18-09-2022       Ravi                         
+    * @description     This method is used to load radio button values for service type on new r4c case record
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    * @return serviceTypeMap
+    * @Custom Settings - R4C_Generic_Configurations__c
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    */
+    @AuraEnabled(cacheable=true)
+    public static Map<String,String> returnServiceTypeValues() {
+        final Map<String,String> serviceTypeMap = new Map<String,String>();
+        final R4C_Generic_Configurations__c technical = R4C_Generic_Configurations__c.getValues('Technical');
+        final R4C_Generic_Configurations__c stockRotation = R4C_Generic_Configurations__c.getValues('Stock_Rotation');
+        final R4C_Generic_Configurations__c quality = R4C_Generic_Configurations__c.getValues('Quality');
+        final R4C_Generic_Configurations__c admin = R4C_Generic_Configurations__c.getValues('Admin');
+        final R4C_Generic_Configurations__c exceptions = R4C_Generic_Configurations__c.getValues('Exception');
+        final R4C_Generic_Configurations__c miscellaneous = R4C_Generic_Configurations__c.getValues('Miscellaneous');//added for Miscellaneous Intake
+        serviceTypeMap.put(technical.Value__c,technical.Value__c);
+        serviceTypeMap.put(stockRotation.Value__c,stockRotation.Value__c);
+        serviceTypeMap.put(quality.Value__c,quality.Value__c);
+        serviceTypeMap.put(admin.Value__c,admin.Value__c);
+        serviceTypeMap.put(exceptions.Value__c,exceptions.Value__c);
+        serviceTypeMap.put(miscellaneous.Value__c,miscellaneous.Value__c);//added for Miscellaneous Intake        
+        return serviceTypeMap;
+    }
+    /*───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    * Date             Created By                          User-Story   
+    * 16-11-2023       Manohar                             TWC4621-2010
+    * @description     This method is used to check logged in user is Emulated user or not.
+    * @return boolean 
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    */
+    @AuraEnabled 
+    public static Boolean returnLoginUserInfo() {
+        final Map<String, String> session = new Map<String,String>();
+        if (!Test.isRunningTest()) {
+          session.putAll(Auth.SessionManagement.getCurrentSession());
+        }else{
+            session.put('LoginHistoryId', null);
+            session.put('LoginType', 'unknown');
+            session.put('LoginType', null);
+            session.put('SourceIp', '::');
+        }
+        Boolean isEmualtedUser = false;
+        final Boolean emulatedUserFlag = R4C_Generic_Configurations__c.getValues('Block_Save_for_EmulatedUser').value__c == 'true' ? true : false; // for testing purpose(Log in to Experience user) added the flag
+        isEmualtedUser = emulatedUserFlag && session.get('LoginHistoryId') == null && session.get('LoginType') == 'Unknown' && session.get('LogoutUrl') == null  && session.get('SourceIp') == '::';       
+        return isEmualtedUser;
+    }
+    
+
+    /*───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    * Date             Created By                          User-Story   
+    * 16-11-2023       SaiRam                             TWC4621-3910
+    * @description     This method is used to Return Custom settings of pending 
+    * @return String 
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    */
+    @AuraEnabled 
+    public static String returnPendingActionStatus() {
+        final String pendingAgentStatus = R4C_Generic_Configurations__c.getValues('Case_PendingAction_Status_Values').value__c ;
+        return pendingAgentStatus;
+    }
+
+    
+    /*───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    * Date             Created By                          User-Story   
+    * 06-10-2022       Manohar                          
+    * @description     Wrapper Class for create case
+    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    */
+    public class contactWrapper {
+        /* Contact Record  */
+        @AuraEnabled public Contact contactRec;
+        /* Generic Message */
+        @AuraEnabled public Map<String,String> genericMessages;
+        /* User params */
+        @AuraEnabled public List<PermissionSetAssignment> userperms;
+    }
+}
