@@ -1,1160 +1,526 @@
-/************************************************************************************************************************
-* Name          : R4C_ViewSummaryUtil
-* Test Class    : R4C_AG_ViewSummaryController_Test
-* Author        : Manohar - PopcornApps
-* Last Modified : 26-08-2022
-* Description   : util class for R4C_AG_ViewSummaryController
-
-****************************************************************************************************************************/
-public with sharing class R4C_ViewSummaryUtil {
-    /** prdctCndtnMap */
-    public static Map<string, string> prdctCndtnMap { private set; get{
-        if(prdctCndtnMap==null) prdctCndtnMap = R4C_ViewSummaryUtil.getProductCondition();
-        return prdctCndtnMap;
-    } }
+public inherited sharing class R4C_ViewSummaryUtilHelper {
     
-    /** recordTypeId */
-    public static Id recordTypeId { get; set; }
-    /** isQualityFAC */
-    public static Boolean isQualityFAC { get; set; }
-    /* does not change line status during parsing  */
-    public static Boolean isPreserveLineStatus { get; set; }
-    /** insertedcaseList */
-    public static List<Case> insertedcaseList { get; set; }
-    /** insertedcustomerReturnRequestList */
-    public static List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList {
-        get;
-        set;
-    }
-    /** genericmsgs */
-    public static final Map<String, String> genericmsgs {private set; get{
-        if(genericmsgs==null) genericmsgs=R4C_AG_CaseHeader_Controller.getErrorMessages(); //For Importing Custom Settings
-        return genericmsgs;
-    }} 
-    /** recordsToBeInsertedInUI */
-    public static RecordInsertionWrapper recordsToBeInsertedInUI = new RecordInsertionWrapper();
-    //TWC4621-3197 - Manual Line item closure After RMA
-    public static Boolean isManualLineClosureAfterRMA = false; 
-    
-
-    static void checkIfisManualLineClouser(returnReqDetailsWrapper returnReqDetails){
-        if(returnReqDetails.isManualLineClosure != null) {
-            isManualLineClosureAfterRMA = returnReqDetails?.isManualLineClosure;//TWC4621-3197 - Manual Line item closure After RMA
+    public static void getCaseListPart1(Case objCase,R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails,String caseStatus,String RecordTypeId,String caseOrigin){
+        
+        if (!String.isEmpty(returnReqDetails?.contactDetails?.AccountId)) {
+            objCase.AccountId = returnReqDetails.contactDetails.AccountId;
+        }
+        if (!String.isEmpty(returnReqDetails?.contactDetails?.Id)) {
+            objCase.ContactId = returnReqDetails.contactDetails.Id;
         }
     }
-    static List<Customer_Sales_Issue_Request_Line__c> handleHeaderUpdate(returnReqDetailsWrapper returnReqDetails,List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList,List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineListInserted){
-        if (!returnReqDetails.customerReturnRequestLineWrapperList.isEmpty()) {
-            customerReturnRequestLineList = R4C_ViewSummaryUtil.getcustomerReturnRequestLine(returnReqDetails.customerReturnRequestLineWrapperList);
-            //if (returnReqDetails.casemode == genericmsgs.get('Edit_Label') && !isManualLineClosureAfterRMA && returnReqDetails.lineIds.isEmpty()) {//TWC4621-3197 - added condition to skip this function in Manual Line item closure After RMA
-             //   R4C_ViewSummaryUtil.updateCustomerReturnRequestLine(insertedcaseList,customerReturnRequestLineList,false);
-            //}
-            /*if (returnReqDetails.casemode == genericmsgs.get('Edit_Label') && !isManualLineClosureAfterRMA && !returnReqDetails.lineIds.isEmpty() && returnReqDetails.updateFailedLines) {
-                R4C_ViewSummaryUtil.queryHelper(insertedcaseList,returnReqDetails.lineIds,false);
-            }*/
-            if (returnReqDetails.casemode == genericmsgs.get('Edit_Label') && !isManualLineClosureAfterRMA) {//TWC4621-3197 - added condition to skip this function in Manual Line item closure After RMA
-                R4C_ViewSummaryUtil.updateCustomerReturnRequestLine(insertedcaseList,customerReturnRequestLineList,false);
-            }
-            customerReturnRequestLineListInserted = R4C_ViewSummaryUtil.insertCustomerReturnRequestLine(customerReturnRequestLineList);
-             
-        }
-        return customerReturnRequestLineListInserted;
-    }
-    static void processRecordsForUI(List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineListInserted){
-        if (insertedcaseList.isEmpty() == false) {
-            recordsToBeInsertedInUI.insertR4CCaseRes = insertedcaseList[0];
-        }
-        if (insertedcustomerReturnRequestList.isEmpty() == false) {
-            recordsToBeInsertedInUI.customeraSalesIssueRequestInsertRecord = insertedcustomerReturnRequestList[0];
-        }
-        if (customerReturnRequestLineListInserted.isEmpty() == false) {
-            recordsToBeInsertedInUI.customeraSalesIssueRequestLineInsertRecord = customerReturnRequestLineListInserted[0];
-        }
-    }
-    static void setSubmitedDate(returnReqDetailsWrapper returnReqDetails,List<Customer_Sales_Issue_Request__c> customerReturnRequestList,String caseStatus){
-        if(!customerReturnRequestList.isEmpty() && caseStatus == 'RMA Authorized' && returnReqDetails?.caseRec?.Origin == 'ILM') {
-            customerReturnRequestList[0].Sales_Issue_Submitted_Date__c = System.now();
-        }
-    }
-    static void updateAllowanceRecord(returnReqDetailsWrapper returnReqDetails,List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineListInserted){
-        //TWC4621-3197 --  SRA Allowance amount Deduction for the cancelled Lines -- Manual Line item closure After RMA 
-        if(returnReqDetails?.caserecTypeName == genericmsgs.get('Case_Stock_Rotation') && isManualLineClosureAfterRMA && customerReturnRequestLineListInserted.isEmpty() == false) {
-            updateAllowanceRecordsAfterRMA(customerReturnRequestLineListInserted);
-         } 
-    }
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Method to insert case,crr,crr line items
-* User-Story : TWC4621-54 & TWC4621-72 -- 26-08-2022
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @param    returnReqDetails,caseStatus  (wrapper record of type R4C_AG_ViewSummaryUtil.returnReqDetailsWrapper)
-* @return   case, DESCRIPTION : inserting case,crr,crr line items
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static RecordInsertionWrapper insertR4CCaseUtil(returnReqDetailsWrapper returnReqDetails, String caseStatus) {
-        Savepoint sp = Database.setSavepoint();
-
-        try {
-            recordTypeId = Schema.SObjectType.Case.getRecordTypeInfosByName().get(returnReqDetails.caserecTypeName).getRecordTypeId();
-            List<Case> caseList = new List<Case>();
-            List<Customer_Sales_Issue_Request__c> customerReturnRequestList = new List<Customer_Sales_Issue_Request__c>();
-            List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList = new List<Customer_Sales_Issue_Request_Line__c>();
-            List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineListInserted = new List<Customer_Sales_Issue_Request_Line__c>();
-            Boolean isNpr = false; 
-            isQualityFAC = false;  
-            checkIfisManualLineClouser(returnReqDetails);
-            if (!String.isEmpty(recordTypeId) && returnReqDetails.CustomerReturnRequest != null ) {
-                if(returnReqDetails.remedyDetails.Name == genericmsgs.get('Credit_NPR')) {
-                    isNpr = true;
-                    //final String incotermId = getIncoterm(returnReqDetails.CustomerReturnRequest);
-                    // if(String.isNotEmpty(incotermId)) {
-                    //     returnReqDetails.CustomerReturnRequest.Sales_Issue_InCo_Term__c = incotermId;
-                    // }
-                } 
-                if(returnReqDetails?.caserecTypeName == genericmsgs.get('Quality_Intake') && returnReqDetails?.caseRec?.Origin == 'CQNR') {
-                    isQualityFAC = true;    
-                }
-                caseList = R4C_ViewSummaryUtil.getCaseList(returnReqDetails,caseStatus);
-                insertedcaseList = R4C_ViewSummaryUtil.insertCase(caseList);
-
-                customerReturnRequestList = R4C_ViewSummaryUtil.getCustomerReturnRequest(returnReqDetails.CustomerReturnRequest,isNpr);
-                setSubmitedDate(  returnReqDetails,  customerReturnRequestList,caseStatus);
-                insertedcustomerReturnRequestList = R4C_ViewSummaryUtil.insertCustomerReturnRequest(customerReturnRequestList);
-
-                customerReturnRequestLineListInserted = handleHeaderUpdate(  returnReqDetails,  customerReturnRequestLineList,  customerReturnRequestLineListInserted);
-                 
-                processRecordsForUI(  customerReturnRequestLineListInserted);
-                updateAllowanceRecord(  returnReqDetails,  customerReturnRequestLineListInserted);
-            }
-        } 
-       catch (DmlException e) {
-            Database.rollback(sp);
-            Database.releaseSavepoint(sp);
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_ViewSummaryUtil.insertR4CCaseUtil',e.getMessage(),e,true);
-            recordsToBeInsertedInUI.errorMessageOfDmlOperation = recordsToBeInsertedInUI.errorMessageOfDmlOperation + ' + ' + e.getMessage() + e.getDmlFieldNames(0);
-            //throw new AuraHandledException('R4C_AG_ViewSummaryUtil : ' + e.getMessage());
-
-        }
-        catch (Exception e) {
-            Database.rollback(sp);
-            Database.releaseSavepoint(sp);
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_ViewSummaryUtil.insertR4CCaseUtil', e.getMessage(), e,true);
-            recordsToBeInsertedInUI.errorMessageOfDmlOperation = recordsToBeInsertedInUI.errorMessageOfDmlOperation + ' + ' + e.getMessage();
-            //throw new AuraHandledException('R4C_AG_ViewSummaryUtil : ' + e.getMessage());
-
-        }
-        return recordsToBeInsertedInUI;
-    }
-    
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Method preparing case data and returning caseList
-* User-Story : TWC4621-54 & TWC4621-72
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @param    returnReqDetails,caseStatus  (wrapper record of type R4C_AG_ViewSummaryUtil.returnReqDetailsWrapper)
-* @return   List<Case>, DESCRIPTION : preparing case data and returning caseList
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static List<Case> getCaseList(returnReqDetailsWrapper returnReqDetails,String caseStatus) {
-        List<Case> caseList = new List<Case>();
-        Case objCase = new Case();
-        String caseOrigin = '';
-        if (returnReqDetails.caseRec == null) {
-            R4C_ViewSummaryUtilHelper.getCaseListPart1(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
-            R4C_ViewSummaryUtilHelper.getCaseListPart2(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
-            R4C_ViewSummaryUtilHelper.getCaseListPart3(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
-            R4C_ViewSummaryUtilHelper.getCaseListPart4(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
-            R4C_ViewSummaryUtilHelper.getCaseListPart5(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
+    public static void getCaseListPart2(Case objCase,R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails,String caseStatus,String RecordTypeId,String caseOrigin){
+        
+        if (returnReqDetails.isPortal == true) {
+            //TWC4621-904 - Samuel - Setting case origin if portal case
+            caseOrigin = R4C_Generic_Configurations__c.getValues('Web_Portal').value__c;
         } 
         else {
-            objCase = returnReqDetails.caseRec;
-            objCase.status = caseStatus;
-            R4C_ViewSummaryUtilHelper.getCaseListPart5(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
-            //Manohar
-            if (!String.isEmpty(returnReqDetails.comments) ) {
-                objCase.Description = returnReqDetails.comments;
-            }
-            //Case Feed Tracking Notes
-            R4C_FeedItem_Controller.FeedItemWrapper feedTrackingWrapper = new R4C_FeedItem_Controller.FeedItemWrapper();
-        	feedTrackingWrapper.newValue = returnReqDetails?.comments;
-        	feedTrackingWrapper.recordId = returnReqDetails?.caseRec?.Id;
-        	//R4C_FeedItem_Controller.InsertOldCaseFeedItem(feedTrackingWrapper); //Commented due to errors
+            caseOrigin = R4C_Generic_Configurations__c.getValues('Case_Origin_Internal').value__c;
         }
-        caseList.add(objCase);
-        return caseList;
-    }
-    
-    
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* method to insert the case listt
-* User-Story : TWC4621-54 & TWC4621-72
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @param    List<Case>
-* @return   List<Case>, DESCRIPTION : utility method to insert the case list
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static List<Case> insertCase(List<Case> caseList) {
-        List<Case> insertedcaseList = new List<Case>();
-            if (!caseList.isEmpty()) {
-                upsert as user caseList;
-                insertedcaseList = caseList;
-            }
-        //R4C_FeedItem_Controller.InsertNewCaseFeedItem(insertedcaseList); //Commented due to error
-        return insertedcaseList;
-    }
-    
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* User-Story : TWC4621-54 & TWC4621-72
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @param    Customer_Sales_Issue_Request__c  (CRR object record)
-* @return   List<Customer_Sales_Issue_Request__c>, DESCRIPTION : preparing customer return request(caseHeader) data and returning CRR list
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static List<Customer_Sales_Issue_Request__c> getCustomerReturnRequest( Customer_Sales_Issue_Request__c objCustomerReturnRequest,Boolean isNpr) {
-        List<Customer_Sales_Issue_Request__c> customerReturnRequestList = new List<Customer_Sales_Issue_Request__c>();
-        Customer_Sales_Issue_Request__c customerReturnRequest = new Customer_Sales_Issue_Request__c();
-        if (insertedcaseList.isEmpty() == false) {
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart1(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart2(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart3(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart4(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart5(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart6(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart7(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart8(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart9(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart10(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart11(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart12(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart13(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart14(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart15(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart16(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart17(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart18(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart19(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart20(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
-            
+        if (!String.isEmpty(caseOrigin) ) {
+            objCase.Origin = caseOrigin;
         }
-        customerReturnRequestList.add(customerReturnRequest);
-        return customerReturnRequestList;
+        // SHIPRA
+        if (!String.isEmpty(returnReqDetails.comments) ) {
+            objCase.Description = returnReqDetails.comments;
+        }
+        // SHIPRA
+    }
+    public static void getCaseListPart3(Case objCase,R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails,String caseStatus,String RecordTypeId,String caseOrigin){
+        if (!String.isEmpty(recordTypeId)) {
+            objCase.RecordTypeId = RecordTypeId;
+        }
+    }
+    public static void getCaseListPart4(Case objCase,R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails,String caseStatus,String RecordTypeId,String caseOrigin){
+        if (!String.isEmpty(caseStatus)) {
+            objCase.Status = caseStatus;
+        }
+    }
+    public static void getCaseListPart5(Case objCase,R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails,String caseStatus,String RecordTypeId,String caseOrigin){
+        if (!String.isEmpty(returnReqDetails.r4eCaseNumber)) {
+            objCase.External_Issue_ID__c = returnReqDetails.r4eCaseNumber;
+        }
+        if (!String.isEmpty(returnReqDetails.externalCaseId)) {
+            objCase.External_Case_ID__c = returnReqDetails.externalCaseId;
+        }
     }
     
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* method to insert the customerReturnRequestLine list
-* User-Story : TWC4621-54 & TWC4621-72
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @param    List<Customer_Sales_Issue_Request__c> (list of customer return request object records)
-* @return   List<Customer_Sales_Issue_Request__c>, DESCRIPTION : utility method to insert the customerReturnRequestLine list
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static List<Customer_Sales_Issue_Request__c> insertCustomerReturnRequest(List<Customer_Sales_Issue_Request__c> customerReturnRequestList) {
-        List<Customer_Sales_Issue_Request__c> insertedCustomerReturnRequestList = new List<Customer_Sales_Issue_Request__c>();
-            if (!customerReturnRequestList.isEmpty()) {             
-                customerReturnRequestList = R4C_DML_UtilClass.upsertasUser(customerReturnRequestList);
-                insertedCustomerReturnRequestList = customerReturnRequestList;
-            }
-        return insertedCustomerReturnRequestList;
+    public static void getCustomerReturnRequestPart1(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Id)) {
+            customerReturnRequest.Id = objCustomerReturnRequest.Id;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_SoldTo_Customer__c)) {
+            customerReturnRequest.Sales_Issue_SoldTo_Customer__c = objCustomerReturnRequest.Sales_Issue_SoldTo_Customer__c;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_ShipTo_Customer__c)) {
+            customerReturnRequest.Sales_Issue_ShipTo_Customer__c = objCustomerReturnRequest.Sales_Issue_ShipTo_Customer__c;
+        }
     }
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* User-Story : TWC4621-54 & TWC4621-72
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @param    List<case>,List<Customer_Sales_Issue_Request__c>,List<CustomerReturnRequestLineWrapper>  (list of cases , CRR object records,list of CustomerReturnRequestLineWrapper records)
-* @return   List<Customer_Sales_Issue_Request_Line__c>, DESCRIPTION : preparing customer return request lineItems data and returning line items list
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static List<Customer_Sales_Issue_Request_Line__c> getcustomerReturnRequestLine(
-        List<CustomerReturnRequestLineWrapper> customerReturnRequestLineWrapperList
-    ) {
+    public static void getCustomerReturnRequestPart2(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Distribution_Channel__c)) {
+            customerReturnRequest.Sales_Issue_Distribution_Channel__c = objCustomerReturnRequest.Sales_Issue_Distribution_Channel__c;
+        }
+        if (!insertedcaseList.isEmpty() && String.isEmpty(objCustomerReturnRequest.Id)) {
+            customerReturnRequest.Sales_Issue_CaseNumber__c = insertedcaseList[0].Id;
+        }
+    }
+    public static void getCustomerReturnRequestPart3(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Return_Reason__c)) {
+            customerReturnRequest.Sales_Issue_Return_Reason__c = objCustomerReturnRequest.Sales_Issue_Return_Reason__c;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Division_Code__c)) {
+            customerReturnRequest.Sales_Issue_Division_Code__c = objCustomerReturnRequest.Sales_Issue_Division_Code__c;
+        }
+    }
+    public static void getCustomerReturnRequestPart4(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (objCustomerReturnRequest.Sales_Issue_Collection_Date__c != null) {
+            customerReturnRequest.Sales_Issue_Collection_Date__c = objCustomerReturnRequest.Sales_Issue_Collection_Date__c;
+        }
+        customerReturnRequest.Sales_Issue_Collection_Contact__c = objCustomerReturnRequest.Sales_Issue_Collection_Contact__c;
+        customerReturnRequest.Sales_Issue_Cst_Collection_Address__c = objCustomerReturnRequest.Sales_Issue_Cst_Collection_Address__c;
+    }
+    public static void getCustomerReturnRequestPart5(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Return_To_Cst_Address__c)) {
+            customerReturnRequest.Sales_Issue_Return_To_Cst_Address__c = objCustomerReturnRequest.Sales_Issue_Return_To_Cst_Address__c;
+        }
+        if (objCustomerReturnRequest.Sales_Issue_Bonded_Site_Indicator__c != null) {
+            customerReturnRequest.Sales_Issue_Bonded_Site_Indicator__c = objCustomerReturnRequest.Sales_Issue_Bonded_Site_Indicator__c;
+        }      
+    }
+    public static void getCustomerReturnRequestPart6(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        customerReturnRequest.Sales_Issue_Location_Plant__c = objCustomerReturnRequest.Sales_Issue_Location_Plant__c;
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_InCo_Term__c)) {
+            customerReturnRequest.Sales_Issue_InCo_Term__c = objCustomerReturnRequest.Sales_Issue_InCo_Term__c;
+        }
+        if(isNpr) {
+            customerReturnRequest.Sales_Issue_InCo_Term__c = R4C_ViewSummaryUtil.getIncotermforNPR().Id;
+            customerReturnRequest.Sales_Issue_Location_Plant__c = R4C_ViewSummaryUtil.getReturnLocationforNPR().Id;
+        }
+    }
+    public static void getCustomerReturnRequestPart7(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_SoldTo_Contact__c)) {
+            customerReturnRequest.Sales_Issue_SoldTo_Contact__c = objCustomerReturnRequest.Sales_Issue_SoldTo_Contact__c;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_ShipTo_Contact__c)) {
+            customerReturnRequest.Sales_Issue_ShipTo_Contact__c = objCustomerReturnRequest.Sales_Issue_ShipTo_Contact__c;
+        }
+    }
+    public static void getCustomerReturnRequestPart8(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_ShipTo_Address__c)) {
+            customerReturnRequest.Sales_Issue_ShipTo_Address__c = objCustomerReturnRequest.Sales_Issue_ShipTo_Address__c;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Last_Saved_Path__c)) {
+            customerReturnRequest.Sales_Issue_Last_Saved_Path__c = objCustomerReturnRequest.Sales_Issue_Last_Saved_Path__c;
+        }
+    }
+    public static void getCustomerReturnRequestPart9(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (objCustomerReturnRequest.Sales_Issue_Query_Number__c != null) {
+            customerReturnRequest.Sales_Issue_Query_Number__c = objCustomerReturnRequest.Sales_Issue_Query_Number__c;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Sales_Organization__c)) {
+            customerReturnRequest.Sales_Issue_Sales_Organization__c = objCustomerReturnRequest.Sales_Issue_Sales_Organization__c;
+        }
+    }
+    public static void getCustomerReturnRequestPart10(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        // Tushar Garg------- Exception Intake
+        if (objCustomerReturnRequest.Sales_Issue_Return_Reason_Justification__c != null) {
+            customerReturnRequest.Sales_Issue_Return_Reason_Justification__c = objCustomerReturnRequest.Sales_Issue_Return_Reason_Justification__c;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Service_Type__c)) {
+            customerReturnRequest.Sales_Issue_Service_Type__c = objCustomerReturnRequest.Sales_Issue_Service_Type__c;
+        }
+    }
+    public static void getCustomerReturnRequestPart11(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Return_To_Cst_Contact__c)) {
+            customerReturnRequest.Sales_Issue_Return_To_Cst_Contact__c = objCustomerReturnRequest.Sales_Issue_Return_To_Cst_Contact__c;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_BU_Technical_Contact_WWID__c)) {
+            customerReturnRequest.Sales_Issue_BU_Technical_Contact_WWID__c = objCustomerReturnRequest.Sales_Issue_BU_Technical_Contact_WWID__c;
+        }     
+    }
+    public static void getCustomerReturnRequestPart12(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Remedy_Type__c)) {
+            customerReturnRequest.Sales_Issue_Remedy_Type__c = objCustomerReturnRequest.Sales_Issue_Remedy_Type__c;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.CIRS_Number__c)) {
+            customerReturnRequest.CIRS_Number__c = objCustomerReturnRequest.CIRS_Number__c;
+        }
+    }
+    public static void getCustomerReturnRequestPart13(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Repair_Site__c)) {
+            customerReturnRequest.Sales_Issue_Repair_Site__c = objCustomerReturnRequest.Sales_Issue_Repair_Site__c;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_QSC_Service_Site__c)) {
+            customerReturnRequest.Sales_Issue_QSC_Service_Site__c = objCustomerReturnRequest.Sales_Issue_QSC_Service_Site__c;
+        }
+    }
+    public static void getCustomerReturnRequestPart14(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_SoldTo_Address__c)
+           ) {
+               customerReturnRequest.Sales_Issue_SoldTo_Address__c = objCustomerReturnRequest.Sales_Issue_SoldTo_Address__c;
+           }
+        /*if (!String.isEmpty(objCustomerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c)) {
+            customerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c = objCustomerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c;
+        }*/
+    }
+    public static void getCustomerReturnRequestPart15(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_BU_Technical_Contact_Email__c)) {
+            customerReturnRequest.Sales_Issue_BU_Technical_Contact_Email__c = objCustomerReturnRequest.Sales_Issue_BU_Technical_Contact_Email__c;
+        }
+        //mapping Header Price change comments
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Reason_for_Price_Change__c)) {
+            customerReturnRequest.Sales_Issue_Reason_for_Price_Change__c = objCustomerReturnRequest.Sales_Issue_Reason_for_Price_Change__c;
+        }
+        //mapping CIRS number value
+    }
+    public static void getCustomerReturnRequestPart16(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Approved_WWID__c)) {
+            customerReturnRequest.Sales_Issue_Approved_WWID__c = objCustomerReturnRequest.Sales_Issue_Approved_WWID__c;
+        }     
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Approval_Email_Address__c)) {
+            customerReturnRequest.Sales_Issue_Approval_Email_Address__c = objCustomerReturnRequest.Sales_Issue_Approval_Email_Address__c;
+        }
+    }
+    public static void getCustomerReturnRequestPart17(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        //Quality Intakes fields
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_CQE_Name__c)) {
+            customerReturnRequest.Sales_Issue_CQE_Name__c = objCustomerReturnRequest.Sales_Issue_CQE_Name__c;
+        }     
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Cust_Return_Issue_Desc__c)) {
+            customerReturnRequest.Sales_Issue_Cust_Return_Issue_Desc__c = objCustomerReturnRequest.Sales_Issue_Cust_Return_Issue_Desc__c;
+        }
+        //Exception DRR and IRR
+    }
+    public static void getCustomerReturnRequestPart18(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        //if (objCustomerReturnRequest.Sales_Issue_Opted_In__c != null) { //TWC4621-4945 -- Remove IMF/CMF Pop Up
+           // customerReturnRequest.Sales_Issue_Opted_In__c = objCustomerReturnRequest.Sales_Issue_Opted_In__c;
+       // }
+        //Added below if condition for storing error messages - TWC4621-683 - Samuel Nishant
+        if (objCustomerReturnRequest.Sales_Issue_Header_Error_Messages__c != null) {
+            customerReturnRequest.Sales_Issue_Header_Error_Messages__c = objCustomerReturnRequest.Sales_Issue_Header_Error_Messages__c;
+        }
+    }
+    public static void getCustomerReturnRequestPart19(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        if(!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Freight_Payment_Type__c)) {
+            customerReturnRequest.Sales_Issue_Freight_Payment_Type__c = objCustomerReturnRequest.Sales_Issue_Freight_Payment_Type__c;
+        }
+        if(String.isEmpty(objCustomerReturnRequest.Sales_Issue_Freight_Payment_Type__c) && isNpr) {
+            customerReturnRequest.Sales_Issue_Freight_Payment_Type__c = R4C_ViewSummaryUtil.getFreightType().Id;   
+        }
+    }
+    public static void getCustomerReturnRequestPart20(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
+        List<Physical_Address_Contact__c> plantContactLst = new List<Physical_Address_Contact__c>();
+        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Location_Plant__c)) {
+             plantContactLst = R4C_CollectionDetails_Util.getSiteContacts(new List<String>{objCustomerReturnRequest.Sales_Issue_Location_Plant__c},'Sales_Issue_Location_Plant_Name__c');
+        }
+        if (plantContactLst.isEmpty() == false) { // condition is only plant contact , Not for QSC site contact or Repair site contact
+            objCustomerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c = plantContactLst[0]?.Id;
+        }
+        if (!String.isEmpty(objCustomerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c)) {
+            customerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c = objCustomerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c;
+        }
+    }
+    
+    public static void getcustomerReturnRequestLinePart1(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
         
-        List<Customer_Sales_Issue_Request_Line__c> returnReqLinelst = new List<Customer_Sales_Issue_Request_Line__c>();
-        R4C_Generic_Configurations__c cs = R4C_Generic_Configurations__c.getValues('Entitlement_Max_Number_of_Attempts'); //TWC4621-888 || Entitlement API#2 - get Entitlement_Max_Number_of_Attempts value from custom settings || 9-Jan-2023
+        if (!String.isEmpty(cstmrReturnReqLine.lineItemRecId)) {
+            salesIssueCstReqLine.Id = cstmrReturnReqLine.lineItemRecId;
+        }
+        if (!String.isEmpty(cstmrReturnReqLine.SalesOrderNumber)) {
+            salesIssueCstReqLine.Sales_Issue_Sales_Order_Number__c = cstmrReturnReqLine.SalesOrderNumber;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart2(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (!String.isEmpty(cstmrReturnReqLine.YMS2Price) && schema.SObjectType.Customer_Sales_Issue_Request_Line__c.fields.Sales_Issue_Pricing_Date__c.isCreateable() && schema.SObjectType.Customer_Sales_Issue_Request_Line__c.fields.Sales_Issue_Pricing_Date__c.isUpdateable()) {
+            salesIssueCstReqLine.Sales_Issue_Pricing_Date__c = System.now();
+        }
+        if (!String.isEmpty(cstmrReturnReqLine.SalesOrderNumberLineNumber)) {
+            salesIssueCstReqLine.Sales_Issue_Sales_Order_Line_Number__c = cstmrReturnReqLine.SalesOrderNumberLineNumber;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart3(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (!String.isEmpty(cstmrReturnReqLine.returnPO)) {
+            salesIssueCstReqLine.Sales_Issue_Cst_Return_PO_Number__c = cstmrReturnReqLine.returnPO;
+        }
+        if (!String.isEmpty(cstmrReturnReqLine.CustomerPONumber)) {
+            salesIssueCstReqLine.Sales_Issue_Cst_PO_Number__c = cstmrReturnReqLine.CustomerPONumber;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart4(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (!String.isEmpty(insertedcustomerReturnRequestList[0].Id) && String.isEmpty(cstmrReturnReqLine.lineItemRecId)) {
+            salesIssueCstReqLine.Sales_Issue_Cst_Return_Request_Number__c = insertedcustomerReturnRequestList[0].Id;
+        }
+        if (cstmrReturnReqLine.Data != null && !String.isEmpty(cstmrReturnReqLine.Data.Id) ) {
+            salesIssueCstReqLine.Sales_Issue_Item__c = cstmrReturnReqLine.Data.Id;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart5(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine.Data != null && cstmrReturnReqLine.Data.Item_Last_Return_Dates__c != null) {
+            salesIssueCstReqLine.Sales_Issue_Last_Return_Date__c = cstmrReturnReqLine.Data.Item_Last_Return_Dates__c;
+        }
+        if (cstmrReturnReqLine.Data != null && cstmrReturnReqLine.Data.Item_Last_Order_Entry_Date__c != null) {
+            salesIssueCstReqLine.Sales_Issue_Last_Order_Entry_Date__c = cstmrReturnReqLine.Data.Item_Last_Order_Entry_Date__c;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart6(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        /*if (cstmrReturnReqLine.orderPartNumber != null) {
+            salesIssueCstReqLine.Sales_Issue_Order_Part_Number__c = cstmrReturnReqLine.orderPartNumber;
+        }*/
+    }
+    public static void getcustomerReturnRequestLinePart7(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (!String.isEmpty(cstmrReturnReqLine.customerBillingDocumentId) ) {
+            salesIssueCstReqLine.Sales_Issue_Invoice_Number__c = cstmrReturnReqLine.customerBillingDocumentId;
+        }
+        if (!String.isEmpty(cstmrReturnReqLine.deliveryNote) ) {
+            salesIssueCstReqLine.Sales_Issue_Delivery_Note_Number__c = cstmrReturnReqLine.deliveryNote;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart8(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (!String.isEmpty(cstmrReturnReqLine.BillingQuantity)) {
+            salesIssueCstReqLine.Billing_Quantity__c = Decimal.valueOf(cstmrReturnReqLine.BillingQuantity);
+        }
+        if (!String.isEmpty(cstmrReturnReqLine.UnitPrice)) {
+            salesIssueCstReqLine.Sales_Issue_PO_Price__c = Decimal.valueOf(cstmrReturnReqLine.UnitPrice);
+            system.debug('PO Price::'+salesIssueCstReqLine.Sales_Issue_PO_Price__c);
+        }
+    }
+    public static void getcustomerReturnRequestLinePart9(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (!String.isEmpty(cstmrReturnReqLine.InvoiceLineItemNumber) ) {
+            salesIssueCstReqLine.Sales_Issue_Line_Item_Invoice_Number__c = cstmrReturnReqLine.InvoiceLineItemNumber;
+        }
+        if (!String.isEmpty(cstmrReturnReqLine.ReturnQuantity)) {
+            salesIssueCstReqLine.Sales_Issue_Return_Quantity__c = Decimal.valueOf(cstmrReturnReqLine.ReturnQuantity);
+        }
+    }
+    public static void getcustomerReturnRequestLinePart10(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine.BillingDate != null) {
+            salesIssueCstReqLine.Sales_Issue_Billing_Date__c = Date.valueof(cstmrReturnReqLine.BillingDate);
+        }
+        if (!String.isEmpty(cstmrReturnReqLine.boxCondition)) {
+            salesIssueCstReqLine.Sales_Issue_Cst_Return_Receipt_Cnd__c = prdctCndtnMap.get(cstmrReturnReqLine.boxCondition);
+        }
+    }
+    public static void getcustomerReturnRequestLinePart11(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (!String.isEmpty(cstmrReturnReqLine.YMS2Price)) {
+            salesIssueCstReqLine.Sales_Issue_Disti_Price__c = Decimal.valueOf(cstmrReturnReqLine.YMS2Price);
+        }
+        if (!String.isEmpty(cstmrReturnReqLine.pricingCondition) ) {
+            salesIssueCstReqLine.Sales_Issue_Pricing_Condition_Type__c = cstmrReturnReqLine.pricingCondition;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart12(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (schema.SObjectType.Customer_Sales_Issue_Request_Line__c.fields.Sales_Issue_Line_Item_Status__c.isCreateable()) {
+            salesIssueCstReqLine.Sales_Issue_Line_Item_Status__c = (isQualityFAC == true && cstmrReturnReqLine?.lineitemStatus == genericmsgs.get('Cancelled_Status_Value')) || (cstmrReturnReqLine?.lineitemStatus == genericmsgs.get('CPU_POH_Rejection')) || isManualLineClosureAfterRMA ? cstmrReturnReqLine?.lineitemStatus : insertedcaseList[0].Status;//TWC4621-2886
+            if(isPreserveLineStatus!=null && isPreserveLineStatus==true){
+                salesIssueCstReqLine.Sales_Issue_Line_Item_Status__c=cstmrReturnReqLine?.lineitemStatus;
+                // Check if warrantyResult status is 'Out of warranty' and set lineitemStatus to 'failed' accordingly
+            }
+        }
+        //Added below code for storing error messages - TWC4621-738 - Samuel Nishant
+        salesIssueCstReqLine.Line_item_error_messages__c = cstmrReturnReqLine.Error;
+    }
+    public static void getcustomerReturnRequestLinePart13(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (!String.isEmpty(cstmrReturnReqLine.currency_z)) {
+            salesIssueCstReqLine.Sales_Issue_Currency__c = cstmrReturnReqLine.currency_z;
+        }
+        if (!String.isEmpty(cstmrReturnReqLine.debitReferenceNumber)) {
+            salesIssueCstReqLine.Sales_Issue_Debit_Reference_Nbr__c = cstmrReturnReqLine.debitReferenceNumber;
+        }
+        // Start TWC4621-888 || Entitlement API#2 - Update Case Number || 9-Jan-2023
+        Integer maxAttempts = Integer.valueof(cs?.Value__c);
+        salesIssueCstReqLine.Sales_Issue_Remaining_Re_Attempts__c = maxAttempts;
+        salesIssueCstReqLine.Sales_Issue_Sent_to_Entitlement_Hub__c = false;
+        // End TWC4621-888 || Entitlement API#2 - Update Case Number || 9-Jan-2023
         
-        if ( !customerReturnRequestLineWrapperList.isEmpty() && !insertedcaseList.isEmpty() && !insertedcustomerReturnRequestList.isEmpty() ) {
-            for (CustomerReturnRequestLineWrapper cstmrReturnReqLine : customerReturnRequestLineWrapperList) {
-                 Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine = new Customer_Sales_Issue_Request_Line__c();
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart1(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart2(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart3(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart4(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart5(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart6(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart7(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart8(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart9(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart10(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart11(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart12(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart13(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart14(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart15(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart16(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart17(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart18(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart19(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart20(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart21(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart22(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart23(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart24(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart25(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart26(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart27(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart28(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart29(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart30(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart31(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart32(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart33(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart34(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
-                returnReqLinelst.add(salesIssueCstReqLine);
-            }
-        }
-        return returnReqLinelst;
     }
-
-    static void extractEWForInsertCustomerReturnRequestLine(List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList,Map<String,String> ultAndIdMap,List<Customer_Sales_Issue_Request_Line__c> ewItems){
-        for(Customer_Sales_Issue_Request_Line__c lineItem:customerReturnRequestLineList) {
-            if(lineItem.Sales_Issue_Prd_Unique_Id__c!=null && lineItem?.Sales_Issue_Warranty_Status__c != '' && !lineItem?.Sales_Issue_Warranty_Status__c?.endsWith('-Extended Item')) {
-                ultAndIdMap.put(lineItem.Sales_Issue_Prd_Unique_Id__c,lineItem.Id);
-            }
-            if(lineItem.Sales_Issue_Warranty_Status__c.endsWith('-Extended Item')) {
-                ewItems.add(lineItem);
-            }
+    public static void getcustomerReturnRequestLinePart14(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ProdUniqueIdTypeCode) ) {
+            salesIssueCstReqLine.Sales_Issue_Prd_Unique_Id_Type_Cd__c = cstmrReturnReqLine?.warrantyResult?.ProdUniqueIdTypeCode;
+        }
+        //TWC4621-4002 -- mapping EnttlSoldToPartyId from warranty response
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.EnttlSoldToPartyId)) {
+            salesIssueCstReqLine.Entitlement_SoldTo_PartyId__c = cstmrReturnReqLine?.warrantyResult?.EnttlSoldToPartyId;
         }
     }
-    static void assignEWForInsertCustomerReturnRequestLine(List<Customer_Sales_Issue_Request_Line__c> ewItems,Map<String,String> ultAndIdMap){
-        for(Customer_Sales_Issue_Request_Line__c lineItem:ewItems) {
-            if(ultAndIdMap.containsKey(lineItem.Sales_Issue_Prd_Unique_Id__c) ) {
-                lineItem.Sales_Issue_Warranty_Status__c=lineItem.Sales_Issue_Warranty_Status__c.replace('-Extended Item','');
-                lineItem.Parent_Sales_Issue_Request_Line__c=ultAndIdMap.get(lineItem.Sales_Issue_Prd_Unique_Id__c);
-            }
+    public static void getcustomerReturnRequestLinePart15(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (!String.isEmpty(cstmrReturnReqLine?.warrantyResult?.VizId)) {
+            salesIssueCstReqLine.Sales_Issue_VisId__c = cstmrReturnReqLine?.warrantyResult?.VizId;
+        }
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.VizIdStatusCode) ) {
+            salesIssueCstReqLine.Sales_Issue_Visual_Id_Status__c = cstmrReturnReqLine?.warrantyResult?.VizIdStatusCode;
         }
     }
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description : utility method to insert the customerReturnRequestLine list
-* User-Story  : TWC4621-54 & TWC4621-72
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @param    List<Customer_Sales_Issue_Request_Line__c> (list of customer return request line item object records)
-* @return   void
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static List<Customer_Sales_Issue_Request_Line__c> insertCustomerReturnRequestLine( List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList ) {
-        List<Customer_Sales_Issue_Request_Line__c> insertedCustomerReturnRequestLineList = new List<Customer_Sales_Issue_Request_Line__c>();
-            if (!customerReturnRequestLineList.isEmpty()) {
-                customerReturnRequestLineList = R4C_DML_UtilClass.upsertasUser(customerReturnRequestLineList);
-                insertedCustomerReturnRequestLineList = customerReturnRequestLineList;
-                //Syed - EW items parent linking logic
-                if(customerReturnRequestLineList.get(0).Sales_Issue_Warranty_Status__c!=null) {
-                    List<Customer_Sales_Issue_Request_Line__c> ewItems=new List<Customer_Sales_Issue_Request_Line__c>();
-                    Map<String,String> ultAndIdMap=new Map<String,String>();
-                    extractEWForInsertCustomerReturnRequestLine(customerReturnRequestLineList,ultAndIdMap,ewItems);
-                    assignEWForInsertCustomerReturnRequestLine( ewItems,  ultAndIdMap);
-                    if(ewItems.isEmpty() == false) {
-                        R4C_DML_UtilClass.updateasUser(customerReturnRequestLineList);
-                    }
-                }
-            }
-        return insertedCustomerReturnRequestLineList;
-    }
-    
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description : utility method to update a case
-* User-Story  : TWC4621-55
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @param    caseRec,casestatus
-* @return   String
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static Case submitR4CCaseUtil(Case caseRec, String caseStatus) {
-        Case returnCase;
-            if (!String.isEmpty(caseStatus)) {
-                caseRec.status = caseStatus;
-                Case updateCaseRec = new Case(ID=caseRec.Id,Status=caseRec.Status);
-                if(caseRec.OwnerId != null) {
-                   updateCaseRec.OwnerId = caseRec.OwnerId; 
-                } 
-                UPDATE as User updateCaseRec;
-                returnCase = caseRec;
-            }
-        return returnCase;
-    }
-
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description : utility method to update stock rotation allowance
-* User-Story  : TWC4621-55
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @param    List<Sales_Issue_SR_Allowance_Matrix__c> (stock allownace records)
-* @return   String
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static String submitR4CStockRotationAllowanceUtil(
-        List<Sales_Issue_SR_Allowance_Matrix__c> stkalwnclst) {
-        String statusmessage;
-        try {
-            if (!stkalwnclst.isEmpty()) {
-                R4C_DML_UtilClass.updateasUser(stkalwnclst);
-                statusmessage = R4C_Generic_Configurations__c.getValues('Success_Message').value__c;
-            }
-        } 
-        catch (DMLException e) {
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_ViewSummaryUtil.submitR4CStockRotationAllowanceUtil',e.getMessage(),e,true);
+    public static void getcustomerReturnRequestLinePart16(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && cstmrReturnReqLine?.warrantyResult?.CreditPeriodCount != null  ) {
+            salesIssueCstReqLine.Sales_Issue_Credit_Eligibility_Period__c = cstmrReturnReqLine?.warrantyResult?.CreditPeriodCount;
         }
-        return statusmessage;
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ProdUniqueIdStatusCode) ) {
+            salesIssueCstReqLine.Sales_Issue_Prod_Unique_Id_Status_Cd__c = cstmrReturnReqLine?.warrantyResult?.ProdUniqueIdStatusCode;
+        }
     }
-    
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* User-Story : TWC4621-54 & TWC4621-72
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @return   Map<String,String>, DESCRIPTION : fetching return receipt condition object data
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static Map<string, string> getProductCondition() {
-        Map<string, string> prdctCndtnMap = new Map<string, string>();
-        List<Customer_Return_Receipt_Condition__c> receiptcndtnlst = new List<Customer_Return_Receipt_Condition__c>();
+    public static void getcustomerReturnRequestLinePart17(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.DeliveryNoteNumber)) {
+            salesIssueCstReqLine.Sales_Issue_Delivery_Note_Number__c = cstmrReturnReqLine?.warrantyResult?.DeliveryNoteNumber;
+        }
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ServiceContractNumber)) {
+            salesIssueCstReqLine.Sales_Issue_Service_Contract_Number__c = cstmrReturnReqLine?.warrantyResult?.ServiceContractNumber;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart18(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.BoxId)) {
+            salesIssueCstReqLine.Sales_Issue_Box_Id__c = cstmrReturnReqLine?.warrantyResult?.BoxId;
+        }
+        if ( cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ShippedBoxId) ) {
+            salesIssueCstReqLine.Sales_Issue_Shipped_Box_Id__c = cstmrReturnReqLine?.warrantyResult?.ShippedBoxId;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart19(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.FPOLotNumber) ) {
+            salesIssueCstReqLine.Sales_Issue_FPO_Lot_Number__c = cstmrReturnReqLine?.warrantyResult?.FPOLotNumber;
+        }
+        //added mapping for storing Spec Type
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.SpecType) ) {
+            salesIssueCstReqLine.Sales_Issue_Item_Spec_Type__c = cstmrReturnReqLine?.warrantyResult?.SpecType;
+        }
+        //added mapping for storing Spec code
         
-            receiptcndtnlst = [ SELECT id, name FROM Customer_Return_Receipt_Condition__c where Customer_Active_Indicator__c = true WITH USER_MODE LIMIT 49999 ];//  WITH SECURITY_ENFORCED Added as part of checkmarx fixes TWC4621-2127
-
-        if (receiptcndtnlst.isEmpty() == false) {
-            for (Customer_Return_Receipt_Condition__c receiptcndtn : receiptcndtnlst) {
-                prdctCndtnMap.put(receiptcndtn.name, receiptcndtn.Id);
-            }
+    }
+    public static void getcustomerReturnRequestLinePart20(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.SpecCode) ) {
+            salesIssueCstReqLine.Sales_Issue_Item_Spec_Code__c = cstmrReturnReqLine?.warrantyResult?.SpecCode;
         }
-        return prdctCndtnMap;
-    }
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* User-Story : TWC4621-148
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @return   string, DESCRIPTION : updating the existing line items of customer request
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static void updateCustomerReturnRequestLine(List<Case> caselist,
-        List<Customer_Sales_Issue_Request_Line__c> customerReturnReqLineList,Boolean isSubmit) {
-            List<Id> newcrrlineitemIds = new List<Id>();
-            for (Customer_Sales_Issue_Request_Line__c lineitem : customerReturnReqLineList) {
-                if (!String.isEmpty(lineitem.Id)) {
-                    newcrrlineitemIds.add(lineitem.Id);
-                }
-            }
-            queryHelper(caselist,newcrrlineitemIds,isSubmit);
-    }
-
-     /** Description: Helper method to reduce cyclomatic complexity */
-    public static void queryHelper(List<Case> caselist,List<Id> newcrrlineitemIds,Boolean isSubmit) {
-      
-        List<String> caseStatus = genericmsgs.get('R4C_CaseEdit_LineItemStatusRestrict')?.split(';');
-        List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList = new List<Customer_Sales_Issue_Request_Line__c>();
-        if (caselist.isEmpty() == false) {
-            customerReturnRequestLineList = [
-                SELECT id, Sales_Issue_Line_Item_Status__c, Sales_Issue_Cst_Return_Request_Number__c, Sales_Issue_Cst_Return_Request_Number__r.Sales_Issue_CaseNumber__c,Sales_Issue_Cst_Return_Request_Number__r.Name
-                FROM Customer_Sales_Issue_Request_Line__c WHERE Sales_Issue_Cst_Return_Request_Number__r.Sales_Issue_CaseNumber__c = :caselist[0].Id
-                AND Id NOT IN :newcrrlineitemIds AND Sales_Issue_Line_Item_Status__c != :genericmsgs.get('Cancelled_Status_Value') AND Sales_Issue_Line_Item_Status__c != :genericmsgs.get('CPU_POH_Rejection') AND (NOT Sales_Issue_Line_Item_Status__c IN: caseStatus) WITH USER_MODE];//TWC4621-1223- 24/04/23 - Accellor//TWC4621-2886
+        /*if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.BatchId)) {
+            salesIssueCstReqLine.Sales_Issue_Batch_Id__c = cstmrReturnReqLine?.warrantyResult?.BatchId;
+        }*/
+        if (!String.isEmpty(cstmrReturnReqLine?.warrantyResult?.BatchId) || !String.isEmpty(cstmrReturnReqLine?.HanaBatchId)) {
+            salesIssueCstReqLine.Sales_Issue_Batch_Id__c = !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.BatchId) ? cstmrReturnReqLine?.warrantyResult?.BatchId : cstmrReturnReqLine?.HanaBatchId; //TWC4621-4282 -- Mapping batch id from hana
         }
-         // Start TWC4621-899 --Manohar -- updating line item status if it is cancelled or unselected in the case edit -- 19-Jan-2023
-         if(isSubmit == true && customerReturnRequestLineList.isEmpty() == false) {
-            trueSubmitHelper(customerReturnRequestLineList,caselist);
+    }
+    public static void getcustomerReturnRequestLinePart21(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.SourceSystemName) ) {
+            salesIssueCstReqLine.Sales_Issue_Source_System_Name__c = cstmrReturnReqLine?.warrantyResult?.SourceSystemName;
         }
-        else if (isSubmit == false && customerReturnRequestLineList.isEmpty() == false) {
-            falseSubmitHelper(customerReturnRequestLineList,caselist);
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.status) ) {
+            salesIssueCstReqLine.Sales_Issue_Warranty_Status__c = cstmrReturnReqLine?.warrantyResult?.status;
         }
-        // End TWC4621-899 --Manohar -- updating line item status if it is cancelled or unselected in the case edit -- 19-Jan-2023
     }
-     
-    /** Description: Helper method to reduce cyclomatic complexity */
-    public static void trueSubmitHelper(List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList,List<Case> caselist) {
-        for (Customer_Sales_Issue_Request_Line__c lineitem : customerReturnRequestLineList) {
-            lineitem.Sales_Issue_Line_Item_Status__c = caselist[0].status;
+    public static void getcustomerReturnRequestLinePart22(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty( cstmrReturnReqLine?.warrantyResult?.BaseWarrantyStartDate) ) {
+            salesIssueCstReqLine.Sales_Issue_Warranty_StartDate__c = Date.valueof(cstmrReturnReqLine?.warrantyResult?.BaseWarrantyStartDate);
         }
-        //Adding Line Trigger bypass logic only for submit case scenario - Performance fix - Samuel
-        ICS_TriggerHandler.bypass('R4C_LineTriggerHandler');
-        R4C_DML_UtilClass.updateasUser(customerReturnRequestLineList); //FLS added in Parent method
-        //update customerReturnRequestLineList;
-        ICS_TriggerHandler.clearBypass('R4C_LineTriggerHandler');
-
-    }
-     /** Description: Helper method to reduce cyclomatic complexity */
-    public static void falseSubmitHelper(List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList,List<Case> caselist) {
-        for (Customer_Sales_Issue_Request_Line__c lineitem : customerReturnRequestLineList) {
-            if(genericmsgs.get('CheckCaseStatusToDetermineLineStatus').contains(caselist[0].status) == false) {
-                lineitem.Sales_Issue_Line_Item_Status__c = genericmsgs.get('Cancelled_Status_Value');
-            }
-            else {
-                lineitem.Sales_Issue_Line_Item_Status__c = genericmsgs.get('Deleted');
-            }
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.BaseWarrantyEndDate)) {
+            salesIssueCstReqLine.Sales_Issue_Warranty_EndDate__c = Date.valueof(cstmrReturnReqLine?.warrantyResult?.BaseWarrantyEndDate);
         }
-        ICS_TriggerHandler.bypass('R4C_LineTriggerHandler');
-        R4C_DML_UtilClass.updateasUser(customerReturnRequestLineList); //FLS added in Parent method
-        ICS_TriggerHandler.clearBypass('R4C_LineTriggerHandler');
-
     }
- 
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* User-Story : TWC4621-
-* Date :23-05-2023
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Bindhu
-* @return   Id, DESCRIPTION : fetching freight type record 
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static Customer_Freight_Payment_Type__c getFreightType() {
-        Customer_Freight_Payment_Type__c freightRec = new Customer_Freight_Payment_Type__c();       
-            freightRec = [SELECT id,Name FROM Customer_Freight_Payment_Type__c WHERE Customer_Freight_Payment_Type_Code__c = 'CMA'
-                          AND Customer_Active_Indicator__c = TRUE WITH USER_MODE LIMIT 1];
-        return freightRec;
-    }
-        /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description :  generic method to get incoterm value for NPR Credit
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-*/ 
-    public static Customer_International_Commerce_Term__c getIncotermforNPR() {
-        Customer_International_Commerce_Term__c incotermRec = new Customer_International_Commerce_Term__c();       
-            incotermRec = [SELECT id,Name FROM Customer_International_Commerce_Term__c WHERE Customer_InCo_Term_Code__c  = 'EXW'
-                          AND Customer_Active_Indicator__c = TRUE WITH USER_MODE LIMIT 1];
-        return incotermRec;
-    }
-            /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description :  generic method to get return location value for NPR Credit
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-*/ 
-    public static Location_Plant__c getReturnLocationforNPR() {
-        Location_Plant__c returnLocRec = new Location_Plant__c();  
-        String defaultPlant = R4C_Generic_Configurations__c.getValues('Default_Plant_Location_For_NPR_AND_FAC').value__c;     
-            returnLocRec = [SELECT id,Name FROM Location_Plant__c WHERE Name  =: defaultPlant AND Location_Active_Indicator__c = TRUE WITH USER_MODE LIMIT 1];
-        return returnLocRec;
-    }
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description :  generic method to get incoterm value
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-*/  
-    public static String getIncoterm(Customer_Sales_Issue_Request__c customerReturnRequest) {
-        String incotermValue = '';
-        R4C_CollectionDetails_Util.CollectionDetailsWrapper collectionWrapper = new  R4C_CollectionDetails_Util.CollectionDetailsWrapper();
-        collectionWrapper.salesarea = CustomerReturnRequest?.Sales_Issue_Sales_Organization__c;
-        collectionWrapper.remedy = CustomerReturnRequest?.Sales_Issue_Remedy_Type__c;
-        collectionWrapper.servicetype = CustomerReturnRequest?.Sales_Issue_Service_Type__c;
-        collectionWrapper.returnreason = CustomerReturnRequest?.Sales_Issue_Return_Reason__c;
-        //routing request to matrix engine
-
-        R4C_AG_CollectionDetails_Controller.IncotermResponseWrapper freightDataWrapper = R4C_AG_CollectionDetails_Controller.incotermDetermination(collectionWrapper,null);
-
-        //List<Sales_Issue_Matrix__c> matrixlst = R4C_AG_CollectionDetails_Controller.incotermDetermination(collectionWrapper,null);
-        if(freightDataWrapper != null && !freightDataWrapper.salesIssueMatricList.isEmpty()) {
-            incotermValue=freightDataWrapper.salesIssueMatricList[0].Sales_Issue_Inbnd_Shipment_InCo_Term__c;
+    public static void getcustomerReturnRequestLinePart23(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ExtendedWarrantyStartDate) ) {
+            salesIssueCstReqLine.Sales_Issue_Warranty_StartDate__c = Date.valueof(cstmrReturnReqLine?.warrantyResult?.ExtendedWarrantyStartDate);
         }
-        return incotermValue;
-    }
-
-    static Boolean checkIsApprovalMatrixRequestValid(approvalMatrixWrapper approvalRequest){
-        return String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_SoldTo_Customer__c) &&
-        String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_Sales_Organization__c) &&
-        String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_Distribution_Channel__c) &&
-        String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_Service_Type__c) &&
-        String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_Return_Reason__c) &&
-        String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_Remedy_Type__c)  ;
-    }
-    /*
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* User-Story : TWC4621-869
-* Date : 06-01-2023
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Sandeep N
-* @param    Customer_Sales_Issue_Request__c record
-* @return  return List of Sales_Issue_Matrix__c : To get Approval records from Matrix Object
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    public static List<Sales_Issue_Matrix__c> getApprovalMatrix(approvalMatrixWrapper approvalRequest) {
-        String query = '';
-        List<Sales_Issue_Matrix__c> approvalMatrixlst = new List<Sales_Issue_Matrix__c>();
-        try {
-            if (checkIsApprovalMatrixRequestValid(approvalRequest)) {
-                string salesIssueRemedyType=approvalRequest.requestDetail.Sales_Issue_Remedy_Type__c;
-                string salesIssueSoldToCustomer=approvalRequest.requestDetail.Sales_Issue_SoldTo_Customer__c;
-                string salesIssueServiceType=approvalRequest.requestDetail.Sales_Issue_Service_Type__c;
-                string salesIssueDistributionChannel=approvalRequest.requestDetail.Sales_Issue_Distribution_Channel__c;
-                string salesIssueSalesOrganization=approvalRequest.requestDetail.Sales_Issue_Sales_Organization__c;
-                string salesIssueReturnReason=approvalRequest.requestDetail.Sales_Issue_Return_Reason__c;
-                Decimal netCreditPriceDec= Decimal.valueOf(approvalRequest.netCreditPrice);
-                string geoLocation = approvalRequest?.requestDetail?.Sales_Issue_Sales_Organization__r?.Location_Geography__c;//TWC4621-4739
-                if(approvalRequest.isILM) {
-                    /*set<String> RecTypeDeveloperName = new Set<String>{'ILM_Approval_Matrix'};
-                    List<Sales_Issue_SalesOrg_To_Geo_Map__c> salesOrgGeoList = R4C_CollectionDetails_Util.getGeoLocationBySalesOrgId(new List<Id>{salesIssueSalesOrganization});
-                    if(!salesOrgGeoList.isEmpty()) {
-                        string geoLocation = salesOrgGeoList[0]?.Location_Geography__c;
-                        approvalMatrixlst = [SELECT Id, RecordType.Name, Sales_Issue_Approver_Email__c, Sales_Issue_Exceeds_Price__c, Sales_Issue_Approver_WWID__c, Approver_Name__c, Location_Geography__c, Sales_Issue_Operation_Business_Unit_Code__c FROM Sales_Issue_Matrix__c 
-                                             WHERE RecordType.DeveloperName IN :RecTypeDeveloperName AND Sales_Issue_Customer_CMF__c = :salesIssueSoldToCustomer AND Sales_Issue_Service_Type__c = :salesIssueServiceType 
-                                             AND Location_Geography__c = :geoLocation AND Sales_Issue_Active_Indicator__c = TRUE WITH USER_MODE];
-                        
-                    }*/
-                    //TWC4621-4739
-                    if(String.isBlank(geoLocation)) return approvalMatrixlst;
-                    //String whereClause = getILMApproverLevel(approvalRequest);
-                    query = 'SELECT Id, RecordType.Name, Sales_Issue_Approver_Email__c, Sales_Issue_Exceeds_Price__c, Sales_Issue_Approver_WWID__c, Sales_Issue_Approver_Level__c,Approver_Name__c,Location_Geography__c, Sales_Issue_Operation_Business_Unit_Code__c FROM Sales_Issue_Matrix__c WHERE RecordType.DeveloperName=\'ILM_Approval_Matrix\' AND Sales_Issue_Customer_CMF__c =: salesIssueSoldToCustomer AND Sales_Issue_Service_Type__c =: salesIssueServiceType AND Location_Geography__c =: geoLocation AND Sales_Issue_Active_Indicator__c = TRUE WITH USER_MODE Limit 49999';
-                    approvalMatrixlst = Database.query(query);
-                    if(!approvalMatrixlst.isEmpty() && !String.isEmpty(approvalRequest?.OPID)) { 
-                         approvalMatrixlst = filterILMRecsBasedonOPID(approvalMatrixlst, approvalRequest?.OPID); //filtering recordss based on product opid
-                    }
-                } 
-                else {
-                    approvalMatrixlst = R4C_BusinessRule_Service.getRule('Sales_Issue_Approval_Matrix',JSON.serialize(new Map<String,String>{
-                        'Sales_Issue_Service_Type__c'=>salesIssueServiceType,
-                        'Sales_Issue_Remedy_Type__c'=>salesIssueRemedyType,
-                        'Sales_Issue_Customer_Return_Reason__c'=>salesIssueReturnReason,
-                        'Sales_Issue_Customer_CMF__c'=>approvalRequest.requestDetail.Sales_Issue_SoldTo_Customer__c,
-                        'Sales_Issue_Customer_Sales_Organization__c'=>salesIssueSalesOrganization,
-                        'Customer_Disti_Channel__c'=>salesIssueDistributionChannel,
-                        'Sales_Issue_Operation_Business_Unit_Code__c' =>approvalRequest?.OPID,
-                        'Sales_Issue_Exceeds_Price__c'=>String.valueOf(netCreditPriceDec)
-                    }));             
-                }
-            }
-        } 
-        catch (DMLException e) {
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_ViewSummaryUtil.getApprovalMatrix',e.getMessage(),e,true);
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ExtendedWarrantyEndDate)) {
+            salesIssueCstReqLine.Sales_Issue_Warranty_EndDate__c = Date.valueof(cstmrReturnReqLine?.warrantyResult?.ExtendedWarrantyEndDate);
         }
-        return approvalMatrixlst;
     }
-	/**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Filter ILM Matrix Records based on OPID(Sales_Issue_Operation_Business_Unit_Code__c) 
-* User-Story : TWC4621-2165
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-
-*/
-     public static List<Sales_Issue_Matrix__c> filterILMRecsBasedonOPID(List<Sales_Issue_Matrix__c> approvalMatrixlst, String opid) {
-         List<Sales_Issue_Matrix__c> filteredOPIDlst  = new List<Sales_Issue_Matrix__c>();
-         List<Sales_Issue_Matrix__c> emptyOPIDlst  = new List<Sales_Issue_Matrix__c>();
-            for(Sales_Issue_Matrix__c matrixRec : approvalMatrixlst) {
-                 if(matrixRec.Sales_Issue_Operation_Business_Unit_Code__c == opid) {
-                     filteredOPIDlst.add(matrixRec);
-                 } else if(String.isBlank(matrixRec.Sales_Issue_Operation_Business_Unit_Code__c)) {
-                      emptyOPIDlst.add(matrixRec);
-                 }
-             }
-            if(filteredOPIDlst.isEmpty()) {
-              filteredOPIDlst = emptyOPIDlst;
-            }
-          return filteredOPIDlst;
-     }
-    
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description : wrapper class for CustomerReturnRequestLine object
-* User-Story  : TWC4621-55
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-*/
-    public class CustomerReturnRequestLineWrapper {
-        @auraEnabled
-        /** billingDate */
-        public Date billingDate { get; set; }
-        @AuraEnabled
-        /** data */
-        public ICS_WR_MMID_BU_Hierarchy__c data { get; set; }
-        @auraEnabled
-        /** billingQuantity */
-        public string billingQuantity { get; set; }
-        @auraEnabled
-        /** channel */
-        public string channel { get; set; }
-        @auraEnabled
-        /** customerPONumber */
-        public string customerPONumber { get; set; }
-        @auraEnabled
-        /** returnPO */
-        public string returnPO { get; set; }
-        @auraEnabled
-        /** deliveryNote */
-        public string deliveryNote { get; set; }
-        @auraEnabled
-        /** invoiceLineItemNumber */
-        public string invoiceLineItemNumber { get; set; }
-        @auraEnabled
-        /** invoiceNumber */
-        public string invoiceNumber { get; set; }
-        @auraEnabled
-        /** customerBillingDocumentId */
-        public string customerBillingDocumentId { get; set; }
-        @auraEnabled
-        /** legacyIndicator */
-        public string legacyIndicator { get; set; }
-        @auraEnabled
-        /** mm */
-        public string mm { get; set; }
-        @auraEnabled
-        /** productCode */
-        public string productCode { get; set; }
-        @auraEnabled
-        /** YMS2Price */
-        public string YMS2Price { get; set; }
-        @auraEnabled
-        /** pricingCondition */
-        public string pricingCondition { get; set; }
-        @auraEnabled
-        /** salesOrderNumber */
-        public string salesOrderNumber { get; set; }
-        @auraEnabled
-        /** salesOrderNumberLineNumber */
-        public string salesOrderNumberLineNumber { get; set; }
-        @auraEnabled
-        /** salesOrderReasonCode */
-        public string salesOrderReasonCode { get; set; }
-        @auraEnabled
-        /** salesOrg */
-        public string salesOrg { get; set; }
-        @auraEnabled
-        /** soldto */
-        public string soldto { get; set; }
-        @auraEnabled
-        /** unitPrice */
-        public string unitPrice { get; set; }
-        @auraEnabled
-        /** returnQuantity */
-        public string returnQuantity { get; set; }
-        @auraEnabled
-        /** boxCondition */
-        public string boxCondition { get; set; }
-        @auraEnabled
-        /** creditPrice */
-        public string creditPrice { get; set; }
-        @auraEnabled
-        /** currency_z */
-        public string currency_z { get; set; }
-        @auraEnabled
-        /** debitReferenceNumber */
-        public string debitReferenceNumber { get; set; }
-        //@auraEnabled
-        /** orderPartNumber */
-        //public string orderPartNumber { get; set; }
-        @auraEnabled
-        /** lineitemStatus */
-        public string lineitemStatus { get; set; }
-        @auraEnabled
-        /** lineItemRecId */
-        public Id lineItemRecId { get; set; }
-        @auraEnabled
-        /** Error */
-        public String Error { get; set; }
+    public static void getcustomerReturnRequestLinePart24(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.warrentyCheckDate) ) {
+            salesIssueCstReqLine.Sales_Issue_Warranty_Check_Date__c = Date.valueof(cstmrReturnReqLine?.warrantyResult?.warrentyCheckDate);
+        }
         //BUG - FIX - CPN Mapping
-        @auraEnabled
-        /** customerItemNbr */
-        public string customerItemNbr { get; set; }
-        @AuraEnabled /** warrantyResult */
-        public WarrentyDetails warrantyResult { get; set; }
-        //BUG - FIX - Ult during bulk upload
-        @auraEnabled /** ult */
-        public string ult { get; set; }
-        @auraEnabled /** allowanceCategory */
-        public string allowanceCategory { get; set; }
-        @auraEnabled /**mrbnumber */
-        public string mrbnumber { get; set; }
-        @auraEnabled /** RFPriceChange */
-        public string RFPriceChange { get; set; }
-        @auraEnabled /** rfpriceselection */
-        public string rfpriceselection { get; set; }
-        @auraEnabled /** expectedOutcomeValueForRepair */
-        public string expectedOutcomeValueForRepair { get; set; }
-        @auraEnabled /** SRallowanceMatrixId */
-        public string SRallowanceMatrixId { get; set; }
-        @auraEnabled
-        public string lineCancelReason { get; set; }//TWC4621-3197 - Manual Line item closure After RMA
-        @auraEnabled
-        public string lineCancelJustification { get; set; }//TWC4621-3197 - Manual Line item closure After RMA
-        @auraEnabled
-        public string oldMM { get; set; }//PSG Changes
-        @AuraEnabled
-        public String HanaBatchId {get;set;} //TWC4621-4282 -- Mapping batch id from hana
-        @AuraEnabled
-        /** Mapping ActualInvoiceIndicator whether it is PO Search/PO history-TWC4621-4719 */    
-        public String ActualInvoiceIndicator {get;set;}
-        @AuraEnabled
-        public Boolean isECCLineValidated {get;set;}//TWC4621-5189,TWC4621-5191;
+        if (cstmrReturnReqLine?.customerItemNbr != null && !String.isEmpty(cstmrReturnReqLine?.customerItemNbr) ) {
+            salesIssueCstReqLine.Sales_Issue_Customer_Part_Number__c = cstmrReturnReqLine?.customerItemNbr;
+        }
+        //BUG - FIX - Allowance category
         
     }
-    
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description :  wrapper class for inserting case
-* User-Story  : TWC4621-55
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-*/
-    public class returnReqDetailsWrapper {
-        @auraEnabled
-        /** caserec */
-        public Case caserec { get; set; }
-        @auraEnabled
-        /** customerReturnRequest */
-        public Customer_Sales_Issue_Request__c customerReturnRequest { get; set; }
-        @auraEnabled
-        /** customerReturnRequestLineWrapperList */
-        public List<R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper> customerReturnRequestLineWrapperList {
-            get;
-            set;
+    public static void getcustomerReturnRequestLinePart25(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.allowanceCategory != null && !String.isEmpty(cstmrReturnReqLine?.allowanceCategory)) {
+            salesIssueCstReqLine.Sales_Issue_Allowance_Category__c = cstmrReturnReqLine?.allowanceCategory;
         }
-        @auraEnabled
-        /** casemode */
-        public String casemode { get; set; }
-        @auraEnabled
-        /** caserecTypeName */
-        public String caserecTypeName { get; set; }
-        @AuraEnabled
-        /** isPortal */
-        public Boolean isPortal { get; set; } //TWC4621-904 - Samuel - Getting case origin if portal case
-        @auraEnabled
-        /** contactDetails */
-        public Contact contactDetails { get; set; }  //Accellor -- 17/03/2023 -- TWC4621-1123 && TWC4621-1124 added contact details to the wrapper and those values are used in case insertion -- as part of data model changes 
-        @auraEnabled
-        /** remedyDetails */
-        public Sales_Issue_Return_Remedy_Type__c remedyDetails { get; set; }
-        @auraEnabled
-        /** externalCaseId */
-        public String externalCaseId { get; set; }
-        @auraEnabled
-        /** r4eCaseNumber */
-        public String r4eCaseNumber { get; set; }
-        @auraEnabled
-        /** comments */
-        public String comments { get; set; }
-        @auraEnabled//TWC4621-3197 - Manual Line item closure After RMA
-        public Boolean isManualLineClosure { get; set; }
-        @AuraEnabled
-        public List<String> lineIds { get; set; }
-        @AuraEnabled
-        public Boolean updateFailedLines { get; set; }
+        if(!String.isEmpty(cstmrReturnReqLine?.mrbnumber) ) {
+            salesIssueCstReqLine.Sales_Issue_MRB_Reference_Number__c = cstmrReturnReqLine?.mrbnumber;
+        }
     }
     
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description :  wrapper class for submitting case
-* User-Story  : TWC4621-55
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-*/
-    public class submitCaseWrapper {
-        @auraEnabled
-        /** stockAlwncList */
-        public List<Sales_Issue_SR_Allowance_Matrix__c> stockAlwncList {
-            get;
-            set;
+    public static void getcustomerReturnRequestLinePart26(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        //if(!String.isEmpty(cstmrReturnReqLine?.RFPriceChange)) {
+        salesIssueCstReqLine.Reason_for_Price_Change__c = !String.isEmpty(cstmrReturnReqLine?.RFPriceChange) ?  cstmrReturnReqLine?.RFPriceChange : '';
+        //}
+        //Syed - EW addng logic to find chlild line items
+        if(cstmrReturnReqLine?.warrantyResult != null && cstmrReturnReqLine?.warrantyResult?.WarrantyTypeCode == '2') {
+            salesIssueCstReqLine.Sales_Issue_Warranty_Status__c+=' -Extended Item';//place holder value we are deleting this during insert
         }
-        @auraEnabled
-        /** caseRec */
-        public Case caseRec { get; set; }
-        @auraEnabled
-        /** returnreqdetails */
-        public Customer_Sales_Issue_Request__c returnreqdetails { get; set; }
-        @auraEnabled
-        /** ApprovalmatrixRec */
-        public Sales_Issue_Matrix__c ApprovalmatrixRec { get; set; }
-        @AuraEnabled
-        /** isPortal */
-        public Boolean isPortal { get; set; } //TWC4621-904 - Samuel - Getting case origin if portal case
-         @AuraEnabled
-         public String errorMessage  { get; set; } 
-    }
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description :  wrapper class for Approval Matrix
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-*/
-    public class approvalMatrixWrapper {
-        @AuraEnabled
-        /** requestDetail */
-        public Customer_Sales_Issue_Request__c requestDetail { get; set; }
-        @AuraEnabled
-        /** netCreditPrice */
-        public String netCreditPrice { get; set; }
-        @AuraEnabled
-        /** isILM */
-        public Boolean isILM { get; set; }
-        @AuraEnabled
-        /** OPID */
-        public String OPID { get; set; }
-        @AuraEnabled
-        /** approverLevel */
-        public String approverLevel { get; set; }
-    }
-    
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Wrapper To return If Any DML Fails While Case Submission
-* User-Story : TWC4621-684
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Ram Sai
-*/
-    public class RecordInsertionWrapper {
-        @AuraEnabled
-        /** insertR4CCaseRes */
-        public Case insertR4CCaseRes { get; set; }
-        @AuraEnabled
-        /** customeraSalesIssueRequestInsertRecord */
-        public Customer_Sales_Issue_Request__c customeraSalesIssueRequestInsertRecord {
-            get;
-            set;
-        }
-        @AuraEnabled
-        /** customeraSalesIssueRequestLineInsertRecord */
-        public Customer_Sales_Issue_Request_Line__c customeraSalesIssueRequestLineInsertRecord {
-            get;
-            set;
-        }
-        @AuraEnabled
-        /** errorMessageOfDmlOperation */
-        public String errorMessageOfDmlOperation { get; set; }
-    }
-    
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Wrapper To store warrenty data
-* User-Story : TWC4621-912
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Furqan
-*/
-    public class WarrentyDetails {
-        @AuraEnabled
-        /** QueryNumber */
-        public String QueryNumber { get; set; }
-        @AuraEnabled
-        /** CustomerReturnCaseNumber */
-        public String CustomerReturnCaseNumber { get; set; }
-        @AuraEnabled
-        /** ProdUniqueId */
-        public String ProdUniqueId { get; set; }
-        @AuraEnabled
-        /** ProdUniqueIdTypeCode */
-        public String ProdUniqueIdTypeCode { get; set; }
-        @AuraEnabled
-        /** VizId */
-        public String VizId { get; set; }
-        @AuraEnabled
-        /** OperationBusinessUnitCode */
-        public String OperationBusinessUnitCode { get; set; }
-        /** ErrorCode */
-        @AuraEnabled public Integer ErrorCode { get; set; }
-        @AuraEnabled
-        /** VizIdStatusCode */
-        public String VizIdStatusCode { get; set; }
-        @AuraEnabled
-        /** EnttlSoldToPartyId */
-        public String EnttlSoldToPartyId { get; set; }
-         @AuraEnabled 
-        /** EntitlementCMFSalesOrganizationCode */   
-        public String EntitlementCMFSalesOrganizationCode {get;set;}
-         @AuraEnabled 
-        /** EntitlementCMFDistributionChannelCode */   
-        public String EntitlementCMFDistributionChannelCode {get;set;}
-        @AuraEnabled
-        /** EnttlSoldToPartyName */
-        public String EnttlSoldToPartyName { get; set; }
-        @AuraEnabled
-        /** CaseSoldToPartyId */
-        public String CaseSoldToPartyId { get; set; }
-        @AuraEnabled
-        /** SoldToPartyMissMatchIndicator */
-        public String SoldToPartyMissMatchIndicator { get; set; }
-        @AuraEnabled
-        /** ShipToPartyId */
-        public String ShipToPartyId { get; set; }
-        @AuraEnabled
-        /** ShipToPartyName */
-        public String ShipToPartyName { get; set; }
-        @AuraEnabled
-        /** MaterialId */
-        public String MaterialId { get; set; }
-        @AuraEnabled
-        /** SpecCode */
-        public String SpecCode { get; set; }
-        @AuraEnabled
-        /** SpecType */
-        public String SpecType { get; set; }
-        @AuraEnabled
-        /** SalesOrganizationCode */
-        public String SalesOrganizationCode { get; set; }
-        @AuraEnabled
-        /** DistributionChannelCode */
-        public String DistributionChannelCode { get; set; }
-        @AuraEnabled
-        /** CreditPeriodCount */
-        public Integer CreditPeriodCount { get; set; }
-        @AuraEnabled
-        /** ProdUniqueIdStatusCode */
-        public String ProdUniqueIdStatusCode { get; set; }
-        @AuraEnabled
-        /** WarrantyTypeCode */
-        public String WarrantyTypeCode { get; set; }
-        @AuraEnabled
-        /** WarrantyPeriodCount */
-        public String WarrantyPeriodCount { get; set; }
-        @AuraEnabled
-        /** WarrantyMaterialId */
-        public String WarrantyMaterialId { get; set; }
-        @AuraEnabled
-        /** RegistrationIndicator */
-        public String RegistrationIndicator { get; set; }
-        @AuraEnabled
-        /** DeliveryNoteNumber */
-        public String DeliveryNoteNumber { get; set; }
-        @AuraEnabled
-        /** ServiceContractNumber */
-        public String ServiceContractNumber { get; set; }
-        @AuraEnabled
-        /** BoxId */
-        public String BoxId { get; set; }
-        @AuraEnabled
-        /** ShippedBoxId */
-        public String ShippedBoxId { get; set; }
-        @AuraEnabled 
-        /* FPOLotNumber*/
-        public String FPOLotNumber { get; set; }
-        @AuraEnabled
-        /** BatchId */
-        public String BatchId { get; set; }
-        @AuraEnabled
-        /** SourceSystemName */
-        public String SourceSystemName { get; set; }
-        /** BaseWarrantyStartDate */
-        @AuraEnabled
-        public string BaseWarrantyStartDate { get; set; }
-        @AuraEnabled
-        /** BaseWarrantyEndDate */
-        public string BaseWarrantyEndDate { get; set; }
-        @AuraEnabled
-        /** ExtendedWarrantyStartDate */
-        public string ExtendedWarrantyStartDate { get; set; }
-        @AuraEnabled
-        /** ExtendedWarrantyEndDate */
-        public string ExtendedWarrantyEndDate { get; set; }
-        /** warrentyCheckDate */
-        @AuraEnabled
-        public string warrentyCheckDate { get; set; }
-        @AuraEnabled
-        /** status */
-        public string status { get; set; }
-        @AuraEnabled
-        /** TraceResult */
-        public String TraceResult { get; set; }
-        @AuraEnabled
-        /** CountryOfOrigin */
-        public String CountryOfOrigin {get;set;}
-    }
-    /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Tecnical intake update npr cert date
-* User-Story : TWC4621-963
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Furqan
-
-*/
-    public static void updateCaseHeaderForPortalValue(String caseId, String errorReason) {
-        List<Customer_Sales_Issue_Request__c> caseHeaderDetails = new List<Customer_Sales_Issue_Request__c>();
-            //TWC4621-1548 - Syed - Adding new fields to query and updating them
-            caseHeaderDetails = Database.query('SELECT id,Sales_Issue_COD_Agreed_By__c,Sales_Issue_Crt_Of_Destruction_Ind__c,Sales_Issue_Header_Error_Messages__c,Sales_Issue_Crt_Of_Destruction_Date__c,Sales_Issue_SoldTo_Customer__c,Sales_Issue_Location_Plant__c,Sales_Issue_Remedy_Type__c,Sales_Issue_Remedy_Type__r.Name,Sales_Issue_Return_Reason__c,Sales_Issue_Return_Reason__r.Name,Sales_Issue_Sales_Organization__c FROM Customer_Sales_Issue_Request__c WHERE Sales_Issue_CaseNumber__c=:caseId WITH USER_MODE');
+        //Exception DRR and IRR 
         
-        caseHeaderDetails = helper(caseHeaderDetails); // splittind due to cyclomatic complexity
-        if (errorReason != null) {
-            caseHeaderDetails.get(0).Sales_Issue_Header_Error_Messages__c = errorReason;
-        }
-        R4C_DML_UtilClass.updateasUser(caseHeaderDetails);
     }
-
-    /** Description: Helper method to redue cyclomatic complexity */
-    public static List<Customer_Sales_Issue_Request__c>  helper(List<Customer_Sales_Issue_Request__c> caseHeaderDetails) {
-        if (caseHeaderDetails.isEmpty() == false && caseHeaderDetails.get(0).Sales_Issue_Crt_Of_Destruction_Date__c == null && caseHeaderDetails.get(0).Sales_Issue_Remedy_Type__r.Name == 'NPR-Credit') {
-           
-                caseHeaderDetails.get(0).Sales_Issue_Crt_Of_Destruction_Date__c = Date.today();
-            
-                caseHeaderDetails.get(0).Sales_Issue_COD_Agreed_By__c=Userinfo.getUserId();
-            
-                caseHeaderDetails.get(0).Sales_Issue_Crt_Of_Destruction_Ind__c=true;
-            
+    public static void getcustomerReturnRequestLinePart27(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if(!String.isEmpty(cstmrReturnReqLine?.expectedOutcomeValueForRepair) ) {
+            salesIssueCstReqLine.Sales_Issue_Exception_Return_Action__c = cstmrReturnReqLine?.expectedOutcomeValueForRepair;
         }
-        return caseHeaderDetails;
+        if (cstmrReturnReqLine?.SRallowanceMatrixId != null && !String.isEmpty(cstmrReturnReqLine?.SRallowanceMatrixId)) {
+            salesIssueCstReqLine.Sales_Issue_Allowance_Matrix_Id__c = cstmrReturnReqLine?.SRallowanceMatrixId;
+        }
     }
-   
-     /**
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* Description :  SR Allowance amount Deduction for the cancelled Lines -- Manual Line item closure After RMA
-* User-Story : TWC4621-3197
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-
-*/
-     public static void  updateAllowanceRecordsAfterRMA(List<Customer_Sales_Issue_Request_Line__c> lineItemsLSt) {
-        Set<String> newSRAllowanceRecordIds = new Set<String>();
-        Set<String> newLineItemIds = new Set<String>();
-        List<Customer_Sales_Issue_Request_Line__c> newlineItemsList = new List<Customer_Sales_Issue_Request_Line__c>();
-        if (lineItemsLSt.isEmpty() == false) {
-            for(Customer_Sales_Issue_Request_Line__c line : lineItemsLSt) {
-                if(String.isNotBlank(line.Sales_Issue_Allowance_Matrix_Id__c)) { 
-                    newLineItemIds.add(line.Id);
-                    newSRAllowanceRecordIds.add(line?.Sales_Issue_Allowance_Matrix_Id__c);
-                }
-            }
+    public static void getcustomerReturnRequestLinePart28(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        //Start -- Manohar -- TWC4621-3197 - Manual Line item closure After RMA Case Edit
+        if (cstmrReturnReqLine?.lineCancelReason != null && !String.isEmpty(cstmrReturnReqLine?.lineCancelReason) ) {
+            salesIssueCstReqLine.Line_Cancellation_Reason__c = cstmrReturnReqLine?.lineCancelReason;
         }
-        if (newSRAllowanceRecordIds.isEmpty() == false && newLineItemIds.isEmpty() == false) {
-            newlineItemsList = [Select Id,Sales_Issue_Allowance_Matrix_Id__c,Sales_Issue_Cst_Return_Receipt_Cnd__c,Sales_Issue_Cst_Return_Receipt_Cnd__r.Name,Sales_Issue_Net_Credit_Value__c from Customer_Sales_Issue_Request_Line__c where ID IN: newLineItemIds WITH USER_MODE];
+        if (cstmrReturnReqLine?.lineCancelJustification != null && !String.isEmpty(cstmrReturnReqLine?.lineCancelJustification)) {
+            salesIssueCstReqLine.Line_Cancellation_Justification__c = cstmrReturnReqLine?.lineCancelJustification;
         }
-        if(newlineItemsList.isEmpty() == false) {
-            R4C_EmailApproval_Handler.UpdateDiscrepantSRAllowanceRecords(newlineItemsList,newSRAllowanceRecordIds);
+    }
+    public static void getcustomerReturnRequestLinePart29(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.lineCancelReason != null && !String.isEmpty(cstmrReturnReqLine?.lineCancelReason)) {
+            salesIssueCstReqLine.Line_Cancellation_Date__c = System.now();
+        }
+        if (cstmrReturnReqLine?.lineCancelReason != null && !String.isEmpty(cstmrReturnReqLine?.lineCancelReason) ) {
+            salesIssueCstReqLine.Line_Cancellation_Requested_By__c =  UserInfo.getName();
+        }
+        //End -- Manohar -- TWC4621-3197 - Manual Line item closure After RMA Case Edit
+    }
+    public static void getcustomerReturnRequestLinePart30(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        //added mapping for storing Trace Result
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.TraceResult)) {
+            salesIssueCstReqLine.Sales_Issue_Trace_Result__c = cstmrReturnReqLine?.warrantyResult?.TraceResult;
+        }
+        if (cstmrReturnReqLine.isECCLineValidated != null && cstmrReturnReqLine?.isECCLineValidated == true) { //TWC4621-5189,TWC4621-5191;
+            salesIssueCstReqLine.isECCLineValidated__c = cstmrReturnReqLine?.isECCLineValidated;
         }
         
     }
-        /*
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-* User-Story : TWC4621-4739
-* Date : 10-07-2025
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-* @author   Manohar
-* @param    Customer_Sales_Issue_Request__c record
-*@Description : Helper method to detetmine approver level for ILM matrix
-* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-*/
-    static String getILMApproverLevel(approvalMatrixWrapper approvalRequest) {
-        String whereClause  = '';
-        string serviceTypeName = approvalRequest?.requestDetail?.Sales_Issue_Service_Type__r?.Name;
-        Decimal netCreditPriceDec= Decimal.valueOf(approvalRequest.netCreditPrice);
-        if(serviceTypeName == 'Exception') {
-            if(netCreditPriceDec <= 300000){
-                whereClause  = whereClause + ' AND Sales_Issue_Exceeds_Price__c > 0 AND Sales_Issue_Exceeds_Price__c <= 300000 ';
-            }
-            if(netCreditPriceDec > 300000 && netCreditPriceDec <= 5000000){
-            whereClause  = whereClause + ' AND Sales_Issue_Exceeds_Price__c > 300000 AND Sales_Issue_Exceeds_Price__c <= 5000000 ';
-            }
-            if(netCreditPriceDec > 5000000){
-            whereClause  = whereClause + ' AND ( Sales_Issue_Exceeds_Price__c > 5000000 OR Sales_Issue_Exceeds_Price__c = -1 ) ';
-            }
-        } else if(serviceTypeName == 'Admin') {
-            if(netCreditPriceDec <= 100000){
-                whereClause  = whereClause + ' AND Sales_Issue_Exceeds_Price__c > 0 AND Sales_Issue_Exceeds_Price__c <= 100000 ';
-            }
-            if(netCreditPriceDec > 100000 && netCreditPriceDec <= 300000){
-            whereClause  = whereClause + ' AND Sales_Issue_Exceeds_Price__c > 100000 AND Sales_Issue_Exceeds_Price__c <= 300000 ';
-            }
-            if(netCreditPriceDec > 300000){
-            whereClause  = whereClause + ' AND ( Sales_Issue_Exceeds_Price__c > 300000 OR Sales_Issue_Exceeds_Price__c = -1 ) ';
-            }
+    public static void getcustomerReturnRequestLinePart31(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        //Furqan - adding tecnical intake variables
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ProdUniqueId) ) {
+            salesIssueCstReqLine.Sales_Issue_Prd_Unique_Id__c = cstmrReturnReqLine?.warrantyResult?.ProdUniqueId;
         }
-        return whereClause;
+        //Bug Fix - ULt during bulk upload
+        else if(cstmrReturnReqLine?.ult != null && !String.isEmpty(cstmrReturnReqLine?.ult)) {
+            salesIssueCstReqLine.Sales_Issue_Prd_Unique_Id__c = cstmrReturnReqLine.ult;
+        }        
+    }
+    
+    public static void getcustomerReturnRequestLinePart32(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        
+        //PSG Changes
+        if(cstmrReturnReqLine?.oldMM != null && !String.isEmpty(cstmrReturnReqLine?.oldMM)) {
+            salesIssueCstReqLine.PSG_Old_MM__c = cstmrReturnReqLine.oldMM;
+        }
+        //COO - Country of origin
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.CountryOfOrigin)) {
+            salesIssueCstReqLine.Country_of_Origin__c = cstmrReturnReqLine?.warrantyResult?.CountryOfOrigin;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart33(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.EntitlementCMFSalesOrganizationCode)) {
+            salesIssueCstReqLine.Entitlement_SalesOrganization_Code__c = cstmrReturnReqLine?.warrantyResult?.EntitlementCMFSalesOrganizationCode;
+        }
+        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.EntitlementCMFDistributionChannelCode)) {
+            salesIssueCstReqLine.Entitlement_DistributionChannel_Code__c = cstmrReturnReqLine?.warrantyResult?.EntitlementCMFDistributionChannelCode;
+        }
+    }
+    public static void getcustomerReturnRequestLinePart34(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
+        if (!String.isEmpty(cstmrReturnReqLine?.ActualInvoiceIndicator) && Boolean.valueOf(R4C_Generic_Configurations__c.getValues('isIaoFlag').Value__c)) {  // Mapping ActualInvoiceIndicator whether it is PO Search/PO history-TWC4621-4719   
+            salesIssueCstReqLine.Sales_Issue_Invoice_Indicator__c = cstmrReturnReqLine?.ActualInvoiceIndicator; 
+        }
     }
 }
