@@ -1,526 +1,1754 @@
-public inherited sharing class R4C_ViewSummaryUtilHelper {
-    
-    public static void getCaseListPart1(Case objCase,R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails,String caseStatus,String RecordTypeId,String caseOrigin){
-        
-        if (!String.isEmpty(returnReqDetails?.contactDetails?.AccountId)) {
-            objCase.AccountId = returnReqDetails.contactDetails.AccountId;
+/* eslint-disable @lwc/lwc/no-api-reassignments */
+/* eslint-disable @lwc/lwc/no-async-operation */
+import { LightningElement, api, track } from "lwc";
+import { ShowToastEvent } from "lightning/platformShowToastEvent";
+import getCaseLineItems from "@salesforce/apex/R4C_AG_DetailPage_CaseHeader_Controller.getCaseLineItems";
+import getGenericMsgs from "@salesforce/apex/R4C_AG_CaseHeader_Controller.getErrorMessages";
+import { NavigationMixin } from "lightning/navigation";
+// Importing custom labels
+import r4c_CustomLabels from "c/r4c_CustomLabels";
+import { setCaseTypeDetails } from "c/r4c_AG_Utill";
+import continuationCallMMtoCPN from "@salesforce/apexContinuation/R4C_API_MM_To_CPN_Consuming.continuationCallMMtoCPN";
+import { StringFormatter } from 'c/r4c_stringFormatter';
+import userId from '@salesforce/user/Id';
+import r4c_AG_Subline_Closure from 'c/r4c_AG_Subline_Closure';//Manohar -- TWC4621-3470 -- Subline Closure
+import getAllSublinesForLine from '@salesforce/apex/R4C_AG_DetailPage_CaseHeader_Controller.getSublinesForLine'; // SaiRam -- TWC4621-4998 To display All sublines instead of 124
+import { MMCPNAPIcheck } from "c/r4c_AG_LineItemsResultTableUtill";
+import {
+  registerRefreshContainer,
+  unregisterRefreshContainer,
+  REFRESH_ERROR,
+  REFRESH_COMPLETE,
+  REFRESH_COMPLETE_WITH_ERRORS,
+} from "lightning/refresh";
+
+const RECORDS_PER_PAGE = 250;
+import {
+  getDateString
+} from "c/r4c_AG_LineItemsResultTableUtill";
+import getMaskingRecordsForCase from '@salesforce/apex/R4C_AG_PriceProfileMaskingController.getMaskingRecordsForCase';
+const PRICE_MASK_STRING = r4c_CustomLabels.PRICE_MASK_STRING;
+
+export default class R4c_AG_CaseHeaderLineItems extends NavigationMixin(LightningElement) {
+  /*0$ price override */
+  ECC_LINEITEM_STATUS_VALUE = ['Discrepant'];
+  PIRCEOVERRIDE_VALID_STATUS = ['Discrepant'];
+  VALID_PRIECE_OVERRIDE = r4c_CustomLabels.VALID_PRICE_OVERRIDE;
+  PAGE_COORDINATES = r4c_CustomLabels.PAGE_COUNTER;
+  @api isPriceOverrideEdit = false; //0$ price override
+  @api isUserPriceMasked = false;
+  isPriceMasked = false;
+  @api isPortal = false; //Furqan
+  @api caseType; //Furqan
+  @api recordId;
+  @api caseRecord;
+  @api custompage = false;
+  @api isShipmentTrackingPage = false;
+  @api hideValidateEccLineItemsButton = false;
+  @track showDuplicateMM = false;
+  @api isECCLineItemEdit = false;
+  @api isShowCN = false; // FOR CN SERACH
+  @api isPriceMask = false; // FOR CN SEARCH
+  @track genericmessages
+  //TWC4621-3197 - Manohar -- Manual Line item closure After RMA Case Edit
+  Manual_LineClousre_VALID_STATUS = ['Pickup Requested'];
+  allowManualLineClosure = false;
+
+  source = 'ViewSummary';
+  lineItemsData = [];
+  lineItemsLength;
+  showcaselineitems = false;
+  sortDirection = "asc";
+  sortedBy = "name";
+  sortOrder = "Asc";
+  sortdirectionicon = true;
+  sorticon = false;
+  isLoading = true;
+  records = [];
+  shipto;
+  channel;
+  salesorg;
+  caseNumber = '';
+  labels = r4c_CustomLabels.labels; //Assigning custom labels to variable
+  isULT = false;
+  displayLineItems = "slds-section slds-is-open";
+  @api isSubmitted = false;  //To indicate an order is submitted to ECC/is in Pending Approval status
+  caserec;
+  caseRecordType;
+  salesIssueRequestRecord;//header record
+  refreshContainerID;
+  internalCustomerFlow = false;
+
+  lineItemSummary = [];
+  @api hideCancelOpenQtyButton = false;//Manohar -- TWC4621-3470 -- Subline Closure
+  Subline_Closure_Status_Value = ['Reject RTC'];
+  isPsgCase = false; //PSG Changes - Samuel
+
+  get isShowSummary() {
+    return this.lineItemSummary.length > 0;
+
+  }
+
+  rendered = false;
+  renderedCallback() {
+    if (this.rendered) return;
+    this.applyStyle();
+
+  }
+  get legendTextStyle() {
+    if (this.isPortal) {
+      return 'vertical-align: middle; font-size: .6em;';
+    }
+    return 'vertical-align: middle;'
+  }
+
+  get iconZoomlevel() {
+    if (this.isPortal) {
+      return 'zoom: 64%;padding-top: 4px;padding-left: 0;padding-right: 0; width: 36px; height: 36px; text-align: center;';
+    }
+
+    return 'zoom: 73%;'
+
+  }
+
+  get showValidateECCItemsButton() {
+    return !this.isPortal && !this.hideValidateEccLineItemsButton && this.arrayoflineitemsandpopupdata?.filter(i => this.ECC_LINEITEM_STATUS_VALUE.includes(i.linerowdata.linestatus) && +i.linerowdata.lineNumber >= 5000).length > 0 && !this.isPriceOverrideEdit;
+  }
+  get showCancelOpenQtyButton() {//Manohar -- TWC4621-3470 -- Subline Closure -- Hide and Show the cancel open quantity button
+    return !this.isPortal && !this.hideCancelOpenQtyButton && this.arrayoflineitemsandpopupdata?.filter(i => !this.Subline_Closure_Status_Value.includes(i.linerowdata.linestatus) && +i.linerowdata.sumOfSubLineReceivedQty > 0 && +i.linerowdata.sumOfSubLineReceivedQty != i.linerowdata.returnquantity && +i.linerowdata.sumOfSubLineReceivedQty < i.linerowdata.returnquantity).length > 0 && this?.genericmessages?.Cancel_Open_Quantity;
+  }
+
+  applyStyle() {
+    const style = document.createElement('style');
+    style.innerText = `
+      .design.orange-icon svg{
+      fill:#fe9339;
+      }
+      .design.my-icon svg{
+      fill:#0176D3
+      }
+      `;
+    //applying styles dynamically to shadow dom elements
+    let inputs = this.template.querySelectorAll('span.inputDesign');
+
+    for (let div of inputs) {
+      div.appendChild(style);
+      this.rendered = true;
+    }
+
+  }
+
+
+  // TWC4621-40 - 16-08-22 - Manohar Reddy - Call method to get Line item records based on case record Id
+  async connectedCallback() {
+
+
+    this.refreshContainerID = registerRefreshContainer(
+      this.template.host,
+      this.refreshContainer.bind(this),
+    );
+    await this.genericMsgs();
+    this.CaseLineItems();
+
+    if (this.isSubmitted) {
+      this.displayLineItems = "slds-section slds-is-close";
+    }
+  }
+
+  refreshContainer(refreshPromise) {
+    return refreshPromise.then((status) => {
+      if (status === REFRESH_COMPLETE) {
+        this.arrayoflineitemsandpopupdata = [];
+        console.log("Refresh without issues");
+        this.CaseLineItems();
+      } else if (status === REFRESH_COMPLETE_WITH_ERRORS) {
+        console.warn("Refresh done, with issues refreshing some components");
+      } else if (status === REFRESH_ERROR) {
+        console.error("Major error with refresh.");
+      }
+    });
+  }
+
+  disconnectedCallback() {
+    unregisterRefreshContainer(this.refreshContainerID);
+  }
+
+  //Exchange Remedy - Technical Intake
+  get isTechnicalExchange() {
+    return this?.caseRecordType?.isTechnicalExchange() || this?.caseRecordType?.remedy == 'Return Only';
+  }
+  get displayCPN() {
+    return this?.caseRecordType?.isTechnicalExchange() || this.internalCustomerFlow;
+  }
+  get isMiscellaneousReturnOnly() { //TWC4621-2030  --Manohar
+    return this?.caseRecordType?.remedy == 'Return Only' ? true : false;
+  }
+
+
+  /*get isInternalCustomerFlow() {
+    return this?.caseRecordType
+  }*/
+
+  get creditPriceColumnName() { //Manohar
+    return this.caseRecordType?.isExceptionRepair() ? this.labels.Sales_Price : this.labels.Credit_Price;
+  }
+  get netCreditValueColumnName() {
+    return this.caseRecordType?.isExceptionRepair() ? this.labels.Net_Value : this.labels.Net_Credit_Value;
+  }
+  toggleSection(event) {
+    if (event.currentTarget.dataset.id === 'lineItemsSection') {
+      if (this.displayLineItems === "slds-section slds-is-close") {
+        this.displayLineItems = "slds-section slds-is-open";
+      } else {
+        this.displayLineItems = "slds-section slds-is-close";
+      }
+    }
+  }
+  @track arrayoflineitemsandpopupdata = [];
+  // Start TWC4621-40 - 16-08-22 - Manohar Reddy - Method to get Line item records based on case record Id
+  CaseLineItems() {
+    getCaseLineItems({
+      caseId: this.recordId
+    })
+      .then(async (data) => {
+        this.arrayoflineitemsandpopupdata = [];
+        console.log('Lines data length-- ', data.length);// Delete this later
+        if (data.length > 0) {
+          data = data.filter(item => item.Sales_Issue_Line_Item_Status__c != 'Reject-CPU POH');
+          // START - CN Search
+          if (this.isShowCN === true) {
+            data = data.filter(item => item.Customer_Sales_Issue_Request_Sublines__r);
+          }
+          // END - CN Search
+
+
+          //BUG Fix - Undefined Value
+          this.caserec = { CaseNumber: data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.CaseNumber };
+          if (data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_SoldTo_Customer__r?.Customer_CPN_Support__c && data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.Origin === 'ILM' && data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.Status === 'Draft') {
+            await this.fetchCPN(data);
+          }
+          //to determine internal customer flow
+          this.internalCustomerFlow = (data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.Contact?.Name) ? false : true;
+          //this.caseRecordType = { serviceType: data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Service_Type__r?.Name };
+          this.caseRecordType = setCaseTypeDetails(data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Remedy_Type__r?.Name, data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Service_Type__r?.Name, data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Return_Reason__r?.Name);
+          this.salesIssueRequestRecord = data[0]?.Sales_Issue_Cst_Return_Request_Number__r;
+          this.isULT = this?.caseRecordType?.isTechnicalService() || this?.caseRecordType?.isQualityService() || (this.caseRecordType?.isExceptionService() && (this.caseRecordType?.isExceptionRepair() || this.caseRecordType?.returnReason === 'GRL Exception')) || this.caseRecordType?.returnReason === 'Free of Charge Sample' ? true : false; //For Showing ULT Template 
+          //|| data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Service_Type__r?.Name === "Quality" || (this.caseRecordType?.isExceptionService() && (this.caseRecordType?.isExceptionRepair() || this.caseRecordType?.returnReason === 'GRL Exception'))
+          let isIMF = data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Freight_Payment_Type__r?.Name === "Intel Managed Freight" ? true : false; //Changes to View Line Item Status - TWC4621-1133 - N Sandeep - 21/03/2023
+          let caseObject = {};
+          let isUnexpectedECCLineItem = false;
+          let notAcceptingVizStatusCode = this.genericmessages?.invalid_warrenty_viz_code?.split(',') || ['PC', 'CME', 'INV', 'PIN', 'SIN'];
+
+          //Masking Changes - Samuel
+          this.isPriceMasked = false;
+          if (this.isPortal == true || this.isPortal == 'true') {
+            //const shipToMask = data[i].Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_SoldTo_Customer__r?.Customer_Ship_To_Price_Mask__c || false;
+            //const soldToMask = data[i].Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_SoldTo_Customer__r?.Customer_Sold_To_Price_Mask__c || false;
+            //this.isPriceMasked = this.isUserPriceMasked || shipToMask || soldToMask;
+
+            let cmfMask = await this._fetchAndProcessMaskingData(data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.ContactId,
+              data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_SoldTo_Customer__c,
+              data[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_ShipTo_Customer__c);
+            this.isPriceMasked = this.isUserPriceMasked || cmfMask;
+          }
+          //Masking Changes - Samuel - End
+
+          for (let i = 0; i < data.length; i++) {
+
+            caseObject = data[i].Sales_Issue_Cst_Return_Request_Number__r.Sales_Issue_CaseNumber__r;
+
+            let sublines = data[i]?.Customer_Sales_Issue_Request_Sublines__r;
+
+            let linerowdata = {
+              isSubLinesOpen: false,
+              isCreditPriceInput: false,
+              successMessage: 'success',
+              Id: data[i]?.Id,
+              returnponumber: data[i]?.Sales_Issue_Cst_Return_PO_Number__c,
+              lineNumber: data[i]?.Name, // Start TWC4621-987,TWC4621-987 - 13-02-23 - Samuel - Code for showing specific details for SR & Technical Intake in UI
+              lineurl: "/" + data[i]?.Id,
+              productcode: data[i]?.Sales_Issue_Item__r?.Item_Product_Code__c,
+              returnquantity: data[i]?.Sales_Issue_Return_Quantity__c,
+              serialnumber: data[i]?.Sales_Issue_Item_Serial_Number__c,
+              sonumber: data[i]?.Sales_Issue_Sales_Order_Number__c,
+              solinenumber: data[i]?.Sales_Issue_Sales_Order_Line_Number__c,
+              loedate: getDateString(data[i]?.Sales_Issue_Last_Order_Entry_Date__c),
+              EstimatedArrivalDate: getDateString(data[i]?.Sales_Issue_Estimated_Arrival_Date__c),
+              confirmedPickupDate: getDateString(data[i]?.Sales_Issue_Confirmed_Pickup_Date__c),
+              billingQuantity: data[i]?.Billing_Quantity__c,
+              CPN: data[i]?.Sales_Issue_Customer_Part_Number__c,
+              ULT: data[i]?.Sales_Issue_Prd_Unique_Id__c,
+              //TWC4621-1093 - Agent/Portal UI-Shipment/Tracking APIs: Shipment information View in the case (Backend Logic) - Sandeep N
+              billOfLading: data[i].Sales_Issue_Bill_of_Lading_Number__c,
+              //TWC4621-1093 - Agent/Portal UI-Shipment/Tracking APIs: Shipment information View in the case (Backend Logic) - Sandeep N
+              // TWC4621-687 - For line item level shipment tracking
+              linestatus: data[i]?.Sales_Issue_Line_Item_Status__c,
+              // CN Search
+              invoiceNumber: data[i]?.Sales_Issue_Invoice_Number__c,
+              showShipment: false,
+              // Start TWC4621-738 - 13-12-22 - Samuel Nishant - To get line-item error messsages from Customer Sales issue line record
+              error: false,
+              errorMsg: data[i]?.Line_item_error_messages__c,
+              //TWC4621-3197 - Manohar -- Manual Line item closure After RMA Case Edit
+              isLineStatusInput: false,
+              isShowReasonForLineStatus: false,
+              originalLineStatus: data[i]?.Sales_Issue_Line_Item_Status__c,
+              sumOfSubLineReceivedQty: data[i]?.Sales_Issue_Total_Subline_Received_Qty__c,//Manohar -- TWC4621-3470 -- Subline Closure
+              oldMM: data[i]?.PSG_Old_MM__c, //PSG Changes - Samuel
+              linecancelreason: data[i]?.Line_Cancellation_Reason__c || '', //SaiRam -- to display cancellation reason and justification for cancelled subline
+              linecanceljustification: data[i].Line_Cancellation_Justification__c || '' //SaiRam -- to display cancellation reason and justification for cancelled subline
+            };
+            //Start - TWC4621-3197 - Manohar -- Manual Line item closure After RMA Case Edit
+            if (!this.isPortal && this.custompage && this.Manual_LineClousre_VALID_STATUS?.includes(data[i]?.Sales_Issue_Line_Item_Status__c)) {
+              linerowdata["isLineStatusInput"] = true;
+              linerowdata["isShowReasonForLineStatus"] = true;
+              linerowdata["SRallowanceId"] = data[i]?.Sales_Issue_Allowance_Matrix_Id__c;
+              //linerowdata["receiptConditionId"] = data[i]?.Sales_Issue_Cst_Return_Receipt_Cnd__c;
+              //linerowdata["receiptConditionRec"] = data[i]?.Sales_Issue_Cst_Return_Receipt_Cnd__r;
+              this.allowManualLineClosure = true;
+            }
+            //End - TWC4621-3197 - Manohar -- Manual Line item closure After RMA Case Edit
+            if (data[i]?.Line_item_error_messages__c != undefined && data[i]?.Line_item_error_messages__c.startsWith('Pending Reason:')) {
+              linerowdata['isSoftStop'] = true;
+              linerowdata['softMessage'] = data[i]?.Line_item_error_messages__c;
+            }
+            else if (data[i]?.Line_item_error_messages__c != undefined) {
+              linerowdata["error"] = true;
+              linerowdata["successMessage"] = data[i]?.Line_item_error_messages__c;
+            }
+            if (data[i]?.Sales_Issue_Line_Item_Status__c && data[i]?.Sales_Issue_Line_Item_Status__c === 'Deleted') {
+              linerowdata["error"] = true;
+              linerowdata["errorMsg"] = 'Deleted';
+            }
+            // End TWC4621-738 - 13-12-22 - Samuel Nishant - To get line-item error messsages from Customer Sales issue line record
+            this.isPsgCase = this.isPsgCase || (data[i]?.PSG_Old_MM__c?.length > 1);//PSG Changes - Samuel
+            // TWC4621-687 - For line item level shipment tracking
+            //Changes to View Line Item Status - TWC4621-1133 - N Sandeep - 21/03/2023
+            linerowdata["showShipment"] = (this?.isShipmentTrackingPage || this.isPortal) && isIMF === true && (linerowdata.linestatus === "In Transit" || linerowdata.linestatus === "Delivered");
+            linerowdata["productcondition"] = (data[i]?.Sales_Issue_Cst_Return_Receipt_Cnd__c !== undefined) ? data[i]?.Sales_Issue_Cst_Return_Receipt_Cnd__r?.Name : '';
+
+            if (this.isPriceMasked) {
+              linerowdata["creditPrice"] = PRICE_MASK_STRING;
+              linerowdata["netvalue"] = PRICE_MASK_STRING;
+              linerowdata["unitprice"] = PRICE_MASK_STRING;
+            }
+            else {
+              linerowdata["creditPrice"] = (data[i]?.Sales_Issue_Credit_Price__c) ? "$" + parseFloat(data[i]?.Sales_Issue_Credit_Price__c)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "$0";
+              linerowdata["creditOriginalPrice"] = data[i]?.Sales_Issue_Credit_Price__c;//Sales_Issue_Disti_Price__c
+              linerowdata["netvalue"] = (data[i]?.Sales_Issue_Net_Credit_Value__c != undefined) ? "$" + parseFloat(data[i]?.Sales_Issue_Net_Credit_Value__c)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "$0";
+              linerowdata["netOriginalValue"] = data[i]?.Sales_Issue_Net_Credit_Value__c;
+              linerowdata["unitprice"] = (data[i]?.Sales_Issue_PO_Price__c) ? "$" + parseFloat(data[i]?.Sales_Issue_PO_Price__c)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "$0";
+              linerowdata['reasonForChange'] = data[i]?.Reason_for_Price_Change__c || '';
+            }
+            //Syed - EW adding padding for child elements
+            linerowdata['isExtended'] = (data[i].Parent_Sales_Issue_Request_Line__c) ? true : false;
+            linerowdata['parentId'] = data[i]?.Parent_Sales_Issue_Request_Line__c || '';
+            if (data[i]?.Sales_Issue_Disti_Price__c == 0 && !(this.salesIssueRequestRecord?.Sales_Issue_Remedy_Type__r?.Name == 'Return Only')) { //TWC4621-2030 added Sales_Issue_Remedy_Type__r condition , for remedy "Return Only" always the price is zero 
+              linerowdata['isSoftStop'] = true;
+              let priceMsg = this.labels.YMS2Price_not_found;
+              if (this?.caseRecordType.isAdminService() || data[i]?.Reason_for_Price_Change__c) {
+                priceMsg = 'Price has been set to Zero';
+              }
+              linerowdata['softMessage'] = priceMsg;
+            }
+
+            if (data[i]?.Sales_Issue_Item__c !== undefined) {
+              linerowdata["mmid"] = data[i]?.Sales_Issue_Item__r?.Name;
+              linerowdata["mmRecordId"] = data[i]?.Sales_Issue_Item__c;//Manohar -- TWC4621-3470 -- Subline Closure
+              linerowdata["productdescription"] =
+                data[i]?.Sales_Issue_Item__r?.Item_Product_Description__c;
+            } else {
+              linerowdata["mmid"] = "";
+              linerowdata["mmRecordId"] = "";
+              linerowdata["productdescription"] = "";
+            }
+
+            if (data[i]?.Sales_Issue_Cst_Return_Request_Number__c !== undefined) {
+              if (data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_ShipTo_Customer__c !== undefined) {
+                this.shipto = data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_ShipTo_Customer__r?.Customer_Name__c; //TWC4621-1123 && TWC4621-1124 -- Accellor -- 17/03/2023 -- replaced NAme --> Customer_Name__c as part of data model changes
+              } else {
+                this.shipto = "";
+              }
+              if (data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Sales_Organization__c !== undefined) {
+                this.salesorg = data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Sales_Organization__r?.Customer_Sales_Organization_Code__c;
+              } else {
+                this.salesorg = "";
+              }
+              if (data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Distribution_Channel__c !== undefined) {
+                this.channel = data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Distribution_Channel__r?.Customer_Distribution_Channel_Code__c;
+              } else {
+                this.channel = "";
+              }
+            } else {
+              this.shipto = "";
+              this.salesorg = "";
+              this.channel = "";
+            }
+            let eachrecordpopupdata = !this.caseRecordType?.isTechnicalExchange() && !this.isMiscellaneousReturnOnly ? [
+              {
+                fieldlabel: this.labels.R4C_Invoice_Number,
+                fieldvalue: data[i]?.Sales_Issue_Invoice_Number__c
+              },
+              {
+                fieldlabel: this.labels.Customer_PO_Number,
+                fieldvalue: data[i]?.Sales_Issue_Cst_PO_Number__c
+              },
+              {
+                fieldlabel: this.labels.Debit_Reference_Number,
+                fieldvalue: data[i]?.Sales_Issue_Debit_Reference_Nbr__c
+              }
+            ] : [];
+            /*let opnField = [
+              {
+                fieldlabel: this.labels.OPN,
+                fieldvalue: data[i]?.Sales_Issue_Order_Part_Number__c
+              }
+            ]
+            eachrecordpopupdata = eachrecordpopupdata.concat(opnField);*/
+            // Start TWC4621-987,TWC4621-987 - 13-02-23 - Samuel - Code for showing specific details for SR & Technical Intake in UI
+            let srarr = [];
+            if (this.caseRecordType?.isTechnicalService() || (this.caseRecordType?.isQualityService() && this.caseRecordType?.returnReason === 'FAC')) {
+
+
+              let warrantyStatus = data[i]?.Sales_Issue_Warranty_Status__c;
+              if (notAcceptingVizStatusCode.includes(data[i]?.Sales_Issue_Visual_Id_Status__c?.toUpperCase()) && (this.isPortal == true || this.isPortal == 'true')) {
+                warrantyStatus = this.labels.TI_Warranty_WTBD;
+              }
+
+              //Adding ult type code in more info
+              //For Technical case
+              srarr = [
+                {
+                  fieldlabel: this.labels.R4C_Warranty_Status,
+                  fieldvalue: warrantyStatus //data[i]?.Sales_Issue_Warranty_Status__c
+                },
+                {
+                  fieldlabel: this.labels.R4C_Entitlement_Check_Date,
+                  fieldvalue: getDateString(data[i]?.Sales_Issue_Warranty_Check_Date__c)
+                },
+                {
+                  fieldlabel: this.labels.TI_ULT_Type_Code,
+                  fieldvalue: data[i]?.Sales_Issue_Prod_Unique_Id_Status_Cd__c || ''
+                }
+
+              ];
+
+              //TWC4621-2404 - Syed - adding view change on more info for warranty logic
+              if (this.caseRecordType.isTechnicalExchange()) {
+                srarr.push({
+                  fieldlabel: this.labels.R4C_Warranty_End_date,
+                  fieldvalue: getDateString(data[i]?.Sales_Issue_Warranty_EndDate__c)
+                })
+                linerowdata['successMessage'] = StringFormatter.format(this.labels.Warrenty_valid_till, getDateString(data[i].Sales_Issue_Warranty_EndDate__c));
+
+              }
+              else {
+                srarr.push({
+                  fieldlabel: this.labels.R4C_Credit_Eligibility_End_Date,
+                  fieldvalue: warrantyStatus == 'Warranty to be Decided' ? '' : getDateString(data[i]?.Sales_Issue_Credit_Eligibility_End_Date__c)
+                })
+                linerowdata['successMessage'] = StringFormatter.format(this.labels.Warrenty_valid_till, getDateString(data[i].Sales_Issue_Credit_Eligibility_End_Date__c));
+              }
+            }
+            //Bug fix - Samuel - Show WTBD for portal case edit based on VisId status
+            //do not change warrenty to be decided to label as that will be translated and we store only english value in status field
+            if (data[i]?.Sales_Issue_Warranty_Status__c?.toLowerCase() == 'Warranty to be Decided'.toLowerCase() || (notAcceptingVizStatusCode.includes(data[i]?.Sales_Issue_Visual_Id_Status__c?.toUpperCase()))) {
+              //linerowdata['softMessage'] = data[i]?.Sales_Issue_Warranty_Status__c;
+              linerowdata['softMessage'] = (this.isPortal == true || this.isPortal == 'true') ? this.labels.TI_Warranty_WTBD : linerowdata['successMessage'];
+              linerowdata['isSoftStop'] = true;
+            }
+
+            eachrecordpopupdata = eachrecordpopupdata.concat(srarr);
+            if ((!this.caseRecordType.isTechnicalService()) && this.caseRecordType?.remedy !== 'NPR-Credit') {
+              //For SR case
+              let boxCond = [
+                {
+                  fieldlabel: this.labels.Box_Condition,
+                  fieldvalue: data[i]?.Sales_Issue_Cst_Return_Receipt_Cnd__r?.Name
+                }
+              ];
+              eachrecordpopupdata = eachrecordpopupdata.concat(boxCond);
+            }
+            // End TWC4621-987,TWC4621-987 - 13-02-23 - Samuel - Code for showing specific details for SR & Technical Intake in UI
+            //Start -- Quality Intake
+            if (data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Service_Type__r.Name === 'Quality' && data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Return_Reason__r?.Name !== 'FAC') {
+              let qualityFields = [
+                {
+                  fieldlabel: this.labels.MRB_Ref_Number,
+                  fieldvalue: data[i]?.Sales_Issue_MRB_Reference_Number__c || ''
+                }
+              ];
+              eachrecordpopupdata = eachrecordpopupdata.concat(qualityFields);
+            }
+            if (data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Service_Type__r.Name === 'Quality' && data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Return_Reason__r?.Name === 'FAC') {
+              if (data[i]?.Line_item_error_messages__c === this.labels.ULT_not_Found) {
+                linerowdata["error"] = false;
+                linerowdata['isSoftStop'] = true;
+                linerowdata['softMessage'] = this.labels.ULT_not_Found;
+              }
+            }
+            //End -- Quality Intake
+            if (data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Service_Type__r.Name === 'Exception' && data[i]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Remedy_Type__r?.Name === 'Repair') {
+              let remedyRepairFields = [
+                {
+                  fieldlabel: this.labels.Expected_Outcome,
+                  fieldvalue: data[i]?.Sales_Issue_Exception_Return_Action__c || ''
+                }
+              ];
+              eachrecordpopupdata = eachrecordpopupdata.concat(remedyRepairFields);
+            }
+            if (isIMF === true) { //Changes to View Line Item Status - TWC4621-1133 - N Sandeep - 21/03/2023
+              let pickup = [
+                {
+                  fieldlabel: this.labels.R4C_Confirmed_Pick_Up_Date,
+                  fieldvalue: getDateString(data[i]?.Sales_Issue_Confirmed_Pickup_Date__c)
+                }
+              ];
+              eachrecordpopupdata = eachrecordpopupdata.concat(pickup);
+            }
+
+            //Syed - ECC Edit  
+            if (+data[i]?.Name >= 5000) {
+              isUnexpectedECCLineItem = true;
+              if (this.ECC_LINEITEM_STATUS_VALUE.includes(data[i].Sales_Issue_Line_Item_Status__c)) {
+                linerowdata['isEccLineItem'] = true;
+                linerowdata['softMessage'] = 'Item Received is unexpected, Please validate it.'
+                linerowdata['isSoftStop'] = true;
+              }
+              else if (data[i].Sales_Issue_Line_Item_Status__c == 'Unexpected Product - Declined' && !data[i].Line_item_error_messages__c) {
+                linerowdata["error"] = true;
+                linerowdata["errorMsg"] = 'Unexpected Item Failed Validation';
+
+              }
+            }
+
+            //Adding Return Order Number and Return Delivery Number
+            if (!this.isPortal) {
+              let numberDetails = [
+                {
+                  fieldlabel: 'Return Order Number',
+                  fieldvalue: data[i]?.Sales_Issue_Return_Order_Number__c
+                },
+                {
+                  fieldlabel: 'Return Delivery Number',
+                  fieldvalue: data[i]?.Sales_Issue_Return_Delivery_Number__c
+                }
+              ]
+              eachrecordpopupdata = eachrecordpopupdata.concat(numberDetails);
+            }
+
+            let obj = { linerowdata, eachrecordpopupdata, sublines };
+            this.arrayoflineitemsandpopupdata.push(obj);
+          }
+
+
+          this.caseRecord = caseObject;
+
+          if (this.isECCLineItemEdit) {
+            this.arrayoflineitemsandpopupdata = this.arrayoflineitemsandpopupdata.filter(i => i.linerowdata.isEccLineItem);
+          }
+
+          //if ecc line item sort array for extended item
+          if (isUnexpectedECCLineItem) {
+            let newArrayoflineitemsandpopupdata = [];
+            let extendedLineItems = this.arrayoflineitemsandpopupdata.filter(i => i.linerowdata.isExtended);
+            if (extendedLineItems.length > 0) {
+              let nonExtendedLineItems = this.arrayoflineitemsandpopupdata.filter(i => !i.linerowdata.isExtended);
+              let extendKey = {};
+              extendedLineItems.forEach(i => {
+                extendKey[i.linerowdata.parentId] = i;
+              });
+              nonExtendedLineItems.forEach((i) => {
+                newArrayoflineitemsandpopupdata.push(i);
+                if (extendKey[i.linerowdata.Id]) {
+                  newArrayoflineitemsandpopupdata.push(extendKey[i.linerowdata.Id]);
+                }
+              })
+              this.arrayoflineitemsandpopupdata = newArrayoflineitemsandpopupdata;
+            }
+          }
+
+
+          this.lineItemsLength = this.arrayoflineitemsandpopupdata.length;
+          if (this.lineItemsLength > 0) {
+            this.prepareCaseLineStatusSummary();
+            this.showcaselineitems = true;
+          }
         }
-        if (!String.isEmpty(returnReqDetails?.contactDetails?.Id)) {
-            objCase.ContactId = returnReqDetails.contactDetails.Id;
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => {
+        this.isLoading = false;
+      })
+  }
+
+  prepareCaseLineStatusSummary() {
+    let data = this.arrayoflineitemsandpopupdata;
+    let summary = [];
+    data.forEach(record => {
+      if (record.linerowdata.linestatus) {
+        if (!summary[record.linerowdata.linestatus]) {
+          summary[record.linerowdata.linestatus] = 0;
+        }
+        summary[record.linerowdata.linestatus] += 1;
+      }
+
+    })
+    this.lineItemSummary = [];
+    Object.keys(summary).forEach(key => {
+      this.lineItemSummary.push({
+        label: key,
+        value: summary[key]
+      })
+    })
+  }
+
+  //This is for all Line Item for Export to CSV
+  get alllineItems() {
+    this._processPaginationVariables();
+    return this.arrayoflineitemsandpopupdata
+      ?.map((item, index) => {
+        let itemIndex = index + 1;
+        item.page = this.PAGE_COORDINATES[itemIndex];
+        item.index = itemIndex;
+        return item;
+      })
+  }
+
+  //This for pagination for chunks 50 line Item 
+  get lineItems() {
+
+    this._processPaginationVariables();
+
+    let displayList = this.arrayoflineitemsandpopupdata
+    //Syed - ECC Edit - do not show ecc line items
+    if (this.isPriceOverrideEdit) {
+      displayList = displayList?.filter(i => +i.linerowdata.lineNumber < 5000 && (this.PIRCEOVERRIDE_VALID_STATUS.includes(i.linerowdata.linestatus) || (this.caseRecord?.Status == 'Draft' && this?.caseRecord?.Origin === 'ILM')));
+    }
+    console.log('Lines displayList length-- ', displayList.length);// Delete this later
+    //this.allowLineClosure = this.custompage && displayList.some((item) => this.Manual_LineClousre_VALID_STATUS?.includes(item?.linerowdata?.linestatus));
+    return displayList?.map((item, index) => {
+      let itemIndex = index + 1;
+      item.page = this.PAGE_COORDINATES[itemIndex];
+      item.index = itemIndex;
+      item.isPriceOverRideItem = this.isPriceOverrideEdit;
+      return item;
+    })?.slice(this.pagination.indStart, this.pagination.indEnd);
+
+  }
+  // start - for pagination - CS
+
+  @track pagination = {
+    currentPage: 1,
+    uiIndStart: 1,
+    totalPages: 0,
+    indStart: 0,
+    indEnd: 0,
+    totalRecords: 0,
+    get isFirstPage() {
+      return this.currentPage == 1
+    },
+    get isLastPage() {
+      return this.currentPage == this.totalPages;
+    }
+  }
+
+  get paginationNumberCss() {
+
+    return (this.isPortal == true || this.isPortal == 'true') ? 'font-size: .6em' : '';
+
+  }
+  get paginationHeaderCss() {
+    return (this.isPortal == true || this.isPortal == 'true') ? 'font-size: .7em' : '';
+  }
+
+
+  _processPaginationVariables() {
+    // start - for pagination - CS
+
+
+
+
+    let totalItems = this.arrayoflineitemsandpopupdata.length || 0;
+
+    //Syed - ECC Edit - do not show ecc line items
+    if (this.isPriceOverrideEdit) {
+      totalItems = this.arrayoflineitemsandpopupdata?.filter(i => +i.linerowdata.lineNumber < 5000 && (this.PIRCEOVERRIDE_VALID_STATUS.includes(i.linerowdata.linestatus) || (this.caseRecord?.Status == 'Draft' && this?.caseRecord?.Origin === 'ILM'))).length;
+    }
+
+
+    if (totalItems != this.pagination.totalRecords) {
+      this.pagination.totalRecords = totalItems;
+      this.isLoading = true;
+      setTimeout(() => {
+        this.isLoading = false;
+      }, 100);
+    }
+    this.pagination.totalPages = Math.ceil(this.pagination.totalRecords / RECORDS_PER_PAGE);
+    this.pagination.indStart = (this.pagination.currentPage - 1) * RECORDS_PER_PAGE;
+    this.pagination.uiIndStart = this.pagination.totalRecords > 0 ? this.pagination.indStart + 1 : 0;
+    this.pagination.indEnd = this.pagination.indStart + RECORDS_PER_PAGE;
+    if (this.pagination.indEnd > this.pagination.totalRecords) {
+      this.pagination.indEnd = this.pagination.totalRecords;
+    }
+    //end - for pagination - CS
+
+  }
+
+  goToNextPage() {
+    this.isLoading = true;
+    if (this.pagination.currentPage < this.pagination.totalPages) {
+      this.pagination.currentPage += 1;
+    }
+
+    setTimeout(() => {
+      this._processPaginationVariables();
+      this.isLoading = false;
+    }, 1000);
+  }
+
+  goToPreviousPage() {
+    this.isLoading = true;
+    if (this.pagination.currentPage > 1) {
+      this.pagination.currentPage -= 1;
+    }
+
+    setTimeout(() => {
+      this._processPaginationVariables();
+      this.isLoading = false;
+    }, 1000);
+  }
+  //end - for pagination - CS
+
+  // End TWC4621-40 - 16-08-22 - Manohar Reddy - Method to get Line item records based on case record Id
+
+  /*Sorting Logic*/ // Start TWC4621-40 - 16-08-22 - Manohar Reddy - Method for implementing sorting logic in table
+  sortTableData() {
+    let fieldName = "mmid";
+    this.sortDirection = this.sortDirection === "asc" ? "desc" : "asc";
+
+
+    if (this.sortOrder == "asc") {
+      this.isAsc = true;
+      this.isDsc = false;
+      this.arrayoflineitemsandpopupdata = JSON.parse(JSON.stringify(this.arrayoflineitemsandpopupdata)).sort((a, b) => {
+        a = a[fieldName] ? a[fieldName].toLowerCase() : "z";
+        b = b[fieldName] ? b[fieldName].toLowerCase() : "z";
+        return a > b ? 1 : -1;
+      });
+      this.sortOrder = "desc";
+      this.sorticon = true;
+      this.sortdirectionicon = false;
+    } else {
+      this.isAsc = false;
+      this.isDsc = true;
+      this.arrayoflineitemsandpopupdata = JSON.parse(JSON.stringify(this.arrayoflineitemsandpopupdata)).sort((a, b) => {
+        a = a[fieldName] ? a[fieldName].toLowerCase() : "z";
+        b = b[fieldName] ? b[fieldName].toLowerCase() : "z";
+        return a > b ? 1 : -1;
+      });
+      this.sortOrder = "asc";
+      this.sortdirectionicon = true;
+    }
+  }
+  // End TWC4621-40 - 16-08-22 - Manohar Reddy - Method for implementing sorting logic in table
+
+
+  //This Method is used to invoke Workspace API which can be used to deal with Salesforce Console or Standard navigations and their tabs
+  invokeWorkspaceAPI(methodName, methodArgs) {
+    return new Promise((resolve, reject) => {
+      const apiEvent = new CustomEvent("internalapievent", {
+        bubbles: true,
+        composed: true,
+        cancelable: false,
+        detail: {
+          category: "workspaceAPI",
+          methodName: methodName,
+          methodArgs: methodArgs,
+          callback: (err, response) => {
+            if (err) {
+              return reject(err);
+            }
+            return resolve(response);
+
+          }
+        }
+      });
+      window.dispatchEvent(apiEvent);
+    });
+  }
+
+  //Start - Samuel - Method to import all generic messages from custom settings
+  async genericMsgs() {
+    await getGenericMsgs()
+      .then((data) => {
+        this.genericmessages = data;
+        this.ECC_LINEITEM_STATUS_VALUE = data?.ECC_LineItemStatus_IntialValue?.split(',') || ['Discrepant'];
+        this.PIRCEOVERRIDE_VALID_STATUS = data?.Edit_PriceOverRide_LineStatus.split(',');
+        this.Manual_LineClousre_VALID_STATUS = data?.R4C_Manual_Line_Closure_Valid_Statuses.split(',');//TWC4621-3197 - Manohar -- Manual Line item closure After RMA Case Edit
+        this.Subline_Closure_Status_Value = data?.R4C_Subline_Closure_Status_Check?.split(',') || ['Reject RTC', 'Reject Scrap', 'Credited', 'Cancelled', 'Complete', 'Closed', 'Reject', 'Auto-Closed'];//Manohar -- TWC4621-3470 -- Subline Closure
+      })
+      .catch((error) => {
+        console.error("error", error);
+        this.showToast(this?.labels?.Error_Title, this?.labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3040
+
+      });
+  }
+  //End - Method to import all generic messages from custom settings
+
+  //This Method is used to dispaly all the prompts/lightning toast messages
+  showToast(title, message, variant) {
+    const event = new ShowToastEvent({
+      title: title,
+      message: message,
+      variant: variant
+    });
+    this.dispatchEvent(event);
+  }
+
+  /*Shipment tracking modal popup - N Sandeep - TWC4621-687*/
+  openShipping(event) {
+    let selectedLineItemRec = this.arrayoflineitemsandpopupdata.filter(item => (item.linerowdata.Id == event.detail.id));
+
+    const selectedEvent = new CustomEvent("selectlineitem", {
+      detail: {
+        itemid: selectedLineItemRec
+      }
+    });
+    this.dispatchEvent(selectedEvent);
+  }
+
+
+  changedItemList = [];
+  handleLineItemChangeValue(event) {
+    let data = event.detail.data;
+    let type = event.detail.type;
+    if (type == 'price' || type == 'linestatus') {
+      if (this.changedItemList.find(item => item.Id == data.Id)) {
+        this.changedItemList.forEach(item => {
+          if (item.Id == data.Id) {
+            item = { ...data }
+          }
+        })
+        return;
+      }
+      this.changedItemList.push(data);
+
+    }
+  }
+  @api async retriveChangedLineItems() {
+    return await this.validateLineRows(this.changedItemList);
+    //return this.changedItemList;
+  }
+  changedSublines = {};
+  handlesublines(event) {
+    this.changedSublines = event.detail.data;
+  }
+
+  @api changedSublinesdata() {
+    return this.changedSublines;
+  }
+
+  async toggleSubline(event) {
+    let details = event.detail;
+    let { lineItemId, status } = details;
+
+    this.isLoading = true;
+    this.arrayoflineitemsandpopupdata.forEach(item => {
+      if (item.linerowdata.Id === lineItemId) {
+        item.linerowdata.isSubLinesOpen = status;
+      }
+    })
+
+    setTimeout(() => {
+      this._processPaginationVariables();
+      this.isLoading = false;
+    }, 200);
+
+  }
+  alphanumeric(inputtxt) {
+    var letterNumber = /^[0-9]+$/;
+    return inputtxt.match(letterNumber) ? true : false;
+  }
+  fetchCPN(lineItemsData) {
+    let successMM = [];
+    if (!successMM.includes(lineItemsData[0]?.Sales_Issue_Item__r?.Name)) {
+      if (this.alphanumeric(lineItemsData[0]?.Sales_Issue_Item__r?.Name)) {
+        successMM.push(String(lineItemsData[0]?.Sales_Issue_Item__r?.Name).padStart(18, "0"));
+      } else {
+        successMM.push(lineItemsData[0]?.Sales_Issue_Item__r?.Name);
+      }
+    }
+    //Start - TWC4621-3660 - Add all API from JS to Util component -Manohar 
+    this.isLoading = true;
+    MMCPNAPIcheck(successMM, [""], [lineItemsData[0]?.Sales_Issue_Cst_Return_Request_Number__r.Sales_Issue_Sales_Organization__r?.Customer_Sales_Organization_Code__c],
+      [lineItemsData[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Distribution_Channel__r?.Customer_Distribution_Channel_Code__c], [lineItemsData[0]?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_SoldTo_Customer__r?.Name])
+      .then((res) => {
+        if (res?.isError == true) {
+          throw new Error("MM/CPN API Failure");
+        }
+        let result = res?.apiResult;
+        if (result) {
+          result = JSON.parse(result);
+          const itemCountMap = new Map();
+          let hasMultipleCustomerPartNumbers = false;
+          for (const item of result) {
+            //SaiRam - TWC4621-5092 To Support MM CPN for Both IAO and R4C Start
+            if (this.genericmessages.isIaoFlag == 'true' || this.genericmessages.isIaoFlag == true) {
+              if (itemCountMap.has(item.ITEM_ID)) {
+                // we've seen this itemId before, so increment the count of customerpartnumbers
+                const count = itemCountMap.get(item.ITEM_ID);
+                itemCountMap.set(item.ITEM_ID, count + 1);
+                if (count + 1 >= 2) {
+                  hasMultipleCustomerPartNumbers = true;
+                  break;
+                }
+              } else {
+                // this is the first time we've seen this itemId, so add it to the itemCountMap with a count of 1
+                itemCountMap.set(item.ITEM_ID, 1);
+              }
+            }else {
+              if (itemCountMap.has(item.ItemId)) {
+                // we've seen this itemId before, so increment the count of customerpartnumbers
+                const count = itemCountMap.get(item.ItemId);
+                itemCountMap.set(item.ItemId, count + 1);
+                if (count + 1 >= 2) {
+                  hasMultipleCustomerPartNumbers = true;
+                  break;
+                }
+              } else {
+                // this is the first time we've seen this itemId, so add it to the itemCountMap with a count of 1
+                itemCountMap.set(item.ItemId, 1);
+              }
+            }
+
+            //SaiRam - TWC4621-5092 To Support MM CPN for Both IAO and R4C End
+
+          }
+          if (hasMultipleCustomerPartNumbers) {
+            this.showDuplicateMM = true;
+            this.MMCPNApiRes = result;
+
+          } else {
+            this.showDuplicateMM = false;
+            this.MMCPNApiRes = result;
+            this.showUpdatedCPNOnTable(null);
+          }
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+        this.showToast(this.labels.Error_Title, this.labels.MM_CPN_Failed, "error");
+      })
+      .finally(() => {
+        this.isLoading = false;
+      });
+  }
+  hideMMCPNModalHandler() {
+    this.showDuplicateMM = false;
+  }
+  ILMlineItemsToUpdate = [];
+  async showUpdatedCPNOnTable(event) {
+    this.showcaselineitems = false;
+    this.showDuplicateMM = false;
+    let mmCPNMap = new Map();
+    if (event != null && event.detail != null) {
+      this.MMCPNApiRes = JSON.parse(event.detail);
+    }
+    if (this.MMCPNApiRes.length > 0) {
+      //SaiRam - TWC4621-5092 To Support MM CPN for Both IAO and R4C Start
+      this.MMCPNApiRes.map((mmCPNRes) => {
+        if (this.genericmessages.isIaoFlag == 'true' || this.genericmessages.isIaoFlag == true) {
+          mmCPNMap.set(mmCPNRes.ITEM_ID.replace(/^0+/, ""),mmCPNRes.CUSTOMER_PART_NBR);
+        }else {
+          mmCPNMap.set(
+            mmCPNRes.ItemId.replace(/^0+/, ""),
+            mmCPNRes.CustomerPartNbr
+          );
+        }
+        return mmCPNRes;
+      });
+      //SaiRam - TWC4621-5092 To Support MM CPN for Both IAO and R4C End
+    }
+    await this.arrayoflineitemsandpopupdata.forEach((data, index) => {
+      data.linerowdata.CPN = mmCPNMap?.get(data?.linerowdata?.mmid);
+      let lineitem = {
+        lineItemRecId: data?.linerowdata?.Id,
+        customerItemNbr: data.linerowdata.CPN || ''
+
+      }
+      this.ILMlineItemsToUpdate.push(lineitem);
+    });
+    this.showcaselineitems = true;
+  }
+  @api retriveChangedILMLineItems() {
+    return this.ILMlineItemsToUpdate;
+  }
+  @api retriveAllLineItems() {
+    return this.arrayoflineitemsandpopupdata.map(i => {
+      return i.linerowdata;
+    })
+  }
+
+  handleECClineItemEdit() {
+
+    if (this.caseRecord.OwnerId != userId) {
+      this.showToast('error', 'Please accept the case first', 'error');
+      return;
+    }
+
+
+
+    this[NavigationMixin.Navigate]({
+      type: "standard__component",
+      attributes: {
+        componentName: "c__R4C_AG_CaseECCEditBridge"
+      },
+      state: {
+        c__recordId: this.recordId,
+        c__eccEdit: true
+      }
+    });
+  }
+  //Start -- Manohar -- TWC4621-3470 -- Subline Closure
+  handleSubLineClosure() {
+    let mainLines = this.arrayoflineitemsandpopupdata.filter(
+      (data) => !this.Subline_Closure_Status_Value.includes(data.linerowdata.linestatus)
+        && +data.linerowdata.sumOfSubLineReceivedQty > 0 && +data.linerowdata.sumOfSubLineReceivedQty != data.linerowdata.returnquantity
+        && data.linerowdata.lineNumber != null && +data.linerowdata.sumOfSubLineReceivedQty < data.linerowdata.returnquantity).map(item => {
+          return {
+            Id: item?.linerowdata?.Id,
+            lineNumber: item?.linerowdata?.lineNumber || '',
+            MM: item?.linerowdata?.mmid || '',
+            status: item?.linerowdata?.linestatus || '',
+            returnQuantity: item?.linerowdata?.returnquantity || '',
+            sumOfSubLinesReceivedQty: item?.linerowdata?.sumOfSubLineReceivedQty || '',
+            mmRecordId: item?.linerowdata?.mmRecordId || '',
+          }
+        })
+    if (mainLines.length > 0) {
+      r4c_AG_Subline_Closure.open({
+        size: 'medium',
+        description: this.genericmessages.Cancel_Open_Quantity,
+        mainLineItems: mainLines,
+        genericMessages: this.genericmessages,
+      })
+        .then(res => {
+          if (res?.status == 'closed') {
+            return;
+          }
+          if (res?.status == 'success') {
+            this.showToast(this?.genericmessages?.Success_Message, this.genericmessages.Subline_Closure_SuccessMsg, "success");
+          } else if (res?.status == 'error') {
+            this.showToast(this?.genericmessages?.Error_Title, this?.genericmessages?.generic_error_msg, "error");
+          }
+          eval("$A.get('e.force:refreshView').fire();");
+        })
+        .catch((error) => {
+          console.error(error);
+          this.showToast(this?.genericmessages?.Error_Title, this?.genericmessages?.generic_error_msg, "error");
+        });
+    }
+  }
+  //End -- Manohar -- TWC4621-3470 -- Subline Closure
+
+  async _fetchAndProcessMaskingData(contactId, soldToId, shipToId) { //Masking Changes - Samuel
+    let mask = false;
+    try {
+      console.log("contactId-- ", contactId, "soldToId-- ", soldToId, "shipToId-- ", shipToId);
+
+      let maskingRecords = await getMaskingRecordsForCase({ contactId: contactId, soldToIds: [soldToId] });
+      console.log("maskingRecords-- ", maskingRecords);
+
+      mask = maskingRecords.some(
+        ({ Contact__c, Sold_To_CMF__c, Ship_To_CMF__c, Sold_To_Price_Mask__c, Ship_To_Price_Mask__c }) =>
+          (Contact__c === contactId || !Contact__c) &&
+          Sold_To_CMF__c === soldToId &&
+          ((Ship_To_CMF__c === shipToId && Ship_To_Price_Mask__c) || (!Ship_To_CMF__c && Sold_To_Price_Mask__c))
+      );
+      // mask = records.some((rec) => {
+      //   if ((rec.Contact__c == contactId && rec.Sold_To_CMF__c == soldToId && !rec.Ship_To_CMF__c && rec.Sold_To_Price_Mask__c) ||
+      //     (rec.Contact__c == contactId && rec.Sold_To_CMF__c == soldToId && rec.Ship_To_CMF__c == shipToId && rec.Ship_To_Price_Mask__c) ||
+      //     (!rec.Contact__c && rec.Sold_To_CMF__c == soldToId && !rec.Ship_To_CMF__c && rec.Sold_To_Price_Mask__c) ||
+      //     (!rec.Contact__c && rec.Sold_To_CMF__c == soldToId && rec.Ship_To_CMF__c == shipToId && rec.Ship_To_Price_Mask__c)) {
+      //     return true;
+      //   }
+      //   else return false;
+      // })
+    } catch (error) {
+      console.error('Error fetching masking data:', error);
+    }
+    return mask;
+  }
+   //TWC4621-4811 -- validate all rows whether it is having any errors or not for input fields
+  async validateLineRows(orginalData) {
+    if (orginalData?.length < 0) return [];
+    let lineData = JSON.parse(JSON.stringify(orginalData))
+    await lineData.forEach((item, index) => {
+      const childObj = this.template.querySelector(`[data-id="${item?.Id}"]`);
+      if (childObj) {
+        let result = childObj.validateInputFields();
+        item.disableSave = (!result) ? true : false;
+      }
+    })
+    return lineData;
+  }
+
+  //SaiRam adding getter to determine if current screen is IAO or not -  TWC4621-5330
+  get isIAOScreen() {
+      return this.genericmessages.isIaoFlag == 'true';
+  }   
+}
+
+/* eslint-disable @lwc/lwc/no-async-operation */
+import { api, track, wire } from 'lwc';
+import LightningModal from 'lightning/modal';
+import r4c_CustomLabels from "c/r4c_CustomLabels";
+import {
+    setCaseTypeDetails
+} from "c/r4c_AG_Utill";
+import { generateWarrantyRequestBody, splitArrayIntoChunks, getDateString } from "c/r4c_AG_LineItemsResultTableUtill";
+import { processWarrantyResponse } from "c/r4c_AG_TechinalIntakeHelper";
+import { StringFormatter } from 'c/r4c_stringFormatter';
+import getWarrantyCheck from "@salesforce/apexContinuation/R4C_EntAPI_GetWarrentyConsumingClass.invokeInitialRequest";
+import { gql, graphql } from "lightning/uiGraphQLApi";
+
+const RECORDS_PER_PAGE = 10;
+export default class R4c_AG_ExchangeWarrantyCheck extends LightningModal {
+
+    @api set lineItems(value) {
+        this.poSearchData = value.map(obj => {
+            let i = { ...obj };
+            i.selected = true;
+            i.productStatus = true;
+            i.boxConditionDisabled = false;
+
+            i.successText = '';
+            i.errorText = '';
+            i.Error = false;
+            i.isSoftStop = undefined;
+            i.warrantyCheck = undefined;
+
+            i.isULTSoftStop = undefined;
+            i.poValidated = undefined;
+            i.isPoHistoryValid = undefined;
+            i.warrentyValidated = undefined;
+
+            i.isCPNChange = false;//CPN replacement changes
+            i.CPN ='CPN-566-878'
+            i.existingCPN = i.CPN;
+            i.newCPN = '';
+            return i;
+        });
+    }
+    @api isPortal = false;
+    @api casemode = 'Create';
+    @api genericMessages;
+    @api caserec;
+    @api set requestdetails(value) {
+        this.exchangeRequestdetails = { ...value }
+    }
+
+    @api set caseType(value) {
+        let obj = { ...value }
+        obj.remedy = 'Exchange';
+        obj.serviceType = 'Technical';
+        this.caseTypeFunctions = setCaseTypeDetails(obj.remedy, obj.serviceType, obj.returnReason)
+    }
+    @api receiptConditions;
+
+    isLoading = true;
+    PAGE_COORDINATES = r4c_CustomLabels.PAGE_COUNTER;
+    labels = r4c_CustomLabels.labels;
+    caseTypeFunctions;
+    returnResonValue;
+    technicalIntakeTable = {
+        warrentyCheck: true
+    }
+    allselectedcheckbox = true;
+    selectedInvoiceNum = [];
+    valueTrue = true;
+
+    @track poSearchData = [];
+    @track returnReasonOptions = [];
+    @track exchangeRequestdetails;
+    @track pagination = {
+
+        currentPage: 1,
+        uiIndStart: 1,
+        totalPages: 0,
+        indStart: 0,
+        indEnd: 0,
+        totalRecords: 0,
+        get isFirstPage() {
+            return this.currentPage == 1
+        },
+        get isLastPage() {
+            return this.currentPage == this.totalPages;
         }
     }
-    public static void getCaseListPart2(Case objCase,R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails,String caseStatus,String RecordTypeId,String caseOrigin){
-        
-        if (returnReqDetails.isPortal == true) {
-            //TWC4621-904 - Samuel - Setting case origin if portal case
-            caseOrigin = R4C_Generic_Configurations__c.getValues('Web_Portal').value__c;
-        } 
-        else {
-            caseOrigin = R4C_Generic_Configurations__c.getValues('Case_Origin_Internal').value__c;
-        }
-        if (!String.isEmpty(caseOrigin) ) {
-            objCase.Origin = caseOrigin;
-        }
-        // SHIPRA
-        if (!String.isEmpty(returnReqDetails.comments) ) {
-            objCase.Description = returnReqDetails.comments;
-        }
-        // SHIPRA
+
+    get poSearchDataX() {
+        this._processPaginationVariables();
+
+        return this.poSearchData
+            ?.map((item, index) => {
+                let itemIndex = index + 1;
+                item.page = this.PAGE_COORDINATES[itemIndex];
+                item.itemNumber = itemIndex;
+                return item;
+            })
+            ?.slice(this.pagination.indStart, this.pagination.indEnd) || []
     }
-    public static void getCaseListPart3(Case objCase,R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails,String caseStatus,String RecordTypeId,String caseOrigin){
-        if (!String.isEmpty(recordTypeId)) {
-            objCase.RecordTypeId = RecordTypeId;
-        }
+    get requestdetails() {
+        return this.exchangeRequestdetails;
     }
-    public static void getCaseListPart4(Case objCase,R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails,String caseStatus,String RecordTypeId,String caseOrigin){
-        if (!String.isEmpty(caseStatus)) {
-            objCase.Status = caseStatus;
-        }
+    get lineItems() {
+        return this.poSearchData;
     }
-    public static void getCaseListPart5(Case objCase,R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails,String caseStatus,String RecordTypeId,String caseOrigin){
-        if (!String.isEmpty(returnReqDetails.r4eCaseNumber)) {
-            objCase.External_Issue_ID__c = returnReqDetails.r4eCaseNumber;
-        }
-        if (!String.isEmpty(returnReqDetails.externalCaseId)) {
-            objCase.External_Case_ID__c = returnReqDetails.externalCaseId;
-        }
+    get caseType() {
+        return this.caseTypeFunctions;
     }
-    
-    public static void getCustomerReturnRequestPart1(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Id)) {
-            customerReturnRequest.Id = objCustomerReturnRequest.Id;
-        }
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_SoldTo_Customer__c)) {
-            customerReturnRequest.Sales_Issue_SoldTo_Customer__c = objCustomerReturnRequest.Sales_Issue_SoldTo_Customer__c;
-        }
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_ShipTo_Customer__c)) {
-            customerReturnRequest.Sales_Issue_ShipTo_Customer__c = objCustomerReturnRequest.Sales_Issue_ShipTo_Customer__c;
-        }
+    get paginationNumberCss() {
+        return (this.isPortal == true || this.isPortal == 'true') ? 'font-size: .6em' : 'line-height: 2em;';
     }
-    public static void getCustomerReturnRequestPart2(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Distribution_Channel__c)) {
-            customerReturnRequest.Sales_Issue_Distribution_Channel__c = objCustomerReturnRequest.Sales_Issue_Distribution_Channel__c;
-        }
-        if (!insertedcaseList.isEmpty() && String.isEmpty(objCustomerReturnRequest.Id)) {
-            customerReturnRequest.Sales_Issue_CaseNumber__c = insertedcaseList[0].Id;
-        }
+    get paginationHeaderCss() {
+        return (this.isPortal == true || this.isPortal == 'true') ? 'font-size: .7em' : '';
     }
-    public static void getCustomerReturnRequestPart3(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Return_Reason__c)) {
-            customerReturnRequest.Sales_Issue_Return_Reason__c = objCustomerReturnRequest.Sales_Issue_Return_Reason__c;
-        }
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Division_Code__c)) {
-            customerReturnRequest.Sales_Issue_Division_Code__c = objCustomerReturnRequest.Sales_Issue_Division_Code__c;
-        }
+    get headerFontSize() {
+        return (this.isPortal == true || this.isPortal == 'true') ? 'font-size: 1em' : '';
     }
-    public static void getCustomerReturnRequestPart4(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (objCustomerReturnRequest.Sales_Issue_Collection_Date__c != null) {
-            customerReturnRequest.Sales_Issue_Collection_Date__c = objCustomerReturnRequest.Sales_Issue_Collection_Date__c;
-        }
-        customerReturnRequest.Sales_Issue_Collection_Contact__c = objCustomerReturnRequest.Sales_Issue_Collection_Contact__c;
-        customerReturnRequest.Sales_Issue_Cst_Collection_Address__c = objCustomerReturnRequest.Sales_Issue_Cst_Collection_Address__c;
+    get isValidateDisabled() {
+        const recordSelected = this.poSearchData.some(i => i.selected);
+        return recordSelected == false || this.returnResonValue == undefined || this.isLoading;
     }
-    public static void getCustomerReturnRequestPart5(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Return_To_Cst_Address__c)) {
-            customerReturnRequest.Sales_Issue_Return_To_Cst_Address__c = objCustomerReturnRequest.Sales_Issue_Return_To_Cst_Address__c;
+    get legendTextStyle() {
+        if (this.isPortal) {
+            return 'vertical-align: middle; font-size: .6em;';
         }
-        if (objCustomerReturnRequest.Sales_Issue_Bonded_Site_Indicator__c != null) {
-            customerReturnRequest.Sales_Issue_Bonded_Site_Indicator__c = objCustomerReturnRequest.Sales_Issue_Bonded_Site_Indicator__c;
-        }      
+        return 'vertical-align: middle;'
     }
-    public static void getCustomerReturnRequestPart6(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        customerReturnRequest.Sales_Issue_Location_Plant__c = objCustomerReturnRequest.Sales_Issue_Location_Plant__c;
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_InCo_Term__c)) {
-            customerReturnRequest.Sales_Issue_InCo_Term__c = objCustomerReturnRequest.Sales_Issue_InCo_Term__c;
+
+    get iconZoomlevel() {
+        if (this.isPortal) {
+            return 'zoom: 64%;padding-top: 4px;padding-left: 1%;padding-right: 1%;';
         }
-        if(isNpr) {
-            customerReturnRequest.Sales_Issue_InCo_Term__c = R4C_ViewSummaryUtil.getIncotermforNPR().Id;
-            customerReturnRequest.Sales_Issue_Location_Plant__c = R4C_ViewSummaryUtil.getReturnLocationforNPR().Id;
-        }
+        return 'zoom: 73%;'
+
     }
-    public static void getCustomerReturnRequestPart7(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_SoldTo_Contact__c)) {
-            customerReturnRequest.Sales_Issue_SoldTo_Contact__c = objCustomerReturnRequest.Sales_Issue_SoldTo_Contact__c;
+    @wire(graphql, {
+        query: gql`
+        query getReturnReasonsConditions($serviceTypeCode: String,$remedyTypeCode: String){
+            uiapi {
+                  query {
+                    Sales_Issue_Customer_Return_Reason__c(
+                    where: { 
+                                Sales_Issue_Service_Type__r :{ Sales_Issue_Service_Type_Code__c :{ eq: $serviceTypeCode }},
+                                 Sales_Issue_Remedy_Type__r :{ Sales_Issue_Remedy_Type_Code__c  :{ eq: $remedyTypeCode }},
+                                Sales_Issue_Active_Indicator__c  : {eq : true} 
+                            }
+                        ){
+                            edges {
+                                node {
+                                Id
+                                Name {
+                                    value
+                                }
+                                Sales_Issue_Return_Reason_Code__c{
+                                    value
+                                }
+                                Sales_Issue_Service_Type__r {
+                                    Id
+                                    Name{
+                                        value
+                                    }
+                                    Sales_Issue_Service_Type_Code__c{
+                                        value
+                                    }
+                                }
+                                 
+                                Sales_Issue_Remedy_Type__r{
+                                    Id
+                                    Name{
+                                        value
+                                    }
+                                    Sales_Issue_Remedy_Type_Code__c{
+                                        value
+                                    }
+                                }
+                            }
+                        }
+                    }
+                  }
+                }
+              }
+            `,
+        variables: "$graphQlVariables"
+    })
+    wiredReturnReasonsConditions(result) {
+
+        if (result.data) {
+            let data = result.data?.uiapi?.query?.Sales_Issue_Customer_Return_Reason__c?.edges;
+            if (data.length === 0) {
+                return;
+            }
+            let oneRecord = data[0];
+
+            let remedyDetails = {
+                Sales_Issue_Remedy_Type_Code__c: oneRecord.node.Sales_Issue_Remedy_Type__r.Sales_Issue_Remedy_Type_Code__c.value,
+                Name: oneRecord.node.Sales_Issue_Remedy_Type__r.Name.value,
+                Id: oneRecord.node.Sales_Issue_Remedy_Type__r.Id,
+            }
+            this.exchangeRequestdetails.remedyDetails = remedyDetails;
+            this.exchangeRequestdetails.remedyText = remedyDetails.Name;
+            this.exchangeRequestdetails.Sales_Issue_Remedy_Type__c = remedyDetails.Id;
+            this.exchangeRequestdetails.Sales_Issue_Service_Type__c = oneRecord.node.Sales_Issue_Service_Type__r.Id
+            this.returnReasonOptions = data.map(i => {
+                return {
+                    label: i.node.Name.value,
+                    value: i.node.Id,
+                    code: i.node.Sales_Issue_Return_Reason_Code__c.value
+                }
+            });
+
+        } else if (result.errors) {
+            console.error('error ', result?.errors)
         }
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_ShipTo_Contact__c)) {
-            customerReturnRequest.Sales_Issue_ShipTo_Contact__c = objCustomerReturnRequest.Sales_Issue_ShipTo_Contact__c;
-        }
+        this.isLoading = false;
     }
-    public static void getCustomerReturnRequestPart8(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_ShipTo_Address__c)) {
-            customerReturnRequest.Sales_Issue_ShipTo_Address__c = objCustomerReturnRequest.Sales_Issue_ShipTo_Address__c;
-        }
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Last_Saved_Path__c)) {
-            customerReturnRequest.Sales_Issue_Last_Saved_Path__c = objCustomerReturnRequest.Sales_Issue_Last_Saved_Path__c;
-        }
+    get graphQlVariables() {
+        return {
+            serviceTypeCode: '801',
+            remedyTypeCode: 'EC'
+
+        };
     }
-    public static void getCustomerReturnRequestPart9(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (objCustomerReturnRequest.Sales_Issue_Query_Number__c != null) {
-            customerReturnRequest.Sales_Issue_Query_Number__c = objCustomerReturnRequest.Sales_Issue_Query_Number__c;
-        }
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Sales_Organization__c)) {
-            customerReturnRequest.Sales_Issue_Sales_Organization__c = objCustomerReturnRequest.Sales_Issue_Sales_Organization__c;
-        }
+
+    handleClose() {
+        this.close(false)
     }
-    public static void getCustomerReturnRequestPart10(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        // Tushar Garg------- Exception Intake
-        if (objCustomerReturnRequest.Sales_Issue_Return_Reason_Justification__c != null) {
-            customerReturnRequest.Sales_Issue_Return_Reason_Justification__c = objCustomerReturnRequest.Sales_Issue_Return_Reason_Justification__c;
+    handleReturnReason(event) {
+        let selectedOption = this.returnReasonOptions.find(i => i.value == event.detail?.value);
+        if (!selectedOption) {
+            return
         }
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Service_Type__c)) {
-            customerReturnRequest.Sales_Issue_Service_Type__c = objCustomerReturnRequest.Sales_Issue_Service_Type__c;
-        }
+        this.returnResonValue = selectedOption.value;
+
+        this.exchangeRequestdetails.Sales_Issue_Return_Reason__c = selectedOption.value;
+        this.exchangeRequestdetails.salesIssueReturnReason = selectedOption.label;
+        this.exchangeRequestdetails.salesIssueReturnReasonCode = selectedOption.code;
+
     }
-    public static void getCustomerReturnRequestPart11(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Return_To_Cst_Contact__c)) {
-            customerReturnRequest.Sales_Issue_Return_To_Cst_Contact__c = objCustomerReturnRequest.Sales_Issue_Return_To_Cst_Contact__c;
+    handleWarrantyCheck() {
+
+        if (!this.returnResonValue) {
+
+            return;
         }
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_BU_Technical_Contact_WWID__c)) {
-            customerReturnRequest.Sales_Issue_BU_Technical_Contact_WWID__c = objCustomerReturnRequest.Sales_Issue_BU_Technical_Contact_WWID__c;
-        }     
-    }
-    public static void getCustomerReturnRequestPart12(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Remedy_Type__c)) {
-            customerReturnRequest.Sales_Issue_Remedy_Type__c = objCustomerReturnRequest.Sales_Issue_Remedy_Type__c;
-        }
-        if (!String.isEmpty(objCustomerReturnRequest.CIRS_Number__c)) {
-            customerReturnRequest.CIRS_Number__c = objCustomerReturnRequest.CIRS_Number__c;
-        }
-    }
-    public static void getCustomerReturnRequestPart13(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Repair_Site__c)) {
-            customerReturnRequest.Sales_Issue_Repair_Site__c = objCustomerReturnRequest.Sales_Issue_Repair_Site__c;
-        }
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_QSC_Service_Site__c)) {
-            customerReturnRequest.Sales_Issue_QSC_Service_Site__c = objCustomerReturnRequest.Sales_Issue_QSC_Service_Site__c;
-        }
-    }
-    public static void getCustomerReturnRequestPart14(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_SoldTo_Address__c)
-           ) {
-               customerReturnRequest.Sales_Issue_SoldTo_Address__c = objCustomerReturnRequest.Sales_Issue_SoldTo_Address__c;
-           }
-        /*if (!String.isEmpty(objCustomerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c)) {
-            customerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c = objCustomerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c;
-        }*/
-    }
-    public static void getCustomerReturnRequestPart15(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_BU_Technical_Contact_Email__c)) {
-            customerReturnRequest.Sales_Issue_BU_Technical_Contact_Email__c = objCustomerReturnRequest.Sales_Issue_BU_Technical_Contact_Email__c;
-        }
-        //mapping Header Price change comments
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Reason_for_Price_Change__c)) {
-            customerReturnRequest.Sales_Issue_Reason_for_Price_Change__c = objCustomerReturnRequest.Sales_Issue_Reason_for_Price_Change__c;
-        }
-        //mapping CIRS number value
-    }
-    public static void getCustomerReturnRequestPart16(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Approved_WWID__c)) {
-            customerReturnRequest.Sales_Issue_Approved_WWID__c = objCustomerReturnRequest.Sales_Issue_Approved_WWID__c;
-        }     
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Approval_Email_Address__c)) {
-            customerReturnRequest.Sales_Issue_Approval_Email_Address__c = objCustomerReturnRequest.Sales_Issue_Approval_Email_Address__c;
-        }
-    }
-    public static void getCustomerReturnRequestPart17(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        //Quality Intakes fields
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_CQE_Name__c)) {
-            customerReturnRequest.Sales_Issue_CQE_Name__c = objCustomerReturnRequest.Sales_Issue_CQE_Name__c;
-        }     
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Cust_Return_Issue_Desc__c)) {
-            customerReturnRequest.Sales_Issue_Cust_Return_Issue_Desc__c = objCustomerReturnRequest.Sales_Issue_Cust_Return_Issue_Desc__c;
-        }
-        //Exception DRR and IRR
-    }
-    public static void getCustomerReturnRequestPart18(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        //if (objCustomerReturnRequest.Sales_Issue_Opted_In__c != null) { //TWC4621-4945 -- Remove IMF/CMF Pop Up
-           // customerReturnRequest.Sales_Issue_Opted_In__c = objCustomerReturnRequest.Sales_Issue_Opted_In__c;
-       // }
-        //Added below if condition for storing error messages - TWC4621-683 - Samuel Nishant
-        if (objCustomerReturnRequest.Sales_Issue_Header_Error_Messages__c != null) {
-            customerReturnRequest.Sales_Issue_Header_Error_Messages__c = objCustomerReturnRequest.Sales_Issue_Header_Error_Messages__c;
-        }
-    }
-    public static void getCustomerReturnRequestPart19(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        if(!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Freight_Payment_Type__c)) {
-            customerReturnRequest.Sales_Issue_Freight_Payment_Type__c = objCustomerReturnRequest.Sales_Issue_Freight_Payment_Type__c;
-        }
-        if(String.isEmpty(objCustomerReturnRequest.Sales_Issue_Freight_Payment_Type__c) && isNpr) {
-            customerReturnRequest.Sales_Issue_Freight_Payment_Type__c = R4C_ViewSummaryUtil.getFreightType().Id;   
-        }
-    }
-    public static void getCustomerReturnRequestPart20(Customer_Sales_Issue_Request__c customerReturnRequest,Customer_Sales_Issue_Request__c objCustomerReturnRequest,List<Case> insertedcaseList,Boolean isNpr){
-        List<Physical_Address_Contact__c> plantContactLst = new List<Physical_Address_Contact__c>();
-        if (!String.isEmpty(objCustomerReturnRequest.Sales_Issue_Location_Plant__c)) {
-             plantContactLst = R4C_CollectionDetails_Util.getSiteContacts(new List<String>{objCustomerReturnRequest.Sales_Issue_Location_Plant__c},'Sales_Issue_Location_Plant_Name__c');
-        }
-        if (plantContactLst.isEmpty() == false) { // condition is only plant contact , Not for QSC site contact or Repair site contact
-            objCustomerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c = plantContactLst[0]?.Id;
-        }
-        if (!String.isEmpty(objCustomerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c)) {
-            customerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c = objCustomerReturnRequest.Plant_or_QSC_or_Repair_Site_Contact__c;
-        }
-    }
-    
-    public static void getcustomerReturnRequestLinePart1(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        
-        if (!String.isEmpty(cstmrReturnReqLine.lineItemRecId)) {
-            salesIssueCstReqLine.Id = cstmrReturnReqLine.lineItemRecId;
-        }
-        if (!String.isEmpty(cstmrReturnReqLine.SalesOrderNumber)) {
-            salesIssueCstReqLine.Sales_Issue_Sales_Order_Number__c = cstmrReturnReqLine.SalesOrderNumber;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart2(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (!String.isEmpty(cstmrReturnReqLine.YMS2Price) && schema.SObjectType.Customer_Sales_Issue_Request_Line__c.fields.Sales_Issue_Pricing_Date__c.isCreateable() && schema.SObjectType.Customer_Sales_Issue_Request_Line__c.fields.Sales_Issue_Pricing_Date__c.isUpdateable()) {
-            salesIssueCstReqLine.Sales_Issue_Pricing_Date__c = System.now();
-        }
-        if (!String.isEmpty(cstmrReturnReqLine.SalesOrderNumberLineNumber)) {
-            salesIssueCstReqLine.Sales_Issue_Sales_Order_Line_Number__c = cstmrReturnReqLine.SalesOrderNumberLineNumber;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart3(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (!String.isEmpty(cstmrReturnReqLine.returnPO)) {
-            salesIssueCstReqLine.Sales_Issue_Cst_Return_PO_Number__c = cstmrReturnReqLine.returnPO;
-        }
-        if (!String.isEmpty(cstmrReturnReqLine.CustomerPONumber)) {
-            salesIssueCstReqLine.Sales_Issue_Cst_PO_Number__c = cstmrReturnReqLine.CustomerPONumber;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart4(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (!String.isEmpty(insertedcustomerReturnRequestList[0].Id) && String.isEmpty(cstmrReturnReqLine.lineItemRecId)) {
-            salesIssueCstReqLine.Sales_Issue_Cst_Return_Request_Number__c = insertedcustomerReturnRequestList[0].Id;
-        }
-        if (cstmrReturnReqLine.Data != null && !String.isEmpty(cstmrReturnReqLine.Data.Id) ) {
-            salesIssueCstReqLine.Sales_Issue_Item__c = cstmrReturnReqLine.Data.Id;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart5(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine.Data != null && cstmrReturnReqLine.Data.Item_Last_Return_Dates__c != null) {
-            salesIssueCstReqLine.Sales_Issue_Last_Return_Date__c = cstmrReturnReqLine.Data.Item_Last_Return_Dates__c;
-        }
-        if (cstmrReturnReqLine.Data != null && cstmrReturnReqLine.Data.Item_Last_Order_Entry_Date__c != null) {
-            salesIssueCstReqLine.Sales_Issue_Last_Order_Entry_Date__c = cstmrReturnReqLine.Data.Item_Last_Order_Entry_Date__c;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart6(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        /*if (cstmrReturnReqLine.orderPartNumber != null) {
-            salesIssueCstReqLine.Sales_Issue_Order_Part_Number__c = cstmrReturnReqLine.orderPartNumber;
-        }*/
-    }
-    public static void getcustomerReturnRequestLinePart7(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (!String.isEmpty(cstmrReturnReqLine.customerBillingDocumentId) ) {
-            salesIssueCstReqLine.Sales_Issue_Invoice_Number__c = cstmrReturnReqLine.customerBillingDocumentId;
-        }
-        if (!String.isEmpty(cstmrReturnReqLine.deliveryNote) ) {
-            salesIssueCstReqLine.Sales_Issue_Delivery_Note_Number__c = cstmrReturnReqLine.deliveryNote;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart8(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (!String.isEmpty(cstmrReturnReqLine.BillingQuantity)) {
-            salesIssueCstReqLine.Billing_Quantity__c = Decimal.valueOf(cstmrReturnReqLine.BillingQuantity);
-        }
-        if (!String.isEmpty(cstmrReturnReqLine.UnitPrice)) {
-            salesIssueCstReqLine.Sales_Issue_PO_Price__c = Decimal.valueOf(cstmrReturnReqLine.UnitPrice);
-            system.debug('PO Price::'+salesIssueCstReqLine.Sales_Issue_PO_Price__c);
-        }
-    }
-    public static void getcustomerReturnRequestLinePart9(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (!String.isEmpty(cstmrReturnReqLine.InvoiceLineItemNumber) ) {
-            salesIssueCstReqLine.Sales_Issue_Line_Item_Invoice_Number__c = cstmrReturnReqLine.InvoiceLineItemNumber;
-        }
-        if (!String.isEmpty(cstmrReturnReqLine.ReturnQuantity)) {
-            salesIssueCstReqLine.Sales_Issue_Return_Quantity__c = Decimal.valueOf(cstmrReturnReqLine.ReturnQuantity);
-        }
-    }
-    public static void getcustomerReturnRequestLinePart10(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine.BillingDate != null) {
-            salesIssueCstReqLine.Sales_Issue_Billing_Date__c = Date.valueof(cstmrReturnReqLine.BillingDate);
-        }
-        if (!String.isEmpty(cstmrReturnReqLine.boxCondition)) {
-            salesIssueCstReqLine.Sales_Issue_Cst_Return_Receipt_Cnd__c = prdctCndtnMap.get(cstmrReturnReqLine.boxCondition);
-        }
-    }
-    public static void getcustomerReturnRequestLinePart11(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (!String.isEmpty(cstmrReturnReqLine.YMS2Price)) {
-            salesIssueCstReqLine.Sales_Issue_Disti_Price__c = Decimal.valueOf(cstmrReturnReqLine.YMS2Price);
-        }
-        if (!String.isEmpty(cstmrReturnReqLine.pricingCondition) ) {
-            salesIssueCstReqLine.Sales_Issue_Pricing_Condition_Type__c = cstmrReturnReqLine.pricingCondition;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart12(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (schema.SObjectType.Customer_Sales_Issue_Request_Line__c.fields.Sales_Issue_Line_Item_Status__c.isCreateable()) {
-            salesIssueCstReqLine.Sales_Issue_Line_Item_Status__c = (isQualityFAC == true && cstmrReturnReqLine?.lineitemStatus == genericmsgs.get('Cancelled_Status_Value')) || (cstmrReturnReqLine?.lineitemStatus == genericmsgs.get('CPU_POH_Rejection')) || isManualLineClosureAfterRMA ? cstmrReturnReqLine?.lineitemStatus : insertedcaseList[0].Status;//TWC4621-2886
-            if(isPreserveLineStatus!=null && isPreserveLineStatus==true){
-                salesIssueCstReqLine.Sales_Issue_Line_Item_Status__c=cstmrReturnReqLine?.lineitemStatus;
-                // Check if warrantyResult status is 'Out of warranty' and set lineitemStatus to 'failed' accordingly
+        let request = generateWarrantyRequestBody(this.poSearchData, this.exchangeRequestdetails, this.caseTypeFunctions, this.casemode, [], this.isPortal,caserec);
+
+        let ultRequestList = [];
+        //Syed - start - Optimization of code to support more then 600 requests - splitting request list into parts of 1000
+        let splitCount = +this.genericMessages.Warranty_JS_Chunk_Size || 600;
+        if (request.length > splitCount) {
+            let spitRequestList = splitArrayIntoChunks(request, splitCount);
+            ultRequestList = [];
+            for (let i = 0; i < spitRequestList.length; i++) {
+                ultRequestList.push(getWarrantyCheck({
+                    reqString: JSON.stringify(spitRequestList[i])
+                }));
             }
         }
-        //Added below code for storing error messages - TWC4621-738 - Samuel Nishant
-        salesIssueCstReqLine.Line_item_error_messages__c = cstmrReturnReqLine.Error;
+        else {
+            ultRequestList.push(getWarrantyCheck({
+                reqString: JSON.stringify(request)
+            }));
+        }
+
+        let acceptedWarrentyProductTypes = this.genericMessages?.valid_warranty_status_code?.split(',') || ['ACT'];
+        let notAcceptedVizStatusTypes = this.genericMessages?.invalid_warrenty_viz_types?.split(',') || ['CAN', 'MCN', 'ECN'];
+        let notAcceptingVizStatusCode = this.genericMessages?.invalid_warrenty_viz_code?.split(',') || ['PC', 'CME', 'INV', 'PIN', 'SIN'];
+        let ComponentTypeCodeValue = 'S';
+        this.isLoading = true;
+        Promise.all(ultRequestList)
+
+            .then(async (response) => {
+                let { ultResponse, wihtoutUltResponse } = processWarrantyResponse(response, ultRequestList, []);
+
+                //Syed - end - Optimization of code to support more then 1500 requests
+
+                let todaysDate = new Date();
+
+                let ewLines = [];
+
+                this.poSearchData.filter(i => i.parentLineId == undefined).forEach((item) => {
+                    if (item.selected && !item.warrentyValidated) {
+                        if (!item.Soldto) item.Soldto = this.exchangeRequestdetails.selectedsoldToCMF;
+                        //get response for ult
+                        let itemWarrentyWithUniqueId = ultResponse.find(
+                            (resp) => resp.ProdUniqueId && item.ult && resp.ProdUniqueId == item.ult && (resp.WarrantyTypeCode == 1 || resp.WarrantyTypeCode == '')
+                        );
+                        //get any extended items
+                        ewLines = ultResponse.filter(
+                            (resp) =>
+                                resp.ProdUniqueId && item.ult && resp.ExtendedWarrantyStartDate && resp.ExtendedWarrantyEndDate
+                                && resp.WarrantyTypeCode == 2 && resp.ProdUniqueId == item.ult
+                        );
+                        //prepare init object
+                        item.warrantyCheck = {};
+                        item.warrantyCheck.warrentyCheckDate = new Date();
+                        if (this.casemode == "Edit" && item.warrantyResult.warrentyCheckDate) {
+                            item.warrantyCheck.warrentyCheckDate = item.warrantyResult.warrentyCheckDate;
+                        }
+                        item.warrantyCheck.isCEPDaysValidValue = false;
+                        item.warrantyCheck.isUnderWarrenty = false;
+                        item.warrantyCheck.isUnderCEPDays = false;
+                        item.warrantyCheck.isMMChange = false;
+                        item.warrantyCheck.isCPNChange = false; // added for cpn Replacement logic
+                        item.warrantyCheck.oldCPN = ''; // added for cpn Replacement logic
+                        item.warrantyCheck.newCPN = ''; // added for cpn Replacement logic
+                        item.warrantyCheck.isError = true;
+                        item.warrantyCheck.isUltCorrect = false;
+                        item.warrantyCheck.isExchangeValid = false;
+                        item.warrantyCheck.isMRBQANValid = false;
+                        item.warrantyCheck.isGRLExceptionValid = false;
+                        item.warrantyCheck.creditElgiblityEndDate = "";
+                        item.warrantyCheck.iSOutOfWarrenty = false;
+                        item.warrantyCheck.isCanceled = false;
+                        item.isSoftStop = false;
+                        item.isULTSoftStop = false;
+                        item.isInWarrenty = false;
+                        item.productStatus = false;
+                        item.selected = false;
+                        item.Error = true;
+                        item.errorText = r4c_CustomLabels.labels.TI_Warrenty_Invalid;
+                        item.successText = 'success';
+                        item.poValidated = false
+                        item.isPoHistoryValid = false;
+                        if (item.poHistoryData) delete item.poHistoryData;
+                        let warrantyEndDate = '';
+                        //process response
+                        if (itemWarrentyWithUniqueId) {
+                            //Temp
+                            let cepCount = itemWarrentyWithUniqueId.CreditPeriodCount || 0;
+                            if (typeof cepCount === 'string') cepCount = +cepCount;
+                            let wepCount = itemWarrentyWithUniqueId.WarrantyPeriodCount || 0;
+                            if (typeof wepCount === 'string') wepCount = +wepCount;
+                            const isULTReponseError = itemWarrentyWithUniqueId.ErrorCode !== 0 || itemWarrentyWithUniqueId?.ComponentTypeCode === ComponentTypeCodeValue;
+                            warrantyEndDate = new Date(itemWarrentyWithUniqueId.BaseWarrantyEndDate);
+                            item.warrantyResult = itemWarrentyWithUniqueId;
+                            //setting defaults
+                            item.warrantyCheck.isUltCorrect = true;
+                            item.ultDisabled = true;
+                            item.warrantyCheck.isError = isULTReponseError || notAcceptedVizStatusTypes.includes(itemWarrentyWithUniqueId?.SourceSystemName?.trim());
+                            item.warrantyCheck.isUltValid = acceptedWarrentyProductTypes.includes(itemWarrentyWithUniqueId?.ProdUniqueIdStatusCode?.trim());
+                            item.warrantyCheck.isCEPDaysValidValue = cepCount != 0;
+                            item.warrantyCheck.isCanceled = itemWarrentyWithUniqueId.ProdUniqueIdStatusCode != 'ACT';
+
+                            //SYED - TWC4621-2141- checking ig ult type is VISID and part of same bag  
+                            if (itemWarrentyWithUniqueId.ProdUniqueIdTypeCode === 'VISID') {
+                                const { bagList } = this.exchangeRequestdetails;
+                                const cmfList = JSON.parse(bagList);
+                                let cmfIdsSet = new Set(cmfList.map(i => {
+                                   // const bagAndCmf = i.split('-');
+                                   const bagAndCmf = i.split('+000_');
+                                    return bagAndCmf[1];
+                                }));
+                                cmfIdsSet.add(`${this.exchangeRequestdetails?.sales_Area__c?.Customer_Sales_Organization__r?.Customer_Sales_Organization_Code__c}_${this.exchangeRequestdetails?.sales_Area__c?.Customer_Disti_Channel__r?.Customer_Distribution_Channel_Code__c}_${this.exchangeRequestdetails?.selectedsoldToCMF}`);
+                                if (!cmfIdsSet.has(`${itemWarrentyWithUniqueId?.SalesOrganizationCode}_${itemWarrentyWithUniqueId?.DistributionChannelCode}_${itemWarrentyWithUniqueId?.EnttlSoldToPartyId?.padStart(10, "0")}`)) {
+                                    item.VisIdbagError = true;
+                                    item.warrantyCheck.isError = true;
+                                    item.lineitemStatus = this.genericMessages?.CPU_POH_Rejection; //TWC4621-2886
+
+                                }
+                            }
+                            //Warrenty Check Logic
+
+                            //calcuate cep 
+                            item.warrantyCheck.creditElgiblityEndDate = new Date(itemWarrentyWithUniqueId.BaseWarrantyStartDate);
+                            item.warrantyCheck.creditElgiblityEndDate.setDate(item.warrantyCheck.creditElgiblityEndDate.getDate() + cepCount);
+                            item.warrantyCheck.isWarrentyCEPDaysValid = todaysDate <= item.warrantyCheck.creditElgiblityEndDate;
+                            item.warrantyCheck.iSOutOfWarrenty = todaysDate >= item.warrantyCheck.creditElgiblityEndDate;
+                            //calcuate wep
+                            item.warrantyCheck.warrentyElgiblityEndDate = new Date(itemWarrentyWithUniqueId.BaseWarrantyStartDate);
+                            item.warrantyCheck.warrentyElgiblityEndDate.setDate(item.warrantyCheck.warrentyElgiblityEndDate.getDate() + wepCount);
+                            //FURQAN 1- In warrenty Status
+                            //Check Warrenty Status - for exchange check warrenty and for other check cep
+
+                            item.warrantyCheck.isUnderWarrenty = todaysDate <= warrantyEndDate && item.warrantyCheck.isCanceled == false && (ewLines.length > 0 ? true : wepCount != 0);
+                            warrantyEndDate = getDateString(warrantyEndDate);
+                            item.warrantyCheck.isExchangeValid = item.warrantyCheck.isUnderWarrenty;
+                            if (item.warrantyResult && item.warrantyResult?.status) {
+                                item.warrantyResult.status = (item.warrantyCheck.isUnderWarrenty) ? r4c_CustomLabels.labels.TI_Exchange_ValidUlt : r4c_CustomLabels.labels.TI_Exchange_INValidUlt;
+                            }
+
+
+                            //SOFT stop
+                            if (notAcceptingVizStatusCode.includes(itemWarrentyWithUniqueId?.VizIdStatusCode?.toUpperCase())) {
+                                item.isSoftStop = true;
+                            }
+                        }
+
+                        item.isInWarrenty = item.warrantyCheck.isError == false &&
+                            (((item.warrantyCheck.isWarrentyCEPDaysValid == true && item.warrantyCheck.isUltValid == true) ||
+                                item.warrantyCheck.isUnderCEPDays == true) && item.warrantyCheck.isCEPDaysValidValue);
+
+                        item.isInWarrenty = item.warrantyCheck.isExchangeValid;
+                        item.warrantyCheck.isUnderWarrenty = item.warrantyCheck.isExchangeValid;
+                        item.productStatus = item.isInWarrenty;
+                        item.selected = item.isInWarrenty;
+                        item.Error = !item.isInWarrenty;
+
+                        //Bug Fix- for mm chaned warrenty valid only after user accepts
+                        item.warrentyValidated = true;
+                        if(item.isCPNChange === true){
+                            item.warrentyValidated = false;
+                        }
+                        //Getting respective Error Msgs and Success Texts
+                        item = this.getErrorMessages(item, itemWarrentyWithUniqueId, warrantyEndDate, ComponentTypeCodeValue, notAcceptedVizStatusTypes, notAcceptingVizStatusCode);
+                        if (item.isInWarrenty) {
+                            if (item.successText && item.successText != 'success' && item.successText != r4c_CustomLabels.labels.TI_Warranty_WTBD) {
+                                //if succes text is set dont overrride
+                            }
+                            else if (item.warrantyCheck.isUnderCEPDays) {
+
+                                item.isSoftStop = true;
+                            }
+                            else if (!item.warrantyCheck.creditElgiblityEndDate && item.isInWarrenty && itemWarrentyWithUniqueId) {
+
+                                item.isSoftStop = true;
+                            }
+                        }
+                    }
+                });
+
+            })
+            .catch((error) => {
+                console.error('error', error)
+                this.showToast(r4c_CustomLabels.labels.Error_Title, r4c_CustomLabels.labels.Warranty_check_failed, "error")
+            })
+            .finally(() => {
+                let childObj = this.template.querySelectorAll(
+                    "c-r4c_-a-g_-line-items-result-row"
+                );
+                if (childObj) {
+                    childObj.forEach((item) => {
+                        item.refreshPopupFields();
+                    });
+                }
+                this.isLoading = false;
+            });
     }
-    public static void getcustomerReturnRequestLinePart13(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (!String.isEmpty(cstmrReturnReqLine.currency_z)) {
-            salesIssueCstReqLine.Sales_Issue_Currency__c = cstmrReturnReqLine.currency_z;
+
+    getErrorMessages(item, warrantyResponse, warrentyEndDate, componentTypeCodeValue, notAcceptedVizStatusTypes, notAcceptingVizStatusCode) {
+        let agentErrMsgsLst = [];
+        let portalErrMsgsLst = [];
+
+        //Common Validations for all ULTs
+        if (warrantyResponse?.ComponentTypeCode == componentTypeCodeValue) {
+            agentErrMsgsLst.push(r4c_CustomLabels.labels.ULT_Component_Type_Code_ErrorMsg);
+            portalErrMsgsLst.push(r4c_CustomLabels.labels.ULT_Component_Type_Code_ErrorMsg);
         }
-        if (!String.isEmpty(cstmrReturnReqLine.debitReferenceNumber)) {
-            salesIssueCstReqLine.Sales_Issue_Debit_Reference_Nbr__c = cstmrReturnReqLine.debitReferenceNumber;
+        if (item.isCPNChange === true && !item.newCPN) {
+            agentErrMsgsLst.push(r4c_CustomLabels.labels.TI_CPN_Requried);
+            portalErrMsgsLst.push(r4c_CustomLabels.labels.TI_CPN_Requried);
+            item.Error = true;
         }
-        // Start TWC4621-888 || Entitlement API#2 - Update Case Number || 9-Jan-2023
-        Integer maxAttempts = Integer.valueof(cs?.Value__c);
-        salesIssueCstReqLine.Sales_Issue_Remaining_Re_Attempts__c = maxAttempts;
-        salesIssueCstReqLine.Sales_Issue_Sent_to_Entitlement_Hub__c = false;
-        // End TWC4621-888 || Entitlement API#2 - Update Case Number || 9-Jan-2023
-        
+        //VisID Validations
+        if (warrantyResponse?.ProdUniqueIdTypeCode == 'VISID') { //All are Soft Stops
+            if (item?.VisIdbagError == true) { //Setting new param to check for visId Bag error
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.VisIdULT_NotValidInBag_ErrMsg);
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.VisIdULT_NotValidInBag_ErrMsg);
+            }
+            if (warrantyResponse.VizIdStatusCode == 'SIN') { //Visual Id status shd store SIN
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.VisIdULT_SIN_ErrMsg);
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.TI_WarrentyInvalid_VizId_ErrorMsg);
+            }
+            if (warrantyResponse.VizIdStatusCode == 'PIN') { //Visual Id status shd store PIN
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.VisIdULT_PIN_ErrMsg);
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.TI_WarrentyInvalid_VizId_ErrorMsg);
+            }
+            if (warrantyResponse.VizIdStatusCode == 'CME') { //Mostly not valid scenario, added code just in case
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.TI_WarrentyInvalid_VizId_ErrorMsg);
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.TI_WarrentyInvalid_VizId_ErrorMsg);
+            }
+        }
+        //Serial Number Validations
+        if (warrantyResponse?.ProdUniqueIdTypeCode == 'SN') { //All are Hard Stops for agent/cust
+            if (warrantyResponse.ProdUniqueIdStatusCode == 'IRC') { // Shd check warranty type code =0 (as said in document) but confirmed from EH team, we won't get code = 0 if ULT found in system
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.TI_Warrenty_StatusCodeI_RCErrorMsg);
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.TI_IBASE_IRC_ErrorMsg);
+            }
+            else if (notAcceptedVizStatusTypes.includes(warrantyResponse?.ProdUniqueIdStatusCode?.toUpperCase())) { //Error Msg if status = CAN or ECN or MCN
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.TI_Warrenty_SourceSystem_InvlaidErrorMsg);
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.TI_Warrenty_SourceSystem_InvlaidErrorMsg);
+            }
+        }
+        //SOFT
+        if (notAcceptingVizStatusCode.includes(warrantyResponse?.VizIdStatusCode?.toUpperCase())) {
+            item.successText = (this.isPortal == true || this.isPortal == "true") ? r4c_CustomLabels.labels.TI_WarrentyInvalid_VizId_ErrorMsg : agentErrMsgsLst.join(';');
+        }
+
+        item.successText = (item.warrantyCheck.isExchangeValid) ? r4c_CustomLabels.labels.TI_Exchange_ValidUlt : r4c_CustomLabels.labels.TI_Exchange_INValidUlt;
+        item.errorText = (item.warrantyCheck.isExchangeValid) ? r4c_CustomLabels.labels.TI_Exchange_ValidUlt : r4c_CustomLabels.labels.TI_Exchange_INValidUlt; // same message for portal and agent
+
+        if (item.isInWarrenty) {
+            if (item.successText && item.successText != 'success') {
+                //if success text is set dont override
+            }
+            else if (item.warrantyCheck.isUnderCEPDays) { // under warranty end date + CEP days //Soft Stop
+                item.successText = r4c_CustomLabels.labels.TI_Warranty_WTBD; // Need to update - Unable to determine warranty. Please ship the unit to the depot and warranty and entitlement will be determined upon receipt.
+            }
+            else if (!item.warrantyCheck.creditElgiblityEndDate && item.isInWarrenty && warrantyResponse) {
+                item.successText = r4c_CustomLabels.TI_Inwarrenty_cepexpired; //Soft Stop //ULT is given and CEP date is empty
+            }
+            else if (item.isInWarrenty) {
+                item.successText = StringFormatter.format(r4c_CustomLabels.labels.Warrenty_valid_till, warrentyEndDate);
+            }
+        }
+        else if (!warrantyResponse) {
+            agentErrMsgsLst.push(r4c_CustomLabels.labels.TI_No_Warranty_Response);
+            portalErrMsgsLst.push(r4c_CustomLabels.labels.TI_No_Warranty_Response);
+        }
+        else if (item.Error) {
+            if (agentErrMsgsLst.size > 0 && portalErrMsgsLst.size > 0) {//(item.errorText && item.errorText != tiMsgs.warrentyInvalid) {
+                //if error text is set dont overrride
+            }
+            // else if (warrantyResponse?.ErrorCode == 16) {//(item.warrantyCheck.isError) {
+            //     agentErrMsgsLst.push(r4c_CustomLabels.labels.Warranty_check_failed); // Not found or Warranty API down 
+            //     portalErrMsgsLst.push(r4c_CustomLabels.labels.Warranty_check_failed);
+            // }
+            //SaiRam To handle EH API Error codes- TWC4621-5155 Start 
+            else if (warrantyResponse?.ErrorCode == 1) {
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.R4C_API_Service_Unavailable); //One of Our API is down 
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.R4C_API_Service_Unavailable);
+            }
+            else if (warrantyResponse?.ErrorCode == 16) {
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.ULT_not_Found); // ULT Not found error.
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.ULT_not_Found);
+            }
+            //SaiRam To handle EH API Error codes- TWC4621-5155 End 
+            else if (!item.warrantyCheck.isUnderWarrenty && warrantyResponse) {
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.TI_Exchange_OW_ErrMsg);
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.TI_Exchange_OW_ErrMsg);
+            }
+            else if (!item.warrantyCheck.isUltValid && warrantyResponse) {
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.TI_Warrenty_ULT_Invalid);
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.TI_Warrenty_ULT_Invalid);
+            }
+            else if (!item.warrantyCheck.isCEPDaysValidValue) {
+                agentErrMsgsLst.push(r4c_CustomLabels.labels.TI_CEP_Experied); // CEP date expired
+                portalErrMsgsLst.push(r4c_CustomLabels.labels.TI_CEP_Experied);
+            }
+        }
+        item.errorText = ((this.isPortal == true || this.isPortal == "true") && agentErrMsgsLst.length > 0 && portalErrMsgsLst.length > 0) ? [...new Set(portalErrMsgsLst)].join(';') : [...new Set(agentErrMsgsLst)].join(';');
+        return item;
     }
-    public static void getcustomerReturnRequestLinePart14(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ProdUniqueIdTypeCode) ) {
-            salesIssueCstReqLine.Sales_Issue_Prd_Unique_Id_Type_Cd__c = cstmrReturnReqLine?.warrantyResult?.ProdUniqueIdTypeCode;
-        }
-        //TWC4621-4002 -- mapping EnttlSoldToPartyId from warranty response
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.EnttlSoldToPartyId)) {
-            salesIssueCstReqLine.Entitlement_SoldTo_PartyId__c = cstmrReturnReqLine?.warrantyResult?.EnttlSoldToPartyId;
-        }
+
+    showToast(title, msg, err) {
+        const selectEvent = new CustomEvent('toast', {
+            detail: { title, msg, err }
+        });
+        this.dispatchEvent(selectEvent);
     }
-    public static void getcustomerReturnRequestLinePart15(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (!String.isEmpty(cstmrReturnReqLine?.warrantyResult?.VizId)) {
-            salesIssueCstReqLine.Sales_Issue_VisId__c = cstmrReturnReqLine?.warrantyResult?.VizId;
+
+    //Checkbox select handler Start
+    handleSelectedList(event, isBulk, bulkSelectStatus) {
+        this.enableSearchPONextBTN = false;
+        //if bulk list is passed getting value for selected invoice in bulk
+        let invoiceList = [];
+        if (isBulk) {
+            invoiceList = event;
+            event = {};
+            event.detail = {};
+            event.detail.isChecked = bulkSelectStatus;
+            this.selectedInvoiceNum = [];
+            if (bulkSelectStatus) {
+                this.selectedInvoiceNum = invoiceList;
+            }
         }
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.VizIdStatusCode) ) {
-            salesIssueCstReqLine.Sales_Issue_Visual_Id_Status__c = cstmrReturnReqLine?.warrantyResult?.VizIdStatusCode;
+        else {
+            let isSelectedInvoiceNum = this.selectedInvoiceNum.includes(event.detail.invoiceNumber);
+            if (!isSelectedInvoiceNum && event.detail.isChecked) {
+                this.selectedInvoiceNum.push(event.detail.invoiceNumber);
+            } else if (isSelectedInvoiceNum && event.detail.isChecked === false) {
+                this.selectedInvoiceNum = this.selectedInvoiceNum.filter((item) => {
+                    return item !== event.detail.invoiceNumber;
+                });
+            }
         }
+        if (event.detail.isChecked == false) {
+            this.allselectedcheckbox = false;
+        }
+        this.poSearchData = this.poSearchData.map((item) => {
+            if (item.InvoiceNumber && (item.InvoiceNumber === event.detail?.invoiceNumber || invoiceList.includes(item.InvoiceNumber))) {
+                item.selected = event.detail.isChecked;
+
+            }
+            return item;
+        });
+
+
+        if (this.poSearchData.length == this.poSearchData.filter(i => i.selected).length) {
+            this.allselectedcheckbox = true;
+        }
+
     }
-    public static void getcustomerReturnRequestLinePart16(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && cstmrReturnReqLine?.warrantyResult?.CreditPeriodCount != null  ) {
-            salesIssueCstReqLine.Sales_Issue_Credit_Eligibility_Period__c = cstmrReturnReqLine?.warrantyResult?.CreditPeriodCount;
+    allSelectedHandler(event) {
+        if (event.target.checked == true) {
+            this.allselectedcheckbox = true;
         }
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ProdUniqueIdStatusCode) ) {
-            salesIssueCstReqLine.Sales_Issue_Prod_Unique_Id_Status_Cd__c = cstmrReturnReqLine?.warrantyResult?.ProdUniqueIdStatusCode;
+        if (event.target.checked == false) {
+            this.allselectedcheckbox = false;
         }
+        let invoiceList = this.poSearchData.map((item) => item.InvoiceNumber);
+        this.handleSelectedList(invoiceList, true, event.target.checked);
     }
-    public static void getcustomerReturnRequestLinePart17(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.DeliveryNoteNumber)) {
-            salesIssueCstReqLine.Sales_Issue_Delivery_Note_Number__c = cstmrReturnReqLine?.warrantyResult?.DeliveryNoteNumber;
+    //Checkbox select handler end
+    //Pagination Start
+
+    _processPaginationVariables() {
+        // start - for pagination - CS
+        let totalItems = this.poSearchData.filter(item => item.display == true)?.length || 0;
+        if (totalItems != this.pagination.totalRecords) {
+            this.pagination.totalRecords = totalItems;
+            this.showSpinner = true;
+            setTimeout(() => {
+                this.showSpinner = false;
+            }, 100);
         }
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ServiceContractNumber)) {
-            salesIssueCstReqLine.Sales_Issue_Service_Contract_Number__c = cstmrReturnReqLine?.warrantyResult?.ServiceContractNumber;
+        this.pagination.totalPages = Math.ceil(this.pagination.totalRecords / RECORDS_PER_PAGE);
+        this.pagination.indStart = (this.pagination.currentPage - 1) * RECORDS_PER_PAGE;
+        this.pagination.uiIndStart = this.pagination.indStart + 1;
+        this.pagination.indEnd = this.pagination.indStart + RECORDS_PER_PAGE;
+        if (this.pagination.indEnd > this.pagination.totalRecords) {
+            this.pagination.indEnd = this.pagination.totalRecords;
         }
+        //end - for pagination - CS
     }
-    public static void getcustomerReturnRequestLinePart18(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.BoxId)) {
-            salesIssueCstReqLine.Sales_Issue_Box_Id__c = cstmrReturnReqLine?.warrantyResult?.BoxId;
+    goToNextPage() {
+        this.showSpinner = true;
+        if (this.pagination.currentPage < this.pagination.totalPages) {
+            this.pagination.currentPage += 1;
         }
-        if ( cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ShippedBoxId) ) {
-            salesIssueCstReqLine.Sales_Issue_Shipped_Box_Id__c = cstmrReturnReqLine?.warrantyResult?.ShippedBoxId;
-        }
+
+        setTimeout(() => {
+            this._processPaginationVariables();
+            this.showSpinner = false;
+        }, 1000);
     }
-    public static void getcustomerReturnRequestLinePart19(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.FPOLotNumber) ) {
-            salesIssueCstReqLine.Sales_Issue_FPO_Lot_Number__c = cstmrReturnReqLine?.warrantyResult?.FPOLotNumber;
+    goToPreviousPage() {
+        this.showSpinner = true;
+        if (this.pagination.currentPage > 1) {
+            this.pagination.currentPage -= 1;
         }
-        //added mapping for storing Spec Type
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.SpecType) ) {
-            salesIssueCstReqLine.Sales_Issue_Item_Spec_Type__c = cstmrReturnReqLine?.warrantyResult?.SpecType;
-        }
-        //added mapping for storing Spec code
-        
+
+        setTimeout(() => {
+            this._processPaginationVariables();
+            this.showSpinner = false;
+        }, 1000);
     }
-    public static void getcustomerReturnRequestLinePart20(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.SpecCode) ) {
-            salesIssueCstReqLine.Sales_Issue_Item_Spec_Code__c = cstmrReturnReqLine?.warrantyResult?.SpecCode;
-        }
-        /*if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.BatchId)) {
-            salesIssueCstReqLine.Sales_Issue_Batch_Id__c = cstmrReturnReqLine?.warrantyResult?.BatchId;
-        }*/
-        if (!String.isEmpty(cstmrReturnReqLine?.warrantyResult?.BatchId) || !String.isEmpty(cstmrReturnReqLine?.HanaBatchId)) {
-            salesIssueCstReqLine.Sales_Issue_Batch_Id__c = !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.BatchId) ? cstmrReturnReqLine?.warrantyResult?.BatchId : cstmrReturnReqLine?.HanaBatchId; //TWC4621-4282 -- Mapping batch id from hana
-        }
-    }
-    public static void getcustomerReturnRequestLinePart21(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.SourceSystemName) ) {
-            salesIssueCstReqLine.Sales_Issue_Source_System_Name__c = cstmrReturnReqLine?.warrantyResult?.SourceSystemName;
-        }
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.status) ) {
-            salesIssueCstReqLine.Sales_Issue_Warranty_Status__c = cstmrReturnReqLine?.warrantyResult?.status;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart22(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty( cstmrReturnReqLine?.warrantyResult?.BaseWarrantyStartDate) ) {
-            salesIssueCstReqLine.Sales_Issue_Warranty_StartDate__c = Date.valueof(cstmrReturnReqLine?.warrantyResult?.BaseWarrantyStartDate);
-        }
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.BaseWarrantyEndDate)) {
-            salesIssueCstReqLine.Sales_Issue_Warranty_EndDate__c = Date.valueof(cstmrReturnReqLine?.warrantyResult?.BaseWarrantyEndDate);
-        }
-    }
-    public static void getcustomerReturnRequestLinePart23(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ExtendedWarrantyStartDate) ) {
-            salesIssueCstReqLine.Sales_Issue_Warranty_StartDate__c = Date.valueof(cstmrReturnReqLine?.warrantyResult?.ExtendedWarrantyStartDate);
-        }
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ExtendedWarrantyEndDate)) {
-            salesIssueCstReqLine.Sales_Issue_Warranty_EndDate__c = Date.valueof(cstmrReturnReqLine?.warrantyResult?.ExtendedWarrantyEndDate);
-        }
-    }
-    public static void getcustomerReturnRequestLinePart24(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.warrentyCheckDate) ) {
-            salesIssueCstReqLine.Sales_Issue_Warranty_Check_Date__c = Date.valueof(cstmrReturnReqLine?.warrantyResult?.warrentyCheckDate);
-        }
-        //BUG - FIX - CPN Mapping
-        if (cstmrReturnReqLine?.customerItemNbr != null && !String.isEmpty(cstmrReturnReqLine?.customerItemNbr) ) {
-            salesIssueCstReqLine.Sales_Issue_Customer_Part_Number__c = cstmrReturnReqLine?.customerItemNbr;
-        }
-        //BUG - FIX - Allowance category
-        
-    }
-    public static void getcustomerReturnRequestLinePart25(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.allowanceCategory != null && !String.isEmpty(cstmrReturnReqLine?.allowanceCategory)) {
-            salesIssueCstReqLine.Sales_Issue_Allowance_Category__c = cstmrReturnReqLine?.allowanceCategory;
-        }
-        if(!String.isEmpty(cstmrReturnReqLine?.mrbnumber) ) {
-            salesIssueCstReqLine.Sales_Issue_MRB_Reference_Number__c = cstmrReturnReqLine?.mrbnumber;
-        }
-    }
-    
-    public static void getcustomerReturnRequestLinePart26(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        //if(!String.isEmpty(cstmrReturnReqLine?.RFPriceChange)) {
-        salesIssueCstReqLine.Reason_for_Price_Change__c = !String.isEmpty(cstmrReturnReqLine?.RFPriceChange) ?  cstmrReturnReqLine?.RFPriceChange : '';
-        //}
-        //Syed - EW addng logic to find chlild line items
-        if(cstmrReturnReqLine?.warrantyResult != null && cstmrReturnReqLine?.warrantyResult?.WarrantyTypeCode == '2') {
-            salesIssueCstReqLine.Sales_Issue_Warranty_Status__c+=' -Extended Item';//place holder value we are deleting this during insert
-        }
-        //Exception DRR and IRR 
-        
-    }
-    public static void getcustomerReturnRequestLinePart27(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if(!String.isEmpty(cstmrReturnReqLine?.expectedOutcomeValueForRepair) ) {
-            salesIssueCstReqLine.Sales_Issue_Exception_Return_Action__c = cstmrReturnReqLine?.expectedOutcomeValueForRepair;
-        }
-        if (cstmrReturnReqLine?.SRallowanceMatrixId != null && !String.isEmpty(cstmrReturnReqLine?.SRallowanceMatrixId)) {
-            salesIssueCstReqLine.Sales_Issue_Allowance_Matrix_Id__c = cstmrReturnReqLine?.SRallowanceMatrixId;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart28(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        //Start -- Manohar -- TWC4621-3197 - Manual Line item closure After RMA Case Edit
-        if (cstmrReturnReqLine?.lineCancelReason != null && !String.isEmpty(cstmrReturnReqLine?.lineCancelReason) ) {
-            salesIssueCstReqLine.Line_Cancellation_Reason__c = cstmrReturnReqLine?.lineCancelReason;
-        }
-        if (cstmrReturnReqLine?.lineCancelJustification != null && !String.isEmpty(cstmrReturnReqLine?.lineCancelJustification)) {
-            salesIssueCstReqLine.Line_Cancellation_Justification__c = cstmrReturnReqLine?.lineCancelJustification;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart29(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.lineCancelReason != null && !String.isEmpty(cstmrReturnReqLine?.lineCancelReason)) {
-            salesIssueCstReqLine.Line_Cancellation_Date__c = System.now();
-        }
-        if (cstmrReturnReqLine?.lineCancelReason != null && !String.isEmpty(cstmrReturnReqLine?.lineCancelReason) ) {
-            salesIssueCstReqLine.Line_Cancellation_Requested_By__c =  UserInfo.getName();
-        }
-        //End -- Manohar -- TWC4621-3197 - Manual Line item closure After RMA Case Edit
-    }
-    public static void getcustomerReturnRequestLinePart30(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        //added mapping for storing Trace Result
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.TraceResult)) {
-            salesIssueCstReqLine.Sales_Issue_Trace_Result__c = cstmrReturnReqLine?.warrantyResult?.TraceResult;
-        }
-        if (cstmrReturnReqLine.isECCLineValidated != null && cstmrReturnReqLine?.isECCLineValidated == true) { //TWC4621-5189,TWC4621-5191;
-            salesIssueCstReqLine.isECCLineValidated__c = cstmrReturnReqLine?.isECCLineValidated;
-        }
-        
-    }
-    public static void getcustomerReturnRequestLinePart31(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        //Furqan - adding tecnical intake variables
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.ProdUniqueId) ) {
-            salesIssueCstReqLine.Sales_Issue_Prd_Unique_Id__c = cstmrReturnReqLine?.warrantyResult?.ProdUniqueId;
-        }
-        //Bug Fix - ULt during bulk upload
-        else if(cstmrReturnReqLine?.ult != null && !String.isEmpty(cstmrReturnReqLine?.ult)) {
-            salesIssueCstReqLine.Sales_Issue_Prd_Unique_Id__c = cstmrReturnReqLine.ult;
-        }        
-    }
-    
-    public static void getcustomerReturnRequestLinePart32(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        
-        //PSG Changes
-        if(cstmrReturnReqLine?.oldMM != null && !String.isEmpty(cstmrReturnReqLine?.oldMM)) {
-            salesIssueCstReqLine.PSG_Old_MM__c = cstmrReturnReqLine.oldMM;
-        }
-        //COO - Country of origin
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.CountryOfOrigin)) {
-            salesIssueCstReqLine.Country_of_Origin__c = cstmrReturnReqLine?.warrantyResult?.CountryOfOrigin;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart33(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.EntitlementCMFSalesOrganizationCode)) {
-            salesIssueCstReqLine.Entitlement_SalesOrganization_Code__c = cstmrReturnReqLine?.warrantyResult?.EntitlementCMFSalesOrganizationCode;
-        }
-        if (cstmrReturnReqLine?.warrantyResult != null && !String.isEmpty(cstmrReturnReqLine?.warrantyResult?.EntitlementCMFDistributionChannelCode)) {
-            salesIssueCstReqLine.Entitlement_DistributionChannel_Code__c = cstmrReturnReqLine?.warrantyResult?.EntitlementCMFDistributionChannelCode;
-        }
-    }
-    public static void getcustomerReturnRequestLinePart34(Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine,R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper cstmrReturnReqLine,List<Case> insertedcaseList,List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList,Map<string, string> prdctCndtnMap,Map<String, String> genericmsgs,R4C_Generic_Configurations__c cs,Boolean isQualityFAC,Boolean isManualLineClosureAfterRMA,Boolean isPreserveLineStatus){
-        if (!String.isEmpty(cstmrReturnReqLine?.ActualInvoiceIndicator) && Boolean.valueOf(R4C_Generic_Configurations__c.getValues('isIaoFlag').Value__c)) {  // Mapping ActualInvoiceIndicator whether it is PO Search/PO history-TWC4621-4719   
-            salesIssueCstReqLine.Sales_Issue_Invoice_Indicator__c = cstmrReturnReqLine?.ActualInvoiceIndicator; 
-        }
-    }
+    //Pagination End
 }
