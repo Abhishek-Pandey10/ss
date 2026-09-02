@@ -1,415 +1,1160 @@
 /************************************************************************************************************************
-* Name          : R4C_AG_ViewSummaryController
-* Author        : Manohar - PopcornApps
-* Description   : This class is called from r4c_AG_CaseHeader(LWC)
-* Dependent Class    : R4C_ViewSummaryUtil 
-* Last Modified date : 23-07-2024
-* Last Modified by   : Samuel Nishant
+* Name          : R4C_ViewSummaryUtil
 * Test Class    : R4C_AG_ViewSummaryController_Test
+* Author        : Manohar - PopcornApps
+* Last Modified : 26-08-2022
+* Description   : util class for R4C_AG_ViewSummaryController
+
 ****************************************************************************************************************************/
-public with sharing class R4C_AG_ViewSummaryController {
+public with sharing class R4C_ViewSummaryUtil {
+    /** prdctCndtnMap */
+    public static Map<string, string> prdctCndtnMap { private set; get{
+        if(prdctCndtnMap==null) prdctCndtnMap = R4C_ViewSummaryUtil.getProductCondition();
+        return prdctCndtnMap;
+    } }
     
-    /**
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-    * Method to get l3 user details
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @author   Furqan
-    * @return   user list of users who has l3 permsion set assigned
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    */
-    
-    @AuraEnabled(cacheable=true)
-    public static R4C_CX_QueryController.queryGenWrapper fetchAllL3Users() {
-        R4C_CX_QueryController.queryGenWrapper userList = new R4C_CX_QueryController.queryGenWrapper();
-        //List<User> user=new List<User>();
-        try {
-             //Removed  WITH SECURITY_ENFORCED and Fls check for Setup Objects - TWC4621-3546 - Security checks Checkmarks scan issues
-                userList.recordList = [SELECT Id,Name,Email FROM User WHERE Id IN (Select AssigneeId  from PermissionSetAssignment WHERE  PermissionSet.Name='R4C_L3_Agent') LIMIT 50000]; //No FLS on User
-              
-        
-        } 
-        catch(Exception e) {
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_AG_ViewSummaryController.fetchAllL3Users',e.getMessage(),e,True);  //TWC4621-3159
-            userList.errorMessage = 'R4C_AG_ViewSummaryController.fetchAllL3Users'+e.getMessage();
-            //throw new AuraHandledException('R4C_AG_ViewSummaryController : ' + e.getMessage());
-           
-        }
-       return userList;
+    /** recordTypeId */
+    public static Id recordTypeId { get; set; }
+    /** isQualityFAC */
+    public static Boolean isQualityFAC { get; set; }
+    /* does not change line status during parsing  */
+    public static Boolean isPreserveLineStatus { get; set; }
+    /** insertedcaseList */
+    public static List<Case> insertedcaseList { get; set; }
+    /** insertedcustomerReturnRequestList */
+    public static List<Customer_Sales_Issue_Request__c> insertedcustomerReturnRequestList {
+        get;
+        set;
     }
+    /** genericmsgs */
+    public static final Map<String, String> genericmsgs {private set; get{
+        if(genericmsgs==null) genericmsgs=R4C_AG_CaseHeader_Controller.getErrorMessages(); //For Importing Custom Settings
+        return genericmsgs;
+    }} 
+    /** recordsToBeInsertedInUI */
+    public static RecordInsertionWrapper recordsToBeInsertedInUI = new RecordInsertionWrapper();
+    //TWC4621-3197 - Manual Line item closure After RMA
+    public static Boolean isManualLineClosureAfterRMA = false; 
     
-    /**
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-    * Method to save case,crr,crr line items from agent UI
-    * User-Story : TWC4621-54 & TWC4621-72 --- 26-08-2022
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * DESCRIPTION : calling from Agent UI(save and view summmary button)
-    * @author   Manohar
-    * @param    returnReqDetails, caseStatus (wrapper record of type R4C_AG_ViewSummaryUtil.returnReqDetailsWrapper) 
-    * @return   RecordInsertionWrapper
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    */ 
-    @AuraEnabled
-    public static R4C_ViewSummaryUtil.RecordInsertionWrapper saveCase(R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails, String caseStatus) {
-        R4C_ViewSummaryUtil.RecordInsertionWrapper insertR4CCaseRes = new R4C_ViewSummaryUtil.RecordInsertionWrapper();
 
-        try {
-           
-            insertR4CCaseRes = R4C_ViewSummaryUtil.insertR4CCaseUtil(returnReqDetails, caseStatus);
-
-        } 
-        catch(AuraHandledException e) {
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_AG_ViewSummaryController.saveCase',e.getMessage(),e,true); 
-            insertR4CCaseRes.errorMessageOfDmlOperation = 'R4C_AG_ViewSummaryController : ' + e.getMessage();
-            //throw new AuraHandledException('R4C_AG_ViewSummaryController : ' + e.getMessage());
-        }
-        
-        return insertR4CCaseRes;  
-    } 
-    /**
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-    * Method to save  ecc crr line items from agent UI
-    * User-Story : 
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * DESCRIPTION : calling from Agent UI(Line Item result Table)
-    * @author   Syed
-    * @param    returnReqDetails, caseStatus (wrapper record of type R4C_AG_ViewSummaryUtil.returnReqDetailsWrapper) 
-    * @return   RecordInsertionWrapper
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    */
-    @AuraEnabled
-    public static R4C_ViewSummaryUtil.RecordInsertionWrapper updateECCLineItem(R4C_ViewSummaryUtil.returnReqDetailsWrapper returnReqDetails, String caseStatus) {
-        R4C_ViewSummaryUtil.RecordInsertionWrapper recordsToBeInsertedInUI = new R4C_ViewSummaryUtil.RecordInsertionWrapper();
-        try{
-    
-            R4C_ViewSummaryUtil.recordsToBeInsertedInUI=recordsToBeInsertedInUI;
-            R4C_ViewSummaryUtil.isPreserveLineStatus=true;
-            //Case
-            List<Case> insertedcaseList=  R4C_ViewSummaryUtil.getCaseList(returnReqDetails,caseStatus);
-            R4C_ViewSummaryUtil.insertedcaseList=insertedcaseList;
-            if (insertedcaseList.isEmpty() == false) {
-                recordsToBeInsertedInUI.insertR4CCaseRes = insertedcaseList[0];
-            }
-
-            if(returnReqDetails?.caserecTypeName == R4C_ViewSummaryUtil.genericmsgs.get('Quality_Intake') && returnReqDetails?.caseRec?.Origin == 'ILM') {
-                R4C_ViewSummaryUtil.isQualityFAC = true;    
-            } 
-            //Header
-            List<Customer_Sales_Issue_Request__c> customerReturnRequestList=R4C_ViewSummaryUtil.getCustomerReturnRequest(returnReqDetails.CustomerReturnRequest,returnReqDetails.remedyDetails.Name == R4C_ViewSummaryUtil.genericmsgs.get('Credit_NPR'));
-            customerReturnRequestList = R4C_ViewSummaryUtil.insertCustomerReturnRequest(customerReturnRequestList);
-            R4C_ViewSummaryUtil.insertedcustomerReturnRequestList=customerReturnRequestList;
-            if (customerReturnRequestList.isEmpty() == false) {
-                recordsToBeInsertedInUI.customeraSalesIssueRequestInsertRecord = customerReturnRequestList[0];
-            }
-            //Line
-            List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList  = R4C_ViewSummaryUtil.getcustomerReturnRequestLine(returnReqDetails.customerReturnRequestLineWrapperList);
-        
-            List<Customer_Sales_Issue_Request_Line__c> updateCustomerReturnRequestLineList= R4C_ViewSummaryUtil.insertCustomerReturnRequestLine(customerReturnRequestLineList);
-            if (updateCustomerReturnRequestLineList.isEmpty() == false) {
-                recordsToBeInsertedInUI.customeraSalesIssueRequestLineInsertRecord = updateCustomerReturnRequestLineList[0];
-            }
-          
-        }
-        catch (Exception e) { //TWC4621-3159
-            
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_AG_ViewSummaryController.updateECCLineItem',e.getMessage(),e,True);
-            recordsToBeInsertedInUI.errorMessageOfDmlOperation = 'R4C_AG_ViewSummaryController.updateECCLineItem'+e.getMessage();
-            //throw new AuraHandledException('R4C_AG_ViewSummaryController : ' + e.getMessage());
-        }  
-    return recordsToBeInsertedInUI;     
-    } 
-
-    /* ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @Description : Updates Line Item Status from R4c_AG_LineItemsResultTable
-    * @param       : List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList
-    * @return      : void
-    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    */
-    @AuraEnabled
-    public static  R4C_ViewSummaryUtil.RecordInsertionWrapper updateECCLineItemStatus(List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList) {
-        R4C_ViewSummaryUtil.RecordInsertionWrapper recordsToBeInsertedInUI = new R4C_ViewSummaryUtil.RecordInsertionWrapper();
-        try {
-            if(!customerReturnRequestLineList.isEmpty()) {  //TWC4621-3546 - Security checks Checkmarks scan issues
-            update as User customerReturnRequestLineList;
-            }
-        }
-        catch (Exception e) { //TWC4621-3159
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_AG_ViewSummaryController.updateECCLineItemStatus',e.getMessage(),e,True);
-            recordsToBeInsertedInUI.errorMessageOfDmlOperation = 'R4C_AG_ViewSummaryController.updateECCLineItemStatus'+e.getMessage();
-            //throw new AuraHandledException('R4C_AG_ViewSummaryController : ' + e.getMessage());
-        }
-        return recordsToBeInsertedInUI; 
-    } 
-   /* ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @Description : Updates Line Item Status against a custom setting value for 'Pending Approval' based on the case status or another custom setting value for 'RMA Authorized'.
-    * @param       : List<Customer_Sales_Issue_Request_Line__c> submitCaseLineItems, string caseStatus, Map<String,String> r4cCustomSettingsMap
-    * @return      : void
-    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    */  
-    private static void updateLineItemStatuses(List<Customer_Sales_Issue_Request_Line__c>  submitCaseLineItems, String caseStatus,Map<String,String> r4cCustomSettingsMap){
-        for(Customer_Sales_Issue_Request_Line__c line:submitCaseLineItems){
-            
-            if(caseStatus == r4cCustomSettingsMap.get('Pending_Approval') ){
-                line.Sales_Issue_Line_Item_Status__c = caseStatus;
-            }
-            else{
-                line.Sales_Issue_Line_Item_Status__c = r4cCustomSettingsMap.get('Case_Status_RMA_Authorized');
-            }
-        }
-        if (!submitCaseLineItems.isEmpty()) {
-            R4C_DML_UtilClass.updateasUser(submitCaseLineItems);
+    static void checkIfisManualLineClouser(returnReqDetailsWrapper returnReqDetails){
+        if(returnReqDetails.isManualLineClosure != null) {
+            isManualLineClosureAfterRMA = returnReqDetails?.isManualLineClosure;//TWC4621-3197 - Manual Line item closure After RMA
         }
     }
-    /* ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @Description :  send an approval email when the case status is pending approval. 
-    * @param       : R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper, String caseStatus,Map<String,String> r4cCustomSettingsMap
-    * @return      : void
-    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    */    
-    private static void sendApprovalEmail(R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper, String caseStatus,Map<String,String> r4cCustomSettingsMap){
-        if(caseStatus == r4cCustomSettingsMap.get('Pending_Approval')){
-            R4C_EmailApproval_Handler.isEccLineItem = true;
-            Final List<Customer_Sales_Issue_Request__c> crrlist = new List<Customer_Sales_Issue_Request__c>();
-            Customer_Sales_Issue_Request__c crr = new Customer_Sales_Issue_Request__c();
-            crr = submitCaseWrapper.returnreqdetails;
-            crrlist.add(crr);
-            R4C_ViewSummaryUtil.insertCustomerReturnRequest(crrlist);
-            R4C_EmailApproval_Handler.invokeApprovalEmail(submitCaseWrapper.caseRec.Id);
+    static List<Customer_Sales_Issue_Request_Line__c> handleHeaderUpdate(returnReqDetailsWrapper returnReqDetails,List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList,List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineListInserted){
+        if (!returnReqDetails.customerReturnRequestLineWrapperList.isEmpty()) {
+            customerReturnRequestLineList = R4C_ViewSummaryUtil.getcustomerReturnRequestLine(returnReqDetails.customerReturnRequestLineWrapperList);
+            //if (returnReqDetails.casemode == genericmsgs.get('Edit_Label') && !isManualLineClosureAfterRMA && returnReqDetails.lineIds.isEmpty()) {//TWC4621-3197 - added condition to skip this function in Manual Line item closure After RMA
+             //   R4C_ViewSummaryUtil.updateCustomerReturnRequestLine(insertedcaseList,customerReturnRequestLineList,false);
+            //}
+            /*if (returnReqDetails.casemode == genericmsgs.get('Edit_Label') && !isManualLineClosureAfterRMA && !returnReqDetails.lineIds.isEmpty() && returnReqDetails.updateFailedLines) {
+                R4C_ViewSummaryUtil.queryHelper(insertedcaseList,returnReqDetails.lineIds,false);
+            }*/
+            if (returnReqDetails.casemode == genericmsgs.get('Edit_Label') && !isManualLineClosureAfterRMA) {//TWC4621-3197 - added condition to skip this function in Manual Line item closure After RMA
+                R4C_ViewSummaryUtil.updateCustomerReturnRequestLine(insertedcaseList,customerReturnRequestLineList,false);
+            }
+            customerReturnRequestLineListInserted = R4C_ViewSummaryUtil.insertCustomerReturnRequestLine(customerReturnRequestLineList);
+             
+        }
+        return customerReturnRequestLineListInserted;
+    }
+    static void processRecordsForUI(List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineListInserted){
+        if (insertedcaseList.isEmpty() == false) {
+            recordsToBeInsertedInUI.insertR4CCaseRes = insertedcaseList[0];
+        }
+        if (insertedcustomerReturnRequestList.isEmpty() == false) {
+            recordsToBeInsertedInUI.customeraSalesIssueRequestInsertRecord = insertedcustomerReturnRequestList[0];
+        }
+        if (customerReturnRequestLineListInserted.isEmpty() == false) {
+            recordsToBeInsertedInUI.customeraSalesIssueRequestLineInsertRecord = customerReturnRequestLineListInserted[0];
         }
     }
+    static void setSubmitedDate(returnReqDetailsWrapper returnReqDetails,List<Customer_Sales_Issue_Request__c> customerReturnRequestList,String caseStatus){
+        if(!customerReturnRequestList.isEmpty() && caseStatus == 'RMA Authorized' && returnReqDetails?.caseRec?.Origin == 'ILM') {
+            customerReturnRequestList[0].Sales_Issue_Submitted_Date__c = System.now();
+        }
+    }
+    static void updateAllowanceRecord(returnReqDetailsWrapper returnReqDetails,List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineListInserted){
+        //TWC4621-3197 --  SRA Allowance amount Deduction for the cancelled Lines -- Manual Line item closure After RMA 
+        if(returnReqDetails?.caserecTypeName == genericmsgs.get('Case_Stock_Rotation') && isManualLineClosureAfterRMA && customerReturnRequestLineListInserted.isEmpty() == false) {
+            updateAllowanceRecordsAfterRMA(customerReturnRequestLineListInserted);
+         } 
+    }
     /**
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-    * Method to submit ecc line item 
-    * User-Story : TWC4621-963
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @author   Furqan
-    * @param    caseDetails,  case record 
-    * @return   case  
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    */
-   
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Method to insert case,crr,crr line items
+* User-Story : TWC4621-54 & TWC4621-72 -- 26-08-2022
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @param    returnReqDetails,caseStatus  (wrapper record of type R4C_AG_ViewSummaryUtil.returnReqDetailsWrapper)
+* @return   case, DESCRIPTION : inserting case,crr,crr line items
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static RecordInsertionWrapper insertR4CCaseUtil(returnReqDetailsWrapper returnReqDetails, String caseStatus) {
+        Savepoint sp = Database.setSavepoint();
 
-      /* public static R4C_ViewSummaryUtil.submitCaseWrapper submitECCCaseAndLineItem(R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper, String caseStatus,List<Customer_Sales_Issue_Request_Line__c>  submitCaseLineItems) {
-        R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper = R4C_ViewSummaryUtil.submitCaseWrapper();
         try {
-            Map<String,String> r4cCustomSettingsMap = R4C_AG_CaseHeader_Controller.getErrorMessages();
-            if(submitCaseWrapper.stockAlwncList!=null && !submitCaseWrapper.stockAlwncList.isEmpty()) {
-                R4C_ViewSummaryUtil.submitR4CStockRotationAllowanceUtil(submitCaseWrapper.stockAlwncList);
-            }
-            updateLineItemStatuses(submitCaseLineItems, caseStatus,r4cCustomSettingsMap);
-            sendApprovalEmail(submitCaseWrapper, caseStatus,r4cCustomSettingsMap);      
-        }
-        catch (Exception e) { //TWC4621-3159
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_AG_ViewSummaryController.submitCase',e.getMessage(),e,True);
-            submitCaseWrapper.errorMessage('R4C_AG_ViewSummaryController : ' + e.getMessage())
-            //throw new AuraHandledException('R4C_AG_ViewSummaryController : ' + e.getMessage());
-        }
-        return submitCaseWrapper;
-    }  */
- @AuraEnabled
-   public static R4C_ViewSummaryUtil.submitCaseWrapper submitECCCaseAndLineItem(R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper, String caseStatus,List<Customer_Sales_Issue_Request_Line__c>  submitCaseLineItems) {
-        R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrap = new R4C_ViewSummaryUtil.submitCaseWrapper();
-        try {
-            //SAMUEl - Validate ECC Performance fixes
-            //Getting all SRA records with full data, - REvisit
-            // case status as String, - AS is 
-            //ALL line items with full fields - Changing to IDs only from JS.
-            Map<String,String> r4cCustomSettingsMap = R4C_AG_CaseHeader_Controller.getErrorMessages();
-            if(submitCaseWrapper.stockAlwncList!=null && !submitCaseWrapper.stockAlwncList.isEmpty()) {
-                R4C_ViewSummaryUtil.submitR4CStockRotationAllowanceUtil(submitCaseWrapper.stockAlwncList);
-            }
-            //Samuel - Replacing old line update with direct wrapper update from JS.
-            //updateLineItemStatuses(submitCaseLineItems, caseStatus,r4cCustomSettingsMap);  //Samuel - Looping all lines & Updating ONLY Line status field.
-            updateECCLineItemStatus(submitCaseLineItems);
-
-            sendApprovalEmail(submitCaseWrapper, caseStatus,r4cCustomSettingsMap); //Samuel - Updating ONLY Header - CHanging header fields and invoking email Pending approval
-        }
-        catch (Exception e) { //TWC4621-3159
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_AG_ViewSummaryController.submitECCCaseAndLineItem',e.getMessage(),e,True);
-            submitCaseWrap.errorMessage = 'R4C_AG_ViewSummaryController : ' + e.getMessage();
-            //throw new AuraHandledException('R4C_AG_ViewSummaryController : ' + e.getMessage());
-        }
-        return submitCaseWrap;
-    } 
-    
-    
-    /**
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-    * Method to submit a case from agent UI
-    * User-Story : TWC4621-55 -- 26-08-2022
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * DESCRIPTION : calling from Agent UI on click of save button
-    * @author   Manohar
-    * @param    submitCaseWrapper,caseStatus  (wrapper record of type R4C_AG_ViewSummaryUtil.submitCaseWrapper) 
-    * @return   Case
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    */
-    @AuraEnabled
-    public Static caseWrapper submitCase(R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper, String caseStatus) {
-        caseWrapper caseWrap = new caseWrapper();
-        try {
-            
-            if(checkForSalesServiceTypeAndPortal(submitCaseWrapper)) {
-                   R4C_ViewSummaryUtil.updateCaseHeaderForPortalValue(submitCaseWrapper.caseRec.Id,submitCaseWrapper.returnreqdetails.Sales_Issue_Header_Error_Messages__c);
-            }
-            
-            if(submitCaseWrapper.stockAlwncList!=null && !submitCaseWrapper.stockAlwncList.isEmpty()) {
-                R4C_ViewSummaryUtil.submitR4CStockRotationAllowanceUtil(submitCaseWrapper.stockAlwncList);
-            }
-            Map<String,String> r4cCustomSettingsMap = R4C_AG_CaseHeader_Controller.getErrorMessages();
-            System.debug('@@@ caseStatus: ' + caseStatus);
-            System.debug('@@@ Sales Org: ' + submitCaseWrapper.returnreqdetails.Sales_Issue_Sales_Organization__c);
-            System.debug('@@@ SoldTo: ' + submitCaseWrapper.returnreqdetails.Sales_Issue_SoldTo_Customer__c);
-            System.debug('@@@ r4cCustomSettingsMap: ' + r4cCustomSettingsMap);
-            System.debug('@@@ checking caseStatus...');
-            // Start - TWC4621-904 - Samuel - Setting default agent owner if RMA authorized and case from portalSales_Issue_Approver_Email__c
-            if(checkForCaseStatus(caseStatus, r4cCustomSettingsMap, submitCaseWrapper)) {
-                submitCaseWrapper.caseRec.OwnerId = R4C_CaseAssignmentEngine.assignAgentOwner(caseStatus,submitCaseWrapper.returnreqdetails.Sales_Issue_Sales_Organization__c,submitCaseWrapper.returnreqdetails.Sales_Issue_SoldTo_Customer__c);//'0058J000000WZoBQAW';
-            }
-            // End - TWC4621-904 - Samuel - Setting default agent owner if RMA authorized and case from portal
-            caseWrap.returnCase =  R4C_ViewSummaryUtil.submitR4CCaseUtil(submitCaseWrapper.caseRec, caseStatus);
-            submitCaseHelper(caseStatus,submitCaseWrapper);//Added helper method below for cyclomatic complexity
-            caseWrap.returnCase = [Select Id, Status from Case where Id =:submitCaseWrapper.caseRec.Id]; // added this line for performance testing for line status updation from Case - Pravallika
+            recordTypeId = Schema.SObjectType.Case.getRecordTypeInfosByName().get(returnReqDetails.caserecTypeName).getRecordTypeId();
+            List<Case> caseList = new List<Case>();
+            List<Customer_Sales_Issue_Request__c> customerReturnRequestList = new List<Customer_Sales_Issue_Request__c>();
             List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList = new List<Customer_Sales_Issue_Request_Line__c>();
-            R4C_ViewSummaryUtil.updateCustomerReturnRequestLine(new List<Case>{caseWrap.returnCase},customerReturnRequestLineList,true);
+            List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineListInserted = new List<Customer_Sales_Issue_Request_Line__c>();
+            Boolean isNpr = false; 
+            isQualityFAC = false;  
+            checkIfisManualLineClouser(returnReqDetails);
+            if (!String.isEmpty(recordTypeId) && returnReqDetails.CustomerReturnRequest != null ) {
+                if(returnReqDetails.remedyDetails.Name == genericmsgs.get('Credit_NPR')) {
+                    isNpr = true;
+                    //final String incotermId = getIncoterm(returnReqDetails.CustomerReturnRequest);
+                    // if(String.isNotEmpty(incotermId)) {
+                    //     returnReqDetails.CustomerReturnRequest.Sales_Issue_InCo_Term__c = incotermId;
+                    // }
+                } 
+                if(returnReqDetails?.caserecTypeName == genericmsgs.get('Quality_Intake') && returnReqDetails?.caseRec?.Origin == 'CQNR') {
+                    isQualityFAC = true;    
+                }
+                caseList = R4C_ViewSummaryUtil.getCaseList(returnReqDetails,caseStatus);
+                insertedcaseList = R4C_ViewSummaryUtil.insertCase(caseList);
+
+                customerReturnRequestList = R4C_ViewSummaryUtil.getCustomerReturnRequest(returnReqDetails.CustomerReturnRequest,isNpr);
+                setSubmitedDate(  returnReqDetails,  customerReturnRequestList,caseStatus);
+                insertedcustomerReturnRequestList = R4C_ViewSummaryUtil.insertCustomerReturnRequest(customerReturnRequestList);
+
+                customerReturnRequestLineListInserted = handleHeaderUpdate(  returnReqDetails,  customerReturnRequestLineList,  customerReturnRequestLineListInserted);
+                 
+                processRecordsForUI(  customerReturnRequestLineListInserted);
+                updateAllowanceRecord(  returnReqDetails,  customerReturnRequestLineListInserted);
+            }
+        } 
+       catch (DmlException e) {
+            Database.rollback(sp);
+            Database.releaseSavepoint(sp);
+            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_ViewSummaryUtil.insertR4CCaseUtil',e.getMessage(),e,true);
+            recordsToBeInsertedInUI.errorMessageOfDmlOperation = recordsToBeInsertedInUI.errorMessageOfDmlOperation + ' + ' + e.getMessage() + e.getDmlFieldNames(0);
+            //throw new AuraHandledException('R4C_AG_ViewSummaryUtil : ' + e.getMessage());
+
         }
         catch (Exception e) {
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_AG_ViewSummaryController.submitCase',e.getMessage(),e,True);
-            caseWrap.errorMessage = 'R4C_AG_ViewSummaryController.submitCase'+e.getMessage();
-            //throw new AuraHandledException('R4C_AG_ViewSummaryController : ' + e.getMessage() + e.getStackTraceString());
-        } 
-        return caseWrap;
-    }
+            Database.rollback(sp);
+            Database.releaseSavepoint(sp);
+            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_ViewSummaryUtil.insertR4CCaseUtil', e.getMessage(), e,true);
+            recordsToBeInsertedInUI.errorMessageOfDmlOperation = recordsToBeInsertedInUI.errorMessageOfDmlOperation + ' + ' + e.getMessage();
+            //throw new AuraHandledException('R4C_AG_ViewSummaryUtil : ' + e.getMessage());
 
-       public class caseWrapper {
-            @AuraEnabled
-            public Case returnCase {get;set;}
-            @AuraEnabled
-            public String errorMessage {get;set;}
+        }
+        return recordsToBeInsertedInUI;
+    }
+    
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Method preparing case data and returning caseList
+* User-Story : TWC4621-54 & TWC4621-72
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @param    returnReqDetails,caseStatus  (wrapper record of type R4C_AG_ViewSummaryUtil.returnReqDetailsWrapper)
+* @return   List<Case>, DESCRIPTION : preparing case data and returning caseList
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static List<Case> getCaseList(returnReqDetailsWrapper returnReqDetails,String caseStatus) {
+        List<Case> caseList = new List<Case>();
+        Case objCase = new Case();
+        String caseOrigin = '';
+        if (returnReqDetails.caseRec == null) {
+            R4C_ViewSummaryUtilHelper.getCaseListPart1(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
+            R4C_ViewSummaryUtilHelper.getCaseListPart2(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
+            R4C_ViewSummaryUtilHelper.getCaseListPart3(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
+            R4C_ViewSummaryUtilHelper.getCaseListPart4(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
+            R4C_ViewSummaryUtilHelper.getCaseListPart5(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
+        } 
+        else {
+            objCase = returnReqDetails.caseRec;
+            objCase.status = caseStatus;
+            R4C_ViewSummaryUtilHelper.getCaseListPart5(  objCase,  returnReqDetails,  caseStatus,  RecordTypeId,  caseOrigin);
+            //Manohar
+            if (!String.isEmpty(returnReqDetails.comments) ) {
+                objCase.Description = returnReqDetails.comments;
+            }
+            //Case Feed Tracking Notes
+            R4C_FeedItem_Controller.FeedItemWrapper feedTrackingWrapper = new R4C_FeedItem_Controller.FeedItemWrapper();
+        	feedTrackingWrapper.newValue = returnReqDetails?.comments;
+        	feedTrackingWrapper.recordId = returnReqDetails?.caseRec?.Id;
+        	//R4C_FeedItem_Controller.InsertOldCaseFeedItem(feedTrackingWrapper); //Commented due to errors
+        }
+        caseList.add(objCase);
+        return caseList;
+    }
+    
+    
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* method to insert the case listt
+* User-Story : TWC4621-54 & TWC4621-72
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @param    List<Case>
+* @return   List<Case>, DESCRIPTION : utility method to insert the case list
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static List<Case> insertCase(List<Case> caseList) {
+        List<Case> insertedcaseList = new List<Case>();
+            if (!caseList.isEmpty()) {
+                upsert as user caseList;
+                insertedcaseList = caseList;
+            }
+        //R4C_FeedItem_Controller.InsertNewCaseFeedItem(insertedcaseList); //Commented due to error
+        return insertedcaseList;
+    }
+    
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* User-Story : TWC4621-54 & TWC4621-72
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @param    Customer_Sales_Issue_Request__c  (CRR object record)
+* @return   List<Customer_Sales_Issue_Request__c>, DESCRIPTION : preparing customer return request(caseHeader) data and returning CRR list
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static List<Customer_Sales_Issue_Request__c> getCustomerReturnRequest( Customer_Sales_Issue_Request__c objCustomerReturnRequest,Boolean isNpr) {
+        List<Customer_Sales_Issue_Request__c> customerReturnRequestList = new List<Customer_Sales_Issue_Request__c>();
+        Customer_Sales_Issue_Request__c customerReturnRequest = new Customer_Sales_Issue_Request__c();
+        if (insertedcaseList.isEmpty() == false) {
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart1(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart2(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart3(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart4(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart5(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart6(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart7(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart8(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart9(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart10(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart11(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart12(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart13(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart14(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart15(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart16(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart17(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart18(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart19(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
+            R4C_ViewSummaryUtilHelper.getCustomerReturnRequestPart20(  customerReturnRequest,  objCustomerReturnRequest,  insertedcaseList,  isNpr);
             
         }
-
-    /* ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @Description : To Check sales issue service type 
-    * @param       : (Wrapper) submitCaseWrapper
-    * @return      : Boolean
-    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    */
-
-    private static Boolean checkForSalesServiceTypeAndPortal(R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper) {
-    return (submitCaseWrapper.returnreqdetails.Sales_Issue_Service_Type__r.Name=='Technical' || submitCaseWrapper.returnreqdetails.Sales_Issue_Service_Type__r.Name=='Quality') &&
-                submitCaseWrapper.isPortal==true;
-    }
-
-    /* ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @Description : To Check the case Satatus 
-    * @param       : String caseStatus, Map<String,String> r4cCustomSettingsMap, R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper
-    * @return      : Boolean
-    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    */
-
-    private static Boolean checkForCaseStatus(String caseStatus, Map<String,String> r4cCustomSettingsMap, R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper) {
-        return (caseStatus == r4cCustomSettingsMap.get('Pending_Approval') || caseStatus == r4cCustomSettingsMap.get('Pending_Agent_Action') || 
-                caseStatus == r4cCustomSettingsMap.get('Case_Status_RMA_Authorized')) && submitCaseWrapper.returnreqdetails != null && submitCaseWrapper.isPortal == true;
-    }
-    private static void updateAuthCustomerSalesIssueRequest(Customer_Sales_Issue_Request__c crr, R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper) {
-        crr.Id = submitCaseWrapper.returnreqdetails.Id;
-            crr.Sales_Issue_Submitted_Date__c = System.now();
-        //Need to confirm with business on approved user for SR
-    }
-       /* ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @Description : Sales_Issue_Submitted_Date__c field to the current date and time
-    * @param       : Customer_Sales_Issue_Request__c crr, R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper
-    * @return      : Customer_Sales_Issue_Request__c
-    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    */
-    private static Customer_Sales_Issue_Request__c  updatePendActCustomerSalesIssueRequest(Customer_Sales_Issue_Request__c crr, R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper){
-        crr=submitCaseWrapper.returnreqdetails;
-        crr.Id = submitCaseWrapper.returnreqdetails.Id;
-            crr.Sales_Issue_Submitted_Date__c = System.now();
-        return crr;
-    }
-    /**
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-    * Helper Method for Submit Case logic method - submitCase
-    * User-Story : TWC4621- Added helper method for cyclomatic complexity
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @author   Accellor
-    * @param    String caseStatus,R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper
-    * @return   void
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    */
-    public static void submitCaseHelper(String caseStatus,R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper) {
-        if(caseStatus == R4C_Generic_Configurations__c.getValues('Case_Status_RMA_Authorized').value__c && submitCaseWrapper.returnreqdetails != null) {
-            List<Customer_Sales_Issue_Request__c> crrlist = new List<Customer_Sales_Issue_Request__c>();
-            Customer_Sales_Issue_Request__c crr = new Customer_Sales_Issue_Request__c();
-            updateAuthCustomerSalesIssueRequest(crr,submitCaseWrapper);
-            crrlist.add(crr);
-            R4C_ViewSummaryUtil.insertCustomerReturnRequest(crrlist);    
-        }
-        if(checkGenericConfigurationApprovalEmail(caseStatus, submitCaseWrapper)) {
-            Final List<Customer_Sales_Issue_Request__c> crrlist = new List<Customer_Sales_Issue_Request__c>();
-            Customer_Sales_Issue_Request__c crr = new Customer_Sales_Issue_Request__c();
-            crr = updatePendActCustomerSalesIssueRequest(crr,submitCaseWrapper);
-            crrlist.add(crr);
-            R4C_ViewSummaryUtil.insertCustomerReturnRequest(crrlist);
-            R4C_EmailApproval_Handler.invokeApprovalEmail(submitCaseWrapper.caseRec.Id);
-
-        }
-        if(caseStatus == R4C_Generic_Configurations__c.getValues('Pending_Agent_Action').value__c && String.isBlank(submitCaseWrapper.ApprovalmatrixRec.Sales_Issue_Approver_Email__c)) { //Method for making case status to Submitted Pending Action if no Approval Matrix records
-            List<Customer_Sales_Issue_Request__c> crrlist = new List<Customer_Sales_Issue_Request__c>();
-            Customer_Sales_Issue_Request__c crr = new Customer_Sales_Issue_Request__c();
-            crr = updatePendActCustomerSalesIssueRequest(crr,submitCaseWrapper);
-            crrlist.add(crr);
-            R4C_ViewSummaryUtil.insertCustomerReturnRequest(crrlist); 
-        }
-    }
-
-    /**
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-    * @param    String caseStatus, R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper
-    * @return   Boolean
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    */
-
-    private static Boolean checkGenericConfigurationApprovalEmail(String caseStatus, R4C_ViewSummaryUtil.submitCaseWrapper submitCaseWrapper) {
-        return caseStatus == R4C_Generic_Configurations__c.getValues('Pending_Approval').value__c && 
-        String.isNotBlank(submitCaseWrapper.ApprovalmatrixRec.Sales_Issue_Approver_Email__c) && String.isNotBlank(submitCaseWrapper.caseRec.Id);
+        customerReturnRequestList.add(customerReturnRequest);
+        return customerReturnRequestList;
     }
     
     /**
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-    * Method to get Approval Matrix Record
-    * User-Story : TWC4621-869
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @author   Sandeep
-    * @param    (Wrapper) approvalMatrixWrapper
-    * @return   List<Sales_Issue_Matrix__c>
-    * ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    */
-    @AuraEnabled
-    public Static List<Sales_Issue_Matrix__c> getApprovalMatrix(R4C_ViewSummaryUtil.approvalMatrixWrapper approvalRequest) {
-        return R4C_ViewSummaryUtil.getApprovalMatrix(approvalRequest);
-    } 
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* method to insert the customerReturnRequestLine list
+* User-Story : TWC4621-54 & TWC4621-72
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @param    List<Customer_Sales_Issue_Request__c> (list of customer return request object records)
+* @return   List<Customer_Sales_Issue_Request__c>, DESCRIPTION : utility method to insert the customerReturnRequestLine list
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static List<Customer_Sales_Issue_Request__c> insertCustomerReturnRequest(List<Customer_Sales_Issue_Request__c> customerReturnRequestList) {
+        List<Customer_Sales_Issue_Request__c> insertedCustomerReturnRequestList = new List<Customer_Sales_Issue_Request__c>();
+            if (!customerReturnRequestList.isEmpty()) {             
+                customerReturnRequestList = R4C_DML_UtilClass.upsertasUser(customerReturnRequestList);
+                insertedCustomerReturnRequestList = customerReturnRequestList;
+            }
+        return insertedCustomerReturnRequestList;
+    }
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* User-Story : TWC4621-54 & TWC4621-72
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @param    List<case>,List<Customer_Sales_Issue_Request__c>,List<CustomerReturnRequestLineWrapper>  (list of cases , CRR object records,list of CustomerReturnRequestLineWrapper records)
+* @return   List<Customer_Sales_Issue_Request_Line__c>, DESCRIPTION : preparing customer return request lineItems data and returning line items list
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static List<Customer_Sales_Issue_Request_Line__c> getcustomerReturnRequestLine(
+        List<CustomerReturnRequestLineWrapper> customerReturnRequestLineWrapperList
+    ) {
+        
+        List<Customer_Sales_Issue_Request_Line__c> returnReqLinelst = new List<Customer_Sales_Issue_Request_Line__c>();
+        R4C_Generic_Configurations__c cs = R4C_Generic_Configurations__c.getValues('Entitlement_Max_Number_of_Attempts'); //TWC4621-888 || Entitlement API#2 - get Entitlement_Max_Number_of_Attempts value from custom settings || 9-Jan-2023
+        
+        if ( !customerReturnRequestLineWrapperList.isEmpty() && !insertedcaseList.isEmpty() && !insertedcustomerReturnRequestList.isEmpty() ) {
+            for (CustomerReturnRequestLineWrapper cstmrReturnReqLine : customerReturnRequestLineWrapperList) {
+                 Customer_Sales_Issue_Request_Line__c salesIssueCstReqLine = new Customer_Sales_Issue_Request_Line__c();
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart1(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart2(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart3(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart4(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart5(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart6(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart7(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart8(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart9(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart10(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart11(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart12(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart13(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart14(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart15(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart16(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart17(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart18(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart19(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart20(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart21(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart22(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart23(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart24(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart25(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart26(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart27(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart28(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart29(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart30(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart31(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart32(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart33(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                 R4C_ViewSummaryUtilHelper.getcustomerReturnRequestLinePart34(  salesIssueCstReqLine,  cstmrReturnReqLine,  insertedcaseList,  insertedcustomerReturnRequestList, prdctCndtnMap,  genericmsgs,  cs,  isQualityFAC,  isManualLineClosureAfterRMA,  isPreserveLineStatus);
+                returnReqLinelst.add(salesIssueCstReqLine);
+            }
+        }
+        return returnReqLinelst;
+    }
+
+    static void extractEWForInsertCustomerReturnRequestLine(List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList,Map<String,String> ultAndIdMap,List<Customer_Sales_Issue_Request_Line__c> ewItems){
+        for(Customer_Sales_Issue_Request_Line__c lineItem:customerReturnRequestLineList) {
+            if(lineItem.Sales_Issue_Prd_Unique_Id__c!=null && lineItem?.Sales_Issue_Warranty_Status__c != '' && !lineItem?.Sales_Issue_Warranty_Status__c?.endsWith('-Extended Item')) {
+                ultAndIdMap.put(lineItem.Sales_Issue_Prd_Unique_Id__c,lineItem.Id);
+            }
+            if(lineItem.Sales_Issue_Warranty_Status__c.endsWith('-Extended Item')) {
+                ewItems.add(lineItem);
+            }
+        }
+    }
+    static void assignEWForInsertCustomerReturnRequestLine(List<Customer_Sales_Issue_Request_Line__c> ewItems,Map<String,String> ultAndIdMap){
+        for(Customer_Sales_Issue_Request_Line__c lineItem:ewItems) {
+            if(ultAndIdMap.containsKey(lineItem.Sales_Issue_Prd_Unique_Id__c) ) {
+                lineItem.Sales_Issue_Warranty_Status__c=lineItem.Sales_Issue_Warranty_Status__c.replace('-Extended Item','');
+                lineItem.Parent_Sales_Issue_Request_Line__c=ultAndIdMap.get(lineItem.Sales_Issue_Prd_Unique_Id__c);
+            }
+        }
+    }
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description : utility method to insert the customerReturnRequestLine list
+* User-Story  : TWC4621-54 & TWC4621-72
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @param    List<Customer_Sales_Issue_Request_Line__c> (list of customer return request line item object records)
+* @return   void
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static List<Customer_Sales_Issue_Request_Line__c> insertCustomerReturnRequestLine( List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList ) {
+        List<Customer_Sales_Issue_Request_Line__c> insertedCustomerReturnRequestLineList = new List<Customer_Sales_Issue_Request_Line__c>();
+            if (!customerReturnRequestLineList.isEmpty()) {
+                customerReturnRequestLineList = R4C_DML_UtilClass.upsertasUser(customerReturnRequestLineList);
+                insertedCustomerReturnRequestLineList = customerReturnRequestLineList;
+                //Syed - EW items parent linking logic
+                if(customerReturnRequestLineList.get(0).Sales_Issue_Warranty_Status__c!=null) {
+                    List<Customer_Sales_Issue_Request_Line__c> ewItems=new List<Customer_Sales_Issue_Request_Line__c>();
+                    Map<String,String> ultAndIdMap=new Map<String,String>();
+                    extractEWForInsertCustomerReturnRequestLine(customerReturnRequestLineList,ultAndIdMap,ewItems);
+                    assignEWForInsertCustomerReturnRequestLine( ewItems,  ultAndIdMap);
+                    if(ewItems.isEmpty() == false) {
+                        R4C_DML_UtilClass.updateasUser(customerReturnRequestLineList);
+                    }
+                }
+            }
+        return insertedCustomerReturnRequestLineList;
+    }
     
-    @AuraEnabled
-    public static String updateLineItemStatus(Case caseRec) {
-        String updateMessage = '';
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description : utility method to update a case
+* User-Story  : TWC4621-55
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @param    caseRec,casestatus
+* @return   String
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static Case submitR4CCaseUtil(Case caseRec, String caseStatus) {
+        Case returnCase;
+            if (!String.isEmpty(caseStatus)) {
+                caseRec.status = caseStatus;
+                Case updateCaseRec = new Case(ID=caseRec.Id,Status=caseRec.Status);
+                if(caseRec.OwnerId != null) {
+                   updateCaseRec.OwnerId = caseRec.OwnerId; 
+                } 
+                UPDATE as User updateCaseRec;
+                returnCase = caseRec;
+            }
+        return returnCase;
+    }
+
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description : utility method to update stock rotation allowance
+* User-Story  : TWC4621-55
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @param    List<Sales_Issue_SR_Allowance_Matrix__c> (stock allownace records)
+* @return   String
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static String submitR4CStockRotationAllowanceUtil(
+        List<Sales_Issue_SR_Allowance_Matrix__c> stkalwnclst) {
+        String statusmessage;
         try {
-            if (String.isBlank(caseRec.Id)) {
-            List<Customer_Sales_Issue_Request_Line__c> lineItemsToUpdate = [SELECT Id,Sales_Issue_Line_Item_Status__c FROM Customer_Sales_Issue_Request_Line__c where Sales_Issue_Cst_Return_Request_Number__r.Sales_Issue_CaseNumber__c =: caseRec.Id];
-                if (!lineItemsToUpdate.isEmpty()) {
-                    List<Case> caseLst = new List<Case>();
-                    caseLst.add(caseRec);
-                    R4C_ViewSummaryUtil.falseSubmitHelper(lineItemsToUpdate,caseLst);
-                    updateMessage = 'Success';
+            if (!stkalwnclst.isEmpty()) {
+                R4C_DML_UtilClass.updateasUser(stkalwnclst);
+                statusmessage = R4C_Generic_Configurations__c.getValues('Success_Message').value__c;
+            }
+        } 
+        catch (DMLException e) {
+            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_ViewSummaryUtil.submitR4CStockRotationAllowanceUtil',e.getMessage(),e,true);
+        }
+        return statusmessage;
+    }
+    
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* User-Story : TWC4621-54 & TWC4621-72
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @return   Map<String,String>, DESCRIPTION : fetching return receipt condition object data
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static Map<string, string> getProductCondition() {
+        Map<string, string> prdctCndtnMap = new Map<string, string>();
+        List<Customer_Return_Receipt_Condition__c> receiptcndtnlst = new List<Customer_Return_Receipt_Condition__c>();
+        
+            receiptcndtnlst = [ SELECT id, name FROM Customer_Return_Receipt_Condition__c where Customer_Active_Indicator__c = true WITH USER_MODE LIMIT 49999 ];//  WITH SECURITY_ENFORCED Added as part of checkmarx fixes TWC4621-2127
+
+        if (receiptcndtnlst.isEmpty() == false) {
+            for (Customer_Return_Receipt_Condition__c receiptcndtn : receiptcndtnlst) {
+                prdctCndtnMap.put(receiptcndtn.name, receiptcndtn.Id);
+            }
+        }
+        return prdctCndtnMap;
+    }
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* User-Story : TWC4621-148
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @return   string, DESCRIPTION : updating the existing line items of customer request
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static void updateCustomerReturnRequestLine(List<Case> caselist,
+        List<Customer_Sales_Issue_Request_Line__c> customerReturnReqLineList,Boolean isSubmit) {
+            List<Id> newcrrlineitemIds = new List<Id>();
+            for (Customer_Sales_Issue_Request_Line__c lineitem : customerReturnReqLineList) {
+                if (!String.isEmpty(lineitem.Id)) {
+                    newcrrlineitemIds.add(lineitem.Id);
+                }
+            }
+            queryHelper(caselist,newcrrlineitemIds,isSubmit);
+    }
+
+     /** Description: Helper method to reduce cyclomatic complexity */
+    public static void queryHelper(List<Case> caselist,List<Id> newcrrlineitemIds,Boolean isSubmit) {
+      
+        List<String> caseStatus = genericmsgs.get('R4C_CaseEdit_LineItemStatusRestrict')?.split(';');
+        List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList = new List<Customer_Sales_Issue_Request_Line__c>();
+        if (caselist.isEmpty() == false) {
+            customerReturnRequestLineList = [
+                SELECT id, Sales_Issue_Line_Item_Status__c, Sales_Issue_Cst_Return_Request_Number__c, Sales_Issue_Cst_Return_Request_Number__r.Sales_Issue_CaseNumber__c,Sales_Issue_Cst_Return_Request_Number__r.Name
+                FROM Customer_Sales_Issue_Request_Line__c WHERE Sales_Issue_Cst_Return_Request_Number__r.Sales_Issue_CaseNumber__c = :caselist[0].Id
+                AND Id NOT IN :newcrrlineitemIds AND Sales_Issue_Line_Item_Status__c != :genericmsgs.get('Cancelled_Status_Value') AND Sales_Issue_Line_Item_Status__c != :genericmsgs.get('CPU_POH_Rejection') AND (NOT Sales_Issue_Line_Item_Status__c IN: caseStatus) WITH USER_MODE];//TWC4621-1223- 24/04/23 - Accellor//TWC4621-2886
+        }
+         // Start TWC4621-899 --Manohar -- updating line item status if it is cancelled or unselected in the case edit -- 19-Jan-2023
+         if(isSubmit == true && customerReturnRequestLineList.isEmpty() == false) {
+            trueSubmitHelper(customerReturnRequestLineList,caselist);
+        }
+        else if (isSubmit == false && customerReturnRequestLineList.isEmpty() == false) {
+            falseSubmitHelper(customerReturnRequestLineList,caselist);
+        }
+        // End TWC4621-899 --Manohar -- updating line item status if it is cancelled or unselected in the case edit -- 19-Jan-2023
+    }
+     
+    /** Description: Helper method to reduce cyclomatic complexity */
+    public static void trueSubmitHelper(List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList,List<Case> caselist) {
+        for (Customer_Sales_Issue_Request_Line__c lineitem : customerReturnRequestLineList) {
+            lineitem.Sales_Issue_Line_Item_Status__c = caselist[0].status;
+        }
+        //Adding Line Trigger bypass logic only for submit case scenario - Performance fix - Samuel
+        ICS_TriggerHandler.bypass('R4C_LineTriggerHandler');
+        R4C_DML_UtilClass.updateasUser(customerReturnRequestLineList); //FLS added in Parent method
+        //update customerReturnRequestLineList;
+        ICS_TriggerHandler.clearBypass('R4C_LineTriggerHandler');
+
+    }
+     /** Description: Helper method to reduce cyclomatic complexity */
+    public static void falseSubmitHelper(List<Customer_Sales_Issue_Request_Line__c> customerReturnRequestLineList,List<Case> caselist) {
+        for (Customer_Sales_Issue_Request_Line__c lineitem : customerReturnRequestLineList) {
+            if(genericmsgs.get('CheckCaseStatusToDetermineLineStatus').contains(caselist[0].status) == false) {
+                lineitem.Sales_Issue_Line_Item_Status__c = genericmsgs.get('Cancelled_Status_Value');
+            }
+            else {
+                lineitem.Sales_Issue_Line_Item_Status__c = genericmsgs.get('Deleted');
+            }
+        }
+        ICS_TriggerHandler.bypass('R4C_LineTriggerHandler');
+        R4C_DML_UtilClass.updateasUser(customerReturnRequestLineList); //FLS added in Parent method
+        ICS_TriggerHandler.clearBypass('R4C_LineTriggerHandler');
+
+    }
+ 
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* User-Story : TWC4621-
+* Date :23-05-2023
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Bindhu
+* @return   Id, DESCRIPTION : fetching freight type record 
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static Customer_Freight_Payment_Type__c getFreightType() {
+        Customer_Freight_Payment_Type__c freightRec = new Customer_Freight_Payment_Type__c();       
+            freightRec = [SELECT id,Name FROM Customer_Freight_Payment_Type__c WHERE Customer_Freight_Payment_Type_Code__c = 'CMA'
+                          AND Customer_Active_Indicator__c = TRUE WITH USER_MODE LIMIT 1];
+        return freightRec;
+    }
+        /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description :  generic method to get incoterm value for NPR Credit
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+*/ 
+    public static Customer_International_Commerce_Term__c getIncotermforNPR() {
+        Customer_International_Commerce_Term__c incotermRec = new Customer_International_Commerce_Term__c();       
+            incotermRec = [SELECT id,Name FROM Customer_International_Commerce_Term__c WHERE Customer_InCo_Term_Code__c  = 'EXW'
+                          AND Customer_Active_Indicator__c = TRUE WITH USER_MODE LIMIT 1];
+        return incotermRec;
+    }
+            /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description :  generic method to get return location value for NPR Credit
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+*/ 
+    public static Location_Plant__c getReturnLocationforNPR() {
+        Location_Plant__c returnLocRec = new Location_Plant__c();  
+        String defaultPlant = R4C_Generic_Configurations__c.getValues('Default_Plant_Location_For_NPR_AND_FAC').value__c;     
+            returnLocRec = [SELECT id,Name FROM Location_Plant__c WHERE Name  =: defaultPlant AND Location_Active_Indicator__c = TRUE WITH USER_MODE LIMIT 1];
+        return returnLocRec;
+    }
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description :  generic method to get incoterm value
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+*/  
+    public static String getIncoterm(Customer_Sales_Issue_Request__c customerReturnRequest) {
+        String incotermValue = '';
+        R4C_CollectionDetails_Util.CollectionDetailsWrapper collectionWrapper = new  R4C_CollectionDetails_Util.CollectionDetailsWrapper();
+        collectionWrapper.salesarea = CustomerReturnRequest?.Sales_Issue_Sales_Organization__c;
+        collectionWrapper.remedy = CustomerReturnRequest?.Sales_Issue_Remedy_Type__c;
+        collectionWrapper.servicetype = CustomerReturnRequest?.Sales_Issue_Service_Type__c;
+        collectionWrapper.returnreason = CustomerReturnRequest?.Sales_Issue_Return_Reason__c;
+        //routing request to matrix engine
+
+        R4C_AG_CollectionDetails_Controller.IncotermResponseWrapper freightDataWrapper = R4C_AG_CollectionDetails_Controller.incotermDetermination(collectionWrapper,null);
+
+        //List<Sales_Issue_Matrix__c> matrixlst = R4C_AG_CollectionDetails_Controller.incotermDetermination(collectionWrapper,null);
+        if(freightDataWrapper != null && !freightDataWrapper.salesIssueMatricList.isEmpty()) {
+            incotermValue=freightDataWrapper.salesIssueMatricList[0].Sales_Issue_Inbnd_Shipment_InCo_Term__c;
+        }
+        return incotermValue;
+    }
+
+    static Boolean checkIsApprovalMatrixRequestValid(approvalMatrixWrapper approvalRequest){
+        return String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_SoldTo_Customer__c) &&
+        String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_Sales_Organization__c) &&
+        String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_Distribution_Channel__c) &&
+        String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_Service_Type__c) &&
+        String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_Return_Reason__c) &&
+        String.isNotBlank(approvalRequest.requestDetail.Sales_Issue_Remedy_Type__c)  ;
+    }
+    /*
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* User-Story : TWC4621-869
+* Date : 06-01-2023
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Sandeep N
+* @param    Customer_Sales_Issue_Request__c record
+* @return  return List of Sales_Issue_Matrix__c : To get Approval records from Matrix Object
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    public static List<Sales_Issue_Matrix__c> getApprovalMatrix(approvalMatrixWrapper approvalRequest) {
+        String query = '';
+        List<Sales_Issue_Matrix__c> approvalMatrixlst = new List<Sales_Issue_Matrix__c>();
+        try {
+            if (checkIsApprovalMatrixRequestValid(approvalRequest)) {
+                string salesIssueRemedyType=approvalRequest.requestDetail.Sales_Issue_Remedy_Type__c;
+                string salesIssueSoldToCustomer=approvalRequest.requestDetail.Sales_Issue_SoldTo_Customer__c;
+                string salesIssueServiceType=approvalRequest.requestDetail.Sales_Issue_Service_Type__c;
+                string salesIssueDistributionChannel=approvalRequest.requestDetail.Sales_Issue_Distribution_Channel__c;
+                string salesIssueSalesOrganization=approvalRequest.requestDetail.Sales_Issue_Sales_Organization__c;
+                string salesIssueReturnReason=approvalRequest.requestDetail.Sales_Issue_Return_Reason__c;
+                Decimal netCreditPriceDec= Decimal.valueOf(approvalRequest.netCreditPrice);
+                string geoLocation = approvalRequest?.requestDetail?.Sales_Issue_Sales_Organization__r?.Location_Geography__c;//TWC4621-4739
+                if(approvalRequest.isILM) {
+                    /*set<String> RecTypeDeveloperName = new Set<String>{'ILM_Approval_Matrix'};
+                    List<Sales_Issue_SalesOrg_To_Geo_Map__c> salesOrgGeoList = R4C_CollectionDetails_Util.getGeoLocationBySalesOrgId(new List<Id>{salesIssueSalesOrganization});
+                    if(!salesOrgGeoList.isEmpty()) {
+                        string geoLocation = salesOrgGeoList[0]?.Location_Geography__c;
+                        approvalMatrixlst = [SELECT Id, RecordType.Name, Sales_Issue_Approver_Email__c, Sales_Issue_Exceeds_Price__c, Sales_Issue_Approver_WWID__c, Approver_Name__c, Location_Geography__c, Sales_Issue_Operation_Business_Unit_Code__c FROM Sales_Issue_Matrix__c 
+                                             WHERE RecordType.DeveloperName IN :RecTypeDeveloperName AND Sales_Issue_Customer_CMF__c = :salesIssueSoldToCustomer AND Sales_Issue_Service_Type__c = :salesIssueServiceType 
+                                             AND Location_Geography__c = :geoLocation AND Sales_Issue_Active_Indicator__c = TRUE WITH USER_MODE];
+                        
+                    }*/
+                    //TWC4621-4739
+                    if(String.isBlank(geoLocation)) return approvalMatrixlst;
+                    //String whereClause = getILMApproverLevel(approvalRequest);
+                    query = 'SELECT Id, RecordType.Name, Sales_Issue_Approver_Email__c, Sales_Issue_Exceeds_Price__c, Sales_Issue_Approver_WWID__c, Sales_Issue_Approver_Level__c,Approver_Name__c,Location_Geography__c, Sales_Issue_Operation_Business_Unit_Code__c FROM Sales_Issue_Matrix__c WHERE RecordType.DeveloperName=\'ILM_Approval_Matrix\' AND Sales_Issue_Customer_CMF__c =: salesIssueSoldToCustomer AND Sales_Issue_Service_Type__c =: salesIssueServiceType AND Location_Geography__c =: geoLocation AND Sales_Issue_Active_Indicator__c = TRUE WITH USER_MODE Limit 49999';
+                    approvalMatrixlst = Database.query(query);
+                    if(!approvalMatrixlst.isEmpty() && !String.isEmpty(approvalRequest?.OPID)) { 
+                         approvalMatrixlst = filterILMRecsBasedonOPID(approvalMatrixlst, approvalRequest?.OPID); //filtering recordss based on product opid
+                    }
+                } 
+                else {
+                    approvalMatrixlst = R4C_BusinessRule_Service.getRule('Sales_Issue_Approval_Matrix',JSON.serialize(new Map<String,String>{
+                        'Sales_Issue_Service_Type__c'=>salesIssueServiceType,
+                        'Sales_Issue_Remedy_Type__c'=>salesIssueRemedyType,
+                        'Sales_Issue_Customer_Return_Reason__c'=>salesIssueReturnReason,
+                        'Sales_Issue_Customer_CMF__c'=>approvalRequest.requestDetail.Sales_Issue_SoldTo_Customer__c,
+                        'Sales_Issue_Customer_Sales_Organization__c'=>salesIssueSalesOrganization,
+                        'Customer_Disti_Channel__c'=>salesIssueDistributionChannel,
+                        'Sales_Issue_Operation_Business_Unit_Code__c' =>approvalRequest?.OPID,
+                        'Sales_Issue_Exceeds_Price__c'=>String.valueOf(netCreditPriceDec)
+                    }));             
+                }
+            }
+        } 
+        catch (DMLException e) {
+            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_ViewSummaryUtil.getApprovalMatrix',e.getMessage(),e,true);
+        }
+        return approvalMatrixlst;
+    }
+	/**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Filter ILM Matrix Records based on OPID(Sales_Issue_Operation_Business_Unit_Code__c) 
+* User-Story : TWC4621-2165
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+
+*/
+     public static List<Sales_Issue_Matrix__c> filterILMRecsBasedonOPID(List<Sales_Issue_Matrix__c> approvalMatrixlst, String opid) {
+         List<Sales_Issue_Matrix__c> filteredOPIDlst  = new List<Sales_Issue_Matrix__c>();
+         List<Sales_Issue_Matrix__c> emptyOPIDlst  = new List<Sales_Issue_Matrix__c>();
+            for(Sales_Issue_Matrix__c matrixRec : approvalMatrixlst) {
+                 if(matrixRec.Sales_Issue_Operation_Business_Unit_Code__c == opid) {
+                     filteredOPIDlst.add(matrixRec);
+                 } else if(String.isBlank(matrixRec.Sales_Issue_Operation_Business_Unit_Code__c)) {
+                      emptyOPIDlst.add(matrixRec);
+                 }
+             }
+            if(filteredOPIDlst.isEmpty()) {
+              filteredOPIDlst = emptyOPIDlst;
+            }
+          return filteredOPIDlst;
+     }
+    
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description : wrapper class for CustomerReturnRequestLine object
+* User-Story  : TWC4621-55
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+*/
+    public class CustomerReturnRequestLineWrapper {
+        @auraEnabled
+        /** billingDate */
+        public Date billingDate { get; set; }
+        @AuraEnabled
+        /** data */
+        public ICS_WR_MMID_BU_Hierarchy__c data { get; set; }
+        @auraEnabled
+        /** billingQuantity */
+        public string billingQuantity { get; set; }
+        @auraEnabled
+        /** channel */
+        public string channel { get; set; }
+        @auraEnabled
+        /** customerPONumber */
+        public string customerPONumber { get; set; }
+        @auraEnabled
+        /** returnPO */
+        public string returnPO { get; set; }
+        @auraEnabled
+        /** deliveryNote */
+        public string deliveryNote { get; set; }
+        @auraEnabled
+        /** invoiceLineItemNumber */
+        public string invoiceLineItemNumber { get; set; }
+        @auraEnabled
+        /** invoiceNumber */
+        public string invoiceNumber { get; set; }
+        @auraEnabled
+        /** customerBillingDocumentId */
+        public string customerBillingDocumentId { get; set; }
+        @auraEnabled
+        /** legacyIndicator */
+        public string legacyIndicator { get; set; }
+        @auraEnabled
+        /** mm */
+        public string mm { get; set; }
+        @auraEnabled
+        /** productCode */
+        public string productCode { get; set; }
+        @auraEnabled
+        /** YMS2Price */
+        public string YMS2Price { get; set; }
+        @auraEnabled
+        /** pricingCondition */
+        public string pricingCondition { get; set; }
+        @auraEnabled
+        /** salesOrderNumber */
+        public string salesOrderNumber { get; set; }
+        @auraEnabled
+        /** salesOrderNumberLineNumber */
+        public string salesOrderNumberLineNumber { get; set; }
+        @auraEnabled
+        /** salesOrderReasonCode */
+        public string salesOrderReasonCode { get; set; }
+        @auraEnabled
+        /** salesOrg */
+        public string salesOrg { get; set; }
+        @auraEnabled
+        /** soldto */
+        public string soldto { get; set; }
+        @auraEnabled
+        /** unitPrice */
+        public string unitPrice { get; set; }
+        @auraEnabled
+        /** returnQuantity */
+        public string returnQuantity { get; set; }
+        @auraEnabled
+        /** boxCondition */
+        public string boxCondition { get; set; }
+        @auraEnabled
+        /** creditPrice */
+        public string creditPrice { get; set; }
+        @auraEnabled
+        /** currency_z */
+        public string currency_z { get; set; }
+        @auraEnabled
+        /** debitReferenceNumber */
+        public string debitReferenceNumber { get; set; }
+        //@auraEnabled
+        /** orderPartNumber */
+        //public string orderPartNumber { get; set; }
+        @auraEnabled
+        /** lineitemStatus */
+        public string lineitemStatus { get; set; }
+        @auraEnabled
+        /** lineItemRecId */
+        public Id lineItemRecId { get; set; }
+        @auraEnabled
+        /** Error */
+        public String Error { get; set; }
+        //BUG - FIX - CPN Mapping
+        @auraEnabled
+        /** customerItemNbr */
+        public string customerItemNbr { get; set; }
+        @AuraEnabled /** warrantyResult */
+        public WarrentyDetails warrantyResult { get; set; }
+        //BUG - FIX - Ult during bulk upload
+        @auraEnabled /** ult */
+        public string ult { get; set; }
+        @auraEnabled /** allowanceCategory */
+        public string allowanceCategory { get; set; }
+        @auraEnabled /**mrbnumber */
+        public string mrbnumber { get; set; }
+        @auraEnabled /** RFPriceChange */
+        public string RFPriceChange { get; set; }
+        @auraEnabled /** rfpriceselection */
+        public string rfpriceselection { get; set; }
+        @auraEnabled /** expectedOutcomeValueForRepair */
+        public string expectedOutcomeValueForRepair { get; set; }
+        @auraEnabled /** SRallowanceMatrixId */
+        public string SRallowanceMatrixId { get; set; }
+        @auraEnabled
+        public string lineCancelReason { get; set; }//TWC4621-3197 - Manual Line item closure After RMA
+        @auraEnabled
+        public string lineCancelJustification { get; set; }//TWC4621-3197 - Manual Line item closure After RMA
+        @auraEnabled
+        public string oldMM { get; set; }//PSG Changes
+        @AuraEnabled
+        public String HanaBatchId {get;set;} //TWC4621-4282 -- Mapping batch id from hana
+        @AuraEnabled
+        /** Mapping ActualInvoiceIndicator whether it is PO Search/PO history-TWC4621-4719 */    
+        public String ActualInvoiceIndicator {get;set;}
+        @AuraEnabled
+        public Boolean isECCLineValidated {get;set;}//TWC4621-5189,TWC4621-5191;
+        
+    }
+    
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description :  wrapper class for inserting case
+* User-Story  : TWC4621-55
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+*/
+    public class returnReqDetailsWrapper {
+        @auraEnabled
+        /** caserec */
+        public Case caserec { get; set; }
+        @auraEnabled
+        /** customerReturnRequest */
+        public Customer_Sales_Issue_Request__c customerReturnRequest { get; set; }
+        @auraEnabled
+        /** customerReturnRequestLineWrapperList */
+        public List<R4C_ViewSummaryUtil.CustomerReturnRequestLineWrapper> customerReturnRequestLineWrapperList {
+            get;
+            set;
+        }
+        @auraEnabled
+        /** casemode */
+        public String casemode { get; set; }
+        @auraEnabled
+        /** caserecTypeName */
+        public String caserecTypeName { get; set; }
+        @AuraEnabled
+        /** isPortal */
+        public Boolean isPortal { get; set; } //TWC4621-904 - Samuel - Getting case origin if portal case
+        @auraEnabled
+        /** contactDetails */
+        public Contact contactDetails { get; set; }  //Accellor -- 17/03/2023 -- TWC4621-1123 && TWC4621-1124 added contact details to the wrapper and those values are used in case insertion -- as part of data model changes 
+        @auraEnabled
+        /** remedyDetails */
+        public Sales_Issue_Return_Remedy_Type__c remedyDetails { get; set; }
+        @auraEnabled
+        /** externalCaseId */
+        public String externalCaseId { get; set; }
+        @auraEnabled
+        /** r4eCaseNumber */
+        public String r4eCaseNumber { get; set; }
+        @auraEnabled
+        /** comments */
+        public String comments { get; set; }
+        @auraEnabled//TWC4621-3197 - Manual Line item closure After RMA
+        public Boolean isManualLineClosure { get; set; }
+        @AuraEnabled
+        public List<String> lineIds { get; set; }
+        @AuraEnabled
+        public Boolean updateFailedLines { get; set; }
+    }
+    
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description :  wrapper class for submitting case
+* User-Story  : TWC4621-55
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+*/
+    public class submitCaseWrapper {
+        @auraEnabled
+        /** stockAlwncList */
+        public List<Sales_Issue_SR_Allowance_Matrix__c> stockAlwncList {
+            get;
+            set;
+        }
+        @auraEnabled
+        /** caseRec */
+        public Case caseRec { get; set; }
+        @auraEnabled
+        /** returnreqdetails */
+        public Customer_Sales_Issue_Request__c returnreqdetails { get; set; }
+        @auraEnabled
+        /** ApprovalmatrixRec */
+        public Sales_Issue_Matrix__c ApprovalmatrixRec { get; set; }
+        @AuraEnabled
+        /** isPortal */
+        public Boolean isPortal { get; set; } //TWC4621-904 - Samuel - Getting case origin if portal case
+         @AuraEnabled
+         public String errorMessage  { get; set; } 
+    }
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description :  wrapper class for Approval Matrix
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+*/
+    public class approvalMatrixWrapper {
+        @AuraEnabled
+        /** requestDetail */
+        public Customer_Sales_Issue_Request__c requestDetail { get; set; }
+        @AuraEnabled
+        /** netCreditPrice */
+        public String netCreditPrice { get; set; }
+        @AuraEnabled
+        /** isILM */
+        public Boolean isILM { get; set; }
+        @AuraEnabled
+        /** OPID */
+        public String OPID { get; set; }
+        @AuraEnabled
+        /** approverLevel */
+        public String approverLevel { get; set; }
+    }
+    
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Wrapper To return If Any DML Fails While Case Submission
+* User-Story : TWC4621-684
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Ram Sai
+*/
+    public class RecordInsertionWrapper {
+        @AuraEnabled
+        /** insertR4CCaseRes */
+        public Case insertR4CCaseRes { get; set; }
+        @AuraEnabled
+        /** customeraSalesIssueRequestInsertRecord */
+        public Customer_Sales_Issue_Request__c customeraSalesIssueRequestInsertRecord {
+            get;
+            set;
+        }
+        @AuraEnabled
+        /** customeraSalesIssueRequestLineInsertRecord */
+        public Customer_Sales_Issue_Request_Line__c customeraSalesIssueRequestLineInsertRecord {
+            get;
+            set;
+        }
+        @AuraEnabled
+        /** errorMessageOfDmlOperation */
+        public String errorMessageOfDmlOperation { get; set; }
+    }
+    
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Wrapper To store warrenty data
+* User-Story : TWC4621-912
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Furqan
+*/
+    public class WarrentyDetails {
+        @AuraEnabled
+        /** QueryNumber */
+        public String QueryNumber { get; set; }
+        @AuraEnabled
+        /** CustomerReturnCaseNumber */
+        public String CustomerReturnCaseNumber { get; set; }
+        @AuraEnabled
+        /** ProdUniqueId */
+        public String ProdUniqueId { get; set; }
+        @AuraEnabled
+        /** ProdUniqueIdTypeCode */
+        public String ProdUniqueIdTypeCode { get; set; }
+        @AuraEnabled
+        /** VizId */
+        public String VizId { get; set; }
+        @AuraEnabled
+        /** OperationBusinessUnitCode */
+        public String OperationBusinessUnitCode { get; set; }
+        /** ErrorCode */
+        @AuraEnabled public Integer ErrorCode { get; set; }
+        @AuraEnabled
+        /** VizIdStatusCode */
+        public String VizIdStatusCode { get; set; }
+        @AuraEnabled
+        /** EnttlSoldToPartyId */
+        public String EnttlSoldToPartyId { get; set; }
+         @AuraEnabled 
+        /** EntitlementCMFSalesOrganizationCode */   
+        public String EntitlementCMFSalesOrganizationCode {get;set;}
+         @AuraEnabled 
+        /** EntitlementCMFDistributionChannelCode */   
+        public String EntitlementCMFDistributionChannelCode {get;set;}
+        @AuraEnabled
+        /** EnttlSoldToPartyName */
+        public String EnttlSoldToPartyName { get; set; }
+        @AuraEnabled
+        /** CaseSoldToPartyId */
+        public String CaseSoldToPartyId { get; set; }
+        @AuraEnabled
+        /** SoldToPartyMissMatchIndicator */
+        public String SoldToPartyMissMatchIndicator { get; set; }
+        @AuraEnabled
+        /** ShipToPartyId */
+        public String ShipToPartyId { get; set; }
+        @AuraEnabled
+        /** ShipToPartyName */
+        public String ShipToPartyName { get; set; }
+        @AuraEnabled
+        /** MaterialId */
+        public String MaterialId { get; set; }
+        @AuraEnabled
+        /** SpecCode */
+        public String SpecCode { get; set; }
+        @AuraEnabled
+        /** SpecType */
+        public String SpecType { get; set; }
+        @AuraEnabled
+        /** SalesOrganizationCode */
+        public String SalesOrganizationCode { get; set; }
+        @AuraEnabled
+        /** DistributionChannelCode */
+        public String DistributionChannelCode { get; set; }
+        @AuraEnabled
+        /** CreditPeriodCount */
+        public Integer CreditPeriodCount { get; set; }
+        @AuraEnabled
+        /** ProdUniqueIdStatusCode */
+        public String ProdUniqueIdStatusCode { get; set; }
+        @AuraEnabled
+        /** WarrantyTypeCode */
+        public String WarrantyTypeCode { get; set; }
+        @AuraEnabled
+        /** WarrantyPeriodCount */
+        public String WarrantyPeriodCount { get; set; }
+        @AuraEnabled
+        /** WarrantyMaterialId */
+        public String WarrantyMaterialId { get; set; }
+        @AuraEnabled
+        /** RegistrationIndicator */
+        public String RegistrationIndicator { get; set; }
+        @AuraEnabled
+        /** DeliveryNoteNumber */
+        public String DeliveryNoteNumber { get; set; }
+        @AuraEnabled
+        /** ServiceContractNumber */
+        public String ServiceContractNumber { get; set; }
+        @AuraEnabled
+        /** BoxId */
+        public String BoxId { get; set; }
+        @AuraEnabled
+        /** ShippedBoxId */
+        public String ShippedBoxId { get; set; }
+        @AuraEnabled 
+        /* FPOLotNumber*/
+        public String FPOLotNumber { get; set; }
+        @AuraEnabled
+        /** BatchId */
+        public String BatchId { get; set; }
+        @AuraEnabled
+        /** SourceSystemName */
+        public String SourceSystemName { get; set; }
+        /** BaseWarrantyStartDate */
+        @AuraEnabled
+        public string BaseWarrantyStartDate { get; set; }
+        @AuraEnabled
+        /** BaseWarrantyEndDate */
+        public string BaseWarrantyEndDate { get; set; }
+        @AuraEnabled
+        /** ExtendedWarrantyStartDate */
+        public string ExtendedWarrantyStartDate { get; set; }
+        @AuraEnabled
+        /** ExtendedWarrantyEndDate */
+        public string ExtendedWarrantyEndDate { get; set; }
+        /** warrentyCheckDate */
+        @AuraEnabled
+        public string warrentyCheckDate { get; set; }
+        @AuraEnabled
+        /** status */
+        public string status { get; set; }
+        @AuraEnabled
+        /** TraceResult */
+        public String TraceResult { get; set; }
+        @AuraEnabled
+        /** CountryOfOrigin */
+        public String CountryOfOrigin {get;set;}
+    }
+    /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Tecnical intake update npr cert date
+* User-Story : TWC4621-963
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Furqan
+
+*/
+    public static void updateCaseHeaderForPortalValue(String caseId, String errorReason) {
+        List<Customer_Sales_Issue_Request__c> caseHeaderDetails = new List<Customer_Sales_Issue_Request__c>();
+            //TWC4621-1548 - Syed - Adding new fields to query and updating them
+            caseHeaderDetails = Database.query('SELECT id,Sales_Issue_COD_Agreed_By__c,Sales_Issue_Crt_Of_Destruction_Ind__c,Sales_Issue_Header_Error_Messages__c,Sales_Issue_Crt_Of_Destruction_Date__c,Sales_Issue_SoldTo_Customer__c,Sales_Issue_Location_Plant__c,Sales_Issue_Remedy_Type__c,Sales_Issue_Remedy_Type__r.Name,Sales_Issue_Return_Reason__c,Sales_Issue_Return_Reason__r.Name,Sales_Issue_Sales_Organization__c FROM Customer_Sales_Issue_Request__c WHERE Sales_Issue_CaseNumber__c=:caseId WITH USER_MODE');
+        
+        caseHeaderDetails = helper(caseHeaderDetails); // splittind due to cyclomatic complexity
+        if (errorReason != null) {
+            caseHeaderDetails.get(0).Sales_Issue_Header_Error_Messages__c = errorReason;
+        }
+        R4C_DML_UtilClass.updateasUser(caseHeaderDetails);
+    }
+
+    /** Description: Helper method to redue cyclomatic complexity */
+    public static List<Customer_Sales_Issue_Request__c>  helper(List<Customer_Sales_Issue_Request__c> caseHeaderDetails) {
+        if (caseHeaderDetails.isEmpty() == false && caseHeaderDetails.get(0).Sales_Issue_Crt_Of_Destruction_Date__c == null && caseHeaderDetails.get(0).Sales_Issue_Remedy_Type__r.Name == 'NPR-Credit') {
+           
+                caseHeaderDetails.get(0).Sales_Issue_Crt_Of_Destruction_Date__c = Date.today();
+            
+                caseHeaderDetails.get(0).Sales_Issue_COD_Agreed_By__c=Userinfo.getUserId();
+            
+                caseHeaderDetails.get(0).Sales_Issue_Crt_Of_Destruction_Ind__c=true;
+            
+        }
+        return caseHeaderDetails;
+    }
+   
+     /**
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* Description :  SR Allowance amount Deduction for the cancelled Lines -- Manual Line item closure After RMA
+* User-Story : TWC4621-3197
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+
+*/
+     public static void  updateAllowanceRecordsAfterRMA(List<Customer_Sales_Issue_Request_Line__c> lineItemsLSt) {
+        Set<String> newSRAllowanceRecordIds = new Set<String>();
+        Set<String> newLineItemIds = new Set<String>();
+        List<Customer_Sales_Issue_Request_Line__c> newlineItemsList = new List<Customer_Sales_Issue_Request_Line__c>();
+        if (lineItemsLSt.isEmpty() == false) {
+            for(Customer_Sales_Issue_Request_Line__c line : lineItemsLSt) {
+                if(String.isNotBlank(line.Sales_Issue_Allowance_Matrix_Id__c)) { 
+                    newLineItemIds.add(line.Id);
+                    newSRAllowanceRecordIds.add(line?.Sales_Issue_Allowance_Matrix_Id__c);
                 }
             }
         }
-        catch (Exception e) { 
-            R4C_AG_ErrorRecordHandler.errorRecord_Method('R4C_AG_ViewSummaryController.updateLineItemStatus',e.getMessage(),e,True);
-            updateMessage = e.getMessage();
+        if (newSRAllowanceRecordIds.isEmpty() == false && newLineItemIds.isEmpty() == false) {
+            newlineItemsList = [Select Id,Sales_Issue_Allowance_Matrix_Id__c,Sales_Issue_Cst_Return_Receipt_Cnd__c,Sales_Issue_Cst_Return_Receipt_Cnd__r.Name,Sales_Issue_Net_Credit_Value__c from Customer_Sales_Issue_Request_Line__c where ID IN: newLineItemIds WITH USER_MODE];
         }
-        return updateMessage;
+        if(newlineItemsList.isEmpty() == false) {
+            R4C_EmailApproval_Handler.UpdateDiscrepantSRAllowanceRecords(newlineItemsList,newSRAllowanceRecordIds);
+        }
+        
     }
-       
+        /*
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+* User-Story : TWC4621-4739
+* Date : 10-07-2025
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+* @author   Manohar
+* @param    Customer_Sales_Issue_Request__c record
+*@Description : Helper method to detetmine approver level for ILM matrix
+* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+    static String getILMApproverLevel(approvalMatrixWrapper approvalRequest) {
+        String whereClause  = '';
+        string serviceTypeName = approvalRequest?.requestDetail?.Sales_Issue_Service_Type__r?.Name;
+        Decimal netCreditPriceDec= Decimal.valueOf(approvalRequest.netCreditPrice);
+        if(serviceTypeName == 'Exception') {
+            if(netCreditPriceDec <= 300000){
+                whereClause  = whereClause + ' AND Sales_Issue_Exceeds_Price__c > 0 AND Sales_Issue_Exceeds_Price__c <= 300000 ';
+            }
+            if(netCreditPriceDec > 300000 && netCreditPriceDec <= 5000000){
+            whereClause  = whereClause + ' AND Sales_Issue_Exceeds_Price__c > 300000 AND Sales_Issue_Exceeds_Price__c <= 5000000 ';
+            }
+            if(netCreditPriceDec > 5000000){
+            whereClause  = whereClause + ' AND ( Sales_Issue_Exceeds_Price__c > 5000000 OR Sales_Issue_Exceeds_Price__c = -1 ) ';
+            }
+        } else if(serviceTypeName == 'Admin') {
+            if(netCreditPriceDec <= 100000){
+                whereClause  = whereClause + ' AND Sales_Issue_Exceeds_Price__c > 0 AND Sales_Issue_Exceeds_Price__c <= 100000 ';
+            }
+            if(netCreditPriceDec > 100000 && netCreditPriceDec <= 300000){
+            whereClause  = whereClause + ' AND Sales_Issue_Exceeds_Price__c > 100000 AND Sales_Issue_Exceeds_Price__c <= 300000 ';
+            }
+            if(netCreditPriceDec > 300000){
+            whereClause  = whereClause + ' AND ( Sales_Issue_Exceeds_Price__c > 300000 OR Sales_Issue_Exceeds_Price__c = -1 ) ';
+            }
+        }
+        return whereClause;
+    }
 }
