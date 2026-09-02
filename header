@@ -1,65 +1,3304 @@
-/**************************************************************************************************************************
-* Class name: R4C_API_AsmblyCmpnntWrnty_ConsumingClass
-* Created By : Bobbala Reddy
-* Date Created : 01-05-2023
-* Description : This is Used in R4c_CX_QuerySearchTable to provide Assembly waranty details
-* display in R4c_CX_QuerySearchTable LWC.
-* Last Modified by   : Syed Ahmed
-* Last Mofified date : 08-07-2024
-* Parent Components : R4c_CX_QuerySearchTable, R4c_CX_QueryWarrentyULTInfoModal
-* Test class name: R4C_API_AsmblyCmpntWrnty_CC_Test
-**************************************************************************************************************************/
-public with sharing class R4C_API_AsmblyCmpnntWrnty_ConsumingClass {
-    
-    /* ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    * @Description : Provides assembly warranty details API Response  
-    * @param       : String serialNumber
-    * @return      : String response body
-    * ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    */
-    
-    @AuraEnabled
-    public static String getAssemblyWarrantyDetails(String serialNumber) {
-        String body='';
-        try {
-            String isIAOFlag = R4C_Generic_Configurations__c.getValues('isIaoFlag').Value__c; //IAO Changes - Samuel
-            String iaoNCEndpoint = R4C_Generic_Configuration__c.getValues('NC_EH_Component_Assembly_IAO');
-            R4C_APIGEE_Settings__mdt integrationSetting = R4C_APIGEE_Settings__mdt.getInstance('R4C_EH_CheckAssemblyComponent');
-            String endPoint = Boolean.valueOf(isIAOFlag) ? iaoNCEndpoint : integrationSetting.Consuming_Class_Name__c; //IAO Changes - Samuel
-            Http http = new Http();
-            HttpRequest req = new HttpRequest();
-            req.setMethod('GET');
-            req.setEndpoint(endPoint+'?'+'serialNumber='+serialNumber);
-            req.setHeader('Accept','application/Json');
-            req.setHeader('Content-Type', 'application/json');
-            HttpResponse res = http.send(req);
-            body=res.getbody();
-            //code added for storing API request and response details - start
-            String transactionId = R4C_API_MessageLogAndAttachment.generateTransactionId();
+import { LightningElement, api, track } from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import deleteAddress from '@salesforce/apex/R4C_AG_AddEditDeleteAddress.deleteAddress';
+import saveAddress from '@salesforce/apex/R4C_AG_AddEditDeleteAddress.saveAddress';
+import getCountryList from '@salesforce/apex/R4C_AG_AddEditDeleteAddress.getCountryList';
+import getStateList from '@salesforce/apex/R4C_AG_AddEditDeleteAddress.getStateList';
+import getTzone from '@salesforce/apex/R4C_AG_TZone_Controller.getTzone';
+import r4c_CustomLabels from 'c/r4c_CustomLabels';
+import {TzoneAPI} from "c/r4c_AG_LineItemsResultTableUtill";
+import fetchAutoCompleteResults from '@salesforce/apex/R4C_API_GoogleMapService.fetchAutoCompleteResults';
+import fetchCompleteAddressDetails from '@salesforce/apex/R4C_API_GoogleMapService.fetchPlaceDetail';
+export default class R4c_AG_AddEditDeleteAddress extends LightningElement {
+    @api genericmessages;
+    @api isEmulatedUser;//TWC4621-2010 -- Manohar -- If the login user is Emulated User, Restrict the Save functionality
+    coname;
+    country;
+    state = '';
+    defaultStateOption = 'Select State';
+    street1;
+    street2;
+    city = '';
+    zip = '';
+    zipMaxLength = 10;
+    zipError='';
+    zipClass='';
+    addressList = [];
+    error;
+    @track selectedCountryId;
+    selectedStateId;
+    countryList = [];
+    stateList = [];
+    selectedCountryName;
+    selectedStateName;
+    newAddress;
+    isModalOpen = false;
+    isStateListEmpty = true;
+    countriesMap;
+    statesMap;
+    recordId;
+    cmfid;//From Collection Details Cmp
+    addType;
+    saveaddType;
+    returnToCustAddrsValue;
+    CollectionAddrsValue;
+    deleteAddressIds = [];
+    labels = r4c_CustomLabels.labels;//Assigning custom labels to variable
+    statesCodeMap;
+    currentAddress = {};
+    tzoneCode = '';
+    statesCache = [];
+    showSpinner = false;
+    rtcGeoValue; //Samuel geo
+    countryMap = new Map(); //Samuel geo
 
-            R4C_API_MessageLogAndAttachment.MessageLogWrapper msgLogWrpr = new R4C_API_MessageLogAndAttachment.MessageLogWrapper();
-            msgLogWrpr.SourceAPIName = 'EH Component Assembly API';
-            msgLogWrpr.StatusCode = String.valueOf(res.getStatusCode());
-            msgLogWrpr.transactionId = transactionId;
-            msgLogWrpr.requestBody = integrationSetting.Consuming_Class_Name__c+'?'+'serialNumber='+serialNumber;
-            msgLogWrpr.responseBody = body;
-            R4C_API_MessageLogAndAttachment.CreateMessageLogRecord(msgLogWrpr);
-            //code added for storing API request and response details - end
-            if (String.isEmpty(body)) {
-                throw new AuraHandledException('API Failure Exception');
-            }   
+    editAddress = false;
+    editStateAddress = false;
+     // TWC4621-4823
+    sessionKey
+    @track showPredictionList = false // TWC4621-4823
+    @track predictions = []; // TWC4621-4823
+    selectedCountrycode = '';
+    /*Start--Samuel Nishant--Get address details/req data from collection details*/
+    debounceGoogleAPIToggle = true; // SaiRam TWC4621-5799 - Optimization for google API
+
+    // Initializes getadddata with datawrapper parameters and sets up modal state
+    // Modifies cmfid, addType, addressList, isModalOpen and clears form fields
+    @api
+    getadddata(datawrapper) {
+        this.rtcGeoValue = datawrapper?.rtcGeoValue;
+        this.deleteAddressIds = [];//TWC4621-1009 --- Manohar -- 21stfeb 2023 -- clearing the address ids
+        this.cmfid = datawrapper.cmfid;
+        this.addType = datawrapper.addtype;
+        if (this.addType === this.genericmessages.Sales_Issue_Cst_Collection_Address__c) {
+            this.saveaddType = this.genericmessages.Collection;
+            this.CollectionAddrsValue = datawrapper.previousvalue;//TWC4621-1009 --- Manohar -- 21stfeb 2023 -- storing the collection address value to retain if the user clicks cancel
         }
-        catch(exception ex){
-            body = 'Error';
-            final R4C_ErrorRecordServiceWrapperClass recordData = new R4C_ErrorRecordServiceWrapperClass();
-            recordData.source = 'R4C_API_AsmblyCmpnntWrnty_ConsumingClass.getAssemblyWarrantyDetails';
-            recordData.origin = 'Agent/Portal';
-            recordData.request = 'serialNumber='+serialNumber;
-            recordData.type = 'Integration/API error';
-            recordData.errorMessage = 'EH Component Assembly API Error';
-            final R4C_ErrorRecordService records = new R4C_ErrorRecordService();
-            records.insertErrorRecord(recordData);    
+        else if (this.addType === this.genericmessages.Sales_Issue_Return_To_Cst_Address__c) {
+            this.saveaddType = this.genericmessages.Return_To_Customer;
+            this.returnToCustAddrsValue = datawrapper.previousvalue;//TWC4621-1009 --- Manohar -- 21stfeb 2023 -- storing the RTC address value to retain if the user clicks cancel
         }
-        return body;
+        this.addressList = datawrapper.addresslist !== undefined ? datawrapper.addresslist : [];
+        this.getCountries();
+        this.getStateFromApex();
+
+        this.isModalOpen = true;
+        // Prashant -- Removed Country and State Required Field Validation.
+        this.recordId = undefined;
+        this.coname = '';
+        this.country = '';
+        this.state = '';
+        this.street1 = '';
+        this.street2 = '';
+        this.city = '';
+        this.zip = '';
+        this.focusOnOpen();
+    }
+
+    // Sets focus to closeFocus element after modal opens
+    // Uses setTimeout with refs.closeFocus to manage focus state
+    focusOnOpen() {
+        setTimeout(()=>{this.refs?.closeFocus?.focus(),10});
+    }
+    /*End--Samuel Nishant--Get address details/req data from collection details*/
+
+    /*Start--TWC4621-60,TWC4621-61--Tulika--Onchange method of input fields*/
+    // Updates address field properties based on event.target.name and event.detail.value
+    // Modifies coname, city, street1, state, street2, zip, country and validates zip
+    setAddress(event) {
+        if (event.target.name === this.genericmessages.CO_Name) {
+            this.coname = event.detail.value;
+        }
+        if (event.target.name === this.genericmessages.City_label) {
+            this.city = event.detail.value;
+        }
+        if (event.target.name === this.genericmessages.Street_1) {
+            this.street1 = event.detail.value;
+        }
+        if (event.target.name === this.genericmessages.State_label) {
+            this.state = event.detail.value;
+        }
+        if (event.target.name === this.genericmessages.Street_2) {
+            this.street2 = event.detail.value;
+        }
+        if (event.target.name === this.genericmessages.Zip_postal_code) {
+            this.zip = event.detail.value;
+            this.validateZip();
+        }
+        if (event.target.name === this.genericmessages.Country_label) {
+            this.country = event.detail.value;
+        }
+    }
+    /*End--TWC4621-60,TWC4621-61--Tulika--Onchange method of input fields*/
+
+    /*Start--TWC4621-60,TWC4621-61--Tulika--Functionality for Cancel button and close the popup*/
+    // Closes modal and dispatches cancel event with previous address values
+    // Modifies stateList, isModalOpen, zipError, zipClass and dispatches mycustomevent
+    handleCancel() {
+        this.stateList = [];
+        this.isModalOpen = false;
+        this.zipError = '';
+        this.zipClass = '';
+        //Start -- TWC4621-1009 -- Manohar -- 21st feb 2023 -- to retain the previous selected value if the user clicks cancel
+        let previousValue = '';
+        if (this.addType === this.genericmessages.Sales_Issue_Cst_Collection_Address__c) {
+            previousValue = this.deleteAddressIds.includes(this.CollectionAddrsValue) ? '' : this.CollectionAddrsValue
+        }
+        else if (this.addType === this.genericmessages.Sales_Issue_Return_To_Cst_Address__c) {
+            previousValue = this.deleteAddressIds.includes(this.returnToCustAddrsValue) ? '' : this.returnToCustAddrsValue
+        }
+        const selectEvent = new CustomEvent('mycustomevent', {
+            detail: {
+                mode: 'cancel',
+                addType: this.addType,
+                previousvalue: previousValue
+            }
+        });
+        this.dispatchEvent(selectEvent);
+        //End -- TWC4621-1009 -- Manohar -- 21st feb 2023 -- to retain the previous selected value if the user clicks cancel
+    }
+    /*End--TWC4621-60,TWC4621-61--Tulika--Functionality for Cancel button and close the popup*/
+
+    /*Start--TWC4621-60,TWC4621-61--Tulika--Functionality for Edit button */
+    // Populates form fields with selectedAddress data from event.target.name for editing
+    // Modifies editAddress, coname, zip, recordId, state, street1, street2, city, country, selectedCountryId, selectedCountryName
+    handleEdit(event) {
+        // Prashant -- Removed Country and State Required Field Validation.
+        this.editAddress = true;
+        var selectedAddress = event.target.name;
+        this.coname = selectedAddress.Name;
+        this.zip = selectedAddress.Customer_Postal_Code__c;
+        this.recordId = selectedAddress.Id;
+        this.state = selectedAddress.Customer_Physical_Address_State__c;
+        this.street1 = selectedAddress.Customer_Physical_Address_Line1__c;
+        this.street2 = selectedAddress.Customer_Physical_Address_Line2__c;
+        this.city = selectedAddress.Customer_City_Name__c;
+        const option = {
+            label: selectedAddress.Customer_Country__r.Name,
+            value: selectedAddress.Customer_Country__c
+        };
+        this.country = option.value;
+        this.selectedCountryId = option.value;
+        this.selectedCountryName = option.label;
+
+        console.log('edit click',this.country,this.selectedCountryId,this.selectedCountryName,this.state);
+        this.editStateAddress = this.state;
+        this.selectedCountrycode = this.countryCodeMap.get(this.selectedCountryId);
+
+        this.getStates(this.selectedCountryId);
+        setTimeout(() => ([...this.template.querySelectorAll('.validate'),].reduce((validAlready, comp) => {
+            comp.reportValidity();
+            return validAlready && comp.checkValidity();
+        }, true), 1000));
+
+    }
+    /*End--TWC4621-60,TWC4621-61--Tulika--Functionality for Edit button */
+
+    // Clears address form fields based on isIaoFlag and removes state selection
+    // Modifies state, city, zip, street2, street1 and calls clearSelection or handleRemovePill
+    handelCountryremove(){
+
+        if (this.genericmessages.isIaoFlag == 'true' || this.genericmessages.isIaoFlag == true) {
+            this.state = '';
+            this.city = '';
+            this.zip = '';
+            this.street2 = '';
+            this.street1 = '';
+            this.refs.stateInput.clearSelection();
+        }else{
+            this.refs.states.handleRemovePill();
+        }
+    }
+
+    /*Start--TWC4621-60,TWC4621-61--Tulika--Functionality for Save button */
+    // Validates address fields and saves address via saveAddressApex with addressDetailsJSON
+    // Modifies showSpinner and calls validateAddressWithTzone, validateZip, saveAddressApex
+    async save(event) {
+        try{
+            this.showSpinner = true;
+
+            if(!this.genericmessages.isIaoFlag == 'true') await this.validateAddressWithTzone();
+            if ((this.country === '' || this.street1 === '' || this.city === '' || this.coname === '' || this.state === '') && !this.genericmessages.isIaoFlag == 'true') { // || this.zip === '' <!-- Made Zipcode Optional as an additional task under TWC4621-1133 Changes to View Line Item Status-->
+                this.showToast(this.labels.Error_Title, this.labels.Enter_req_details, 'error');
+
+                const valid = [...this.template.querySelectorAll('.validate'),].reduce((validAlready, comp) => {
+                    comp.reportValidity();
+                    return validAlready && comp.checkValidity();
+                }, true);
+            }
+            else if (!this.validateZip()){
+                this.showToast('Error', this.labels.R4C_US_ZIP_Code_format, 'error');
+                return;
+            }
+            else{
+                let addressDetails;
+                let addressDetailsJSON = {
+                    coName: this.coname,
+                    street1: this.street1,
+                    street2: this.street2,
+                    city: this.city,
+                    postalCode: this.zip,
+                    state: this.state,
+                    countryId: this.selectedCountryId,
+                    customerAddressId: this.recordId,
+                    cmfId: this.cmfid,
+                    addressType: this.saveaddType,
+                    tzoneCode: this.tzoneCode
+                };
+                addressDetails = JSON.stringify(addressDetailsJSON);
+                console.log('APEX Address JSON ',addressDetails);
+                
+                if (this.genericmessages.isIaoFlag == 'true') {
+                    this.saveAddressApex(addressDetails);
+                }else {
+                    if (this.currentAddress.status != "Invalid") {
+                        this.showToast("Tzone Validation", "Successfully Validated.", 'success');
+                        this.saveAddressApex(addressDetails);
+                    } else {
+                        this.showToast("Tzone Address Validation", this.currentAddress.errorMsg, 'error');
+                    }
+                }
+            }
+        }
+       catch(error) {
+            console.error('error', error);
+            this.showToast(this?.labels?.Error_Title, this?.labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3040
+        }
+        finally {
+            this.showSpinner = false;
+        }
+    }
+    /*End--TWC4621-60,TWC4621-61--Tulika--Functionality for Save button */
+
+    // Calls saveAddress apex method with addressDetails and updates addressList with result
+    // Modifies newAddress, addressList, isModalOpen, stateList, editAddress and dispatches mycustomevent
+    saveAddressApex(addressDetails) {
+        saveAddress({ addressDetails: addressDetails })
+            .then((result) => {
+              
+                        this.newAddress = result.phyAddRecord;
+                         if (result?.errorMessage) {
+                            throw new Error(result.errorMessage);
+                        }
+            
+                this.newAddress.Customer_Country__r = this.countryMap?.get(this.selectedCountryId);
+                let stateCode = this.statesCodeMap && this.statesCodeMap?.get(this.newAddress?.Customer_Physical_Address_State__c);
+                //let stateName = this.statesCodeMap && this.statesCodeMap?.get(this.newAddress?.Customer_Physical_Address_State__c);
+                if (stateCode) {
+                    //this.newAddress.Customer_Physical_Address_State__r = { Id: this.newAddress.Customer_Physical_Address_State__c, Name: stateName, Location_Two_Digit_State_Code__c: stateCode };
+                    this.newAddress.Customer_Physical_Address_State__r = this.statesMap?.get(this.newAddress?.Customer_Physical_Address_State__c);
+                }
+                let action = 'new';
+                for (let i = 0; i < this.addressList.length; i++) {
+                    if (this.addressList[i].Id === this.newAddress.Id) {
+                        action = 'edit';
+                        this.addressList[i] = this.newAddress;
+                    }
+                }
+                if (action === 'new') {
+                    this.addressList.push(this.newAddress);
+                }
+                if (this?.rtcGeoValue) {//Geo filtering toast logic
+                    let selectedGeo = this.countryMap.get(this.selectedCountryId)?.Location_Geography__r?.Name;
+                    if (selectedGeo !== this.rtcGeoValue) {
+                        this.newAddress = null;
+                        this.showToast(this.labels.Error_Title, `${this.labels.Collection_Address_Geo_Err_Msg} ${this.rtcGeoValue} GEO`, 'error');
+                    }
+                }
+                const selectEvent = new CustomEvent('mycustomevent', {
+                    detail: {
+                        mode: 'save',
+                        addType: this.addType,
+                        updatedAddressCollection: this.addressList,
+                        newAddress: this.newAddress,
+                        selectedCountryName: this.selectedCountryName
+                    }
+                });
+                this.dispatchEvent(selectEvent);
+                (this.newAddress === null) ? '' : this.showToast(this.labels.Success_Message, this.labels.Address_saved, 'success');
+                this.isModalOpen = false;
+                this.stateList = [];
+                this.editAddress = false;
+            })
+            .catch((error) => {
+                console.error('error', error);
+                this.showToast("Error", error?.body?.pageErrors[0]?.message, 'error');
+            });
+    }
+
+    // Validates address with TzoneAPI using countryCodeMap, selectedCountryId, zip, statesCodeMap, state, city
+    // Modifies currentAddress with validation result and sets tzoneCode from response
+    async validateAddressWithTzone() {
+        let addressDetails = {};
+        if (this.countryCodeMap.get(this.selectedCountryId)) {
+            addressDetails.country = this.countryCodeMap.get(this.selectedCountryId);
+            addressDetails.country = addressDetails.country.trim();
+        }else {
+            addressDetails.country = '';
+        }
+
+        if (this.zip) {
+            addressDetails.pinCode = this.zip.replace(/^\s+|\s+$/g, '');
+            addressDetails.pinCode = addressDetails.pinCode.trim();
+            }else {
+            addressDetails.pinCode = '';
+        }
+
+        if (this.statesCodeMap && this.statesCodeMap?.get(this.state)) {
+            addressDetails.region = this.statesCodeMap.get(this.state);
+            addressDetails.region = addressDetails.region.trim();
+         }else {
+            addressDetails.region = '';
+        }
+        if (this.city) {
+            addressDetails.city = this.city.replace(/\s+/g, '');
+            addressDetails.city = addressDetails.city.trim();
+        }else {
+            addressDetails.city = '';
+        }
+         await TzoneAPI(this?.countryCodeMap,this?.selectedCountryId,this?.zip,this?.statesCodeMap,this?.state,this?.city)
+          .then((tempresult) => {
+                this.currentAddress = {};
+                let Add = tempresult.d;
+                this.currentAddress.country = Add?.ICollCnt;
+                this.currentAddress.pinCode = Add?.ICollPost;
+                this.currentAddress.region = Add?.ICollReg;
+                this.currentAddress.city = Add?.ICollCity;
+                this.currentAddress.tzoneCode = Add?.ETzone;
+                this.currentAddress.status = Add?.status;
+                this.currentAddress.errorMsg = Add?.errorMsg;
+                this.tzoneCode = this.currentAddress?.tzoneCode;
+            });
+    }
+    /*Start--TWC4621-60,TWC4621-61--Tulika--Functionality for Delete icon */
+    // Deletes address record using recordId from event.target.value and updates addressList
+    // Modifies deleteAddressIds, addressList and dispatches mycustomevent with delete mode
+    handleDelete(event) {
+        let recordId = event.target.value;
+        this.deleteAddressIds.push(recordId);//TWC4621-1009 -- Manohar -- feb 21st 2023 -- adding delete record ids to array
+        deleteAddress({ recordId: recordId })
+            .then(() => {
+                this.showToast(this.labels.Delete_Success, this.labels.Address_del_success, 'success');
+                this.addressList = this.addressList.filter(item => item.Id !== recordId);
+                const selectEvent = new CustomEvent('mycustomevent', {
+                    detail: {
+                        mode: 'delete',
+                        addType: this.addType,
+                        updatedAddressCollection: this.addressList,
+                    }
+                });
+                this.dispatchEvent(selectEvent);
+
+                // Prashant -- Removed Country and State Required Field Validation.
+                this.recordId = undefined;
+                this.coname = '';
+                this.country = '';
+                this.state = '';
+                this.street1 = '';
+                this.street2 = '';
+                this.city = '';
+                this.zip = '';
+            })
+    }
+    /*End--TWC4621-60,TWC4621-61--Tulika--Functionality for Delete icon */
+
+
+    /*Start--TWC4621-60,TWC4621-61--Tulika--to get a list of countries from the countryList*/
+    // Fetches country list from getCountryList apex and populates countryList, countriesMap, countryCodeMap
+    // Modifies countryMap, countryList, countriesMap, countryCodeMap with filtered country data
+    getCountries() {
+        getCountryList({}).then(result => {
+            result.map(rec => {
+                this.countryMap.set(rec.Id, rec);
+            }) // geo filter logic
+            const recievedValues = Object.values(result)
+            let storeCountries = []
+            recievedValues.forEach(element => {
+                let count = {}
+                count.countryName = element.Name,
+                    count.recordId = element.Id,
+                    count.Location_Two_Digit_Country_Code__c = element.Location_Two_Digit_Country_Code__c
+                storeCountries.push(count);
+            })
+            let mapCountries = storeCountries.map(item => ({ label: item.countryName, value: item.recordId }));
+            this.countryList = Object.values(mapCountries);
+            let countryListToRemove= (this.genericmessages.ECC_Excluded_Countries).split(';');
+            //Exclude Countries which are not maintained by ECC from Main Country List.
+            this.countryList=this.countryList.filter(countryName => !countryListToRemove.includes(countryName.label));
+            this.countriesMap = new Map();
+            for (let i = 0; i < this.countryList.length; i++) {
+                this.countriesMap.set(this.countryList[i].value, this.countryList[i].label);
+            }
+            this.countryCodeMap = new Map();
+            storeCountries.map(rec => {
+                this.countryCodeMap.set(rec.recordId, rec.Location_Two_Digit_Country_Code__c);
+            })            
+        }) //Added as part of Failure Handling - TWC4621-3040
+        .catch((error) => {
+            console.error('error', error);
+            this.showToast(this?.labels?.Error_Title, this?.labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3040
+        });
+
+    }
+    /*End--TWC4621-60,TWC4621-61--Tulika--to get a list of countries from the countryList*/
+    
+    // Fetches all states from getStateList apex and stores in statesCache for filtering
+    // Modifies statesCache with complete state list data from apex response
+    async getStateFromApex() {
+        await getStateList().then(result => {
+            console.log('States List',result);
+            
+            this.statesCache = Object.values(result);
+        })
+        .catch((error) => {
+            console.error('error', error);
+            this.showToast(this?.labels?.Error_Title, this?.labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3040
+        });
+    }
+
+    // Filters statesCache by countryId and populates stateList, statesMap, statesCodeMap
+    // Modifies stateList, statesMap, statesCodeMap with filtered states for selected country
+    async getStates(countryId) {
+        const statesFromCache = this.statesCache.filter(ele =>
+            ele.Country__c == countryId)
+        let mapStates = statesFromCache.map(item => ({ label: item.Name, value: item.Id }));
+        this.stateList = Object.values(mapStates);
+        this.statesMap = new Map();
+        // for (let i = 0; i < this.stateList.length; i++) {
+        //     this.statesMap.set(this.stateList[i].value, this.stateList[i].label);
+        // }
+        this.statesCodeMap = new Map();
+        statesFromCache.map(rec => {
+            this.statesCodeMap.set(rec.Id, rec.State_Code__c);
+            this.statesMap.set(rec.Id, rec);
+        })
+    }
+    /*Start--TWC4621-60,TWC4621-61--Tulika--On change method of Country field*/
+    // Handles country selection from event.detail.value and updates related country properties
+    // Modifies selectedCountryId, country, selectedCountryName, selectedCountrycode and calls getStates, updateZipMaxLength
+    handelCountryValue(event) {
+        this.editAddress = false;
+        this.editStateAddress = false ;
+        this.selectedCountryId = event.detail.value;
+        this.country = event.detail.value;
+        if(!(event.detail.value)) {
+            this.handelCountryremove();
+        }
+  
+        this.selectedCountryName = this.countriesMap.get(this.selectedCountryId);
+        this.selectedCountrycode = this.countryCodeMap.get(this.selectedCountryId);
+        console.log('@@430 selected code',this.selectedCountrycode);
+        
+        
+        this.updateZipMaxLength();  
+
+        this.getStates(this.selectedCountryId);
+        if(this.selectedCountryName === 'United States') {
+            this.validateZip();
+        } else {
+            this.zipError='';
+            this.zipClass='';
+        }
+    }
+    /*End--TWC4621-60,TWC4621-61--Tulika--On change method of Country field*/
+
+    // Updates zipMaxLength based on selectedCountryName for Canada vs other countries
+    // Modifies zipMaxLength to 7 for Canada, 10 for all other countries
+    updateZipMaxLength() {
+        if(this.selectedCountryName === 'Canada') {
+            this.zipMaxLength = 7;
+        } else {
+            this.zipMaxLength = 10;
+        }
+    }
+
+    // Validates zip format for United States using regex pattern and sets error states
+    // Modifies zipError, zipClass and returns boolean validation result for zip field
+    validateZip() {
+        this.zipError='';
+        this.zipClass='';
+
+        if(this.selectedCountryName === 'United States') {
+            const zip = this.zip;
+            const zipPattern = /^\d{5}$|^\d{5}-\d{4}$/;
+
+            if(!zipPattern.test(zip)) {
+                this.zipError=this.labels.R4C_US_ZIP_Code_format;
+                this.zipClass = 'error'
+                return false;
+            } 
+        }
+        return true;
+    }
+
+    // Handles state selection from event.detail.value and updates state-related properties
+    // Modifies editStateAddress, selectedStateId, state, selectedStateName from statesMap
+    handelStateValue(event) {
+        this.editStateAddress = false
+        console.log('State',event.detail.value);
+        this.selectedStateId = event.detail.value;
+        this.state = event.detail.value;
+        this.selectedStateName = this.statesMap.get(this.selectedStateId)?.Name;
+    }
+
+    // Handles Tab+Shift key navigation to focus on closeToSave element
+    // Prevents default behavior and sets focus to closeToSave button for accessibility
+    focusToSave(event) {
+        if(event.key === 'Tab'&& event.shiftKey) {
+            console.log('#####entered to save');
+            event.preventDefault();
+            this.template.querySelector('.closeToSave').focus();
+        }
+
+    }
+
+    // Manages focus navigation between closeFocus and cancelFocus elements using Tab keys
+    // Modifies focus state based on Tab and Shift+Tab key combinations for modal navigation
+    focusToClose(event){
+          if(event.keyCode === 9) {
+        
+            setTimeout(()=>{this.refs?.closeFocus?.focus(),10});
+        }
+          if(event.key === 'Tab'&& event.shiftKey) {
+            event.preventDefault();
+            setTimeout(()=>{this.template.querySelector('.cancelFocus').focus(),10});
+      
+        }      
+    }
+    /*Start - Samuel - Method for displaying all the required toast messages.*/
+    // Displays toast notification with title, message and variant parameters
+    // Creates and dispatches ShowToastEvent with provided title, message, variant values
+    showToast(title, message, variant) {
+        const event = new ShowToastEvent({
+            title: title,
+            message: message,
+            variant: variant
+        });
+        this.dispatchEvent(event);
+    }
+    /*End- Method for displaying all the required toast messages.*/
+
+    //TWC4621-4815 UI Changes for IAO - Start
+    // Returns boolean for IAO UI visibility based on isIaoFlag value
+    // Evaluates genericmessages.isIaoFlag for true string or boolean to show IAO interface
+    get showIAOUI() {
+        return this.genericmessages.isIaoFlag == 'true' || this.genericmessages.isIaoFlag == true ? true : false
+    }
+    //TWC4621-4815 UI Changes for IAO - End
+
+    //sairam - Disable Streetinput if no country is selected
+    // Returns boolean to disable street input when selectedCountryId is null or undefined
+    // Evaluates selectedCountryId existence to control street input field availability
+    get disableStreetInput() {
+        return this.selectedCountryId == null || !this.selectedCountryId ? true : false
+    }
+
+    //TWC4621-4823 Google API call on change of street
+    // Handles street1 input change and triggers Google API autocomplete with debouncing
+    // Modifies street1, sessionKey and calls debounceGoogleSearch or calloutAutoCompleteAPI based on debounceGoogleAPIToggle
+    handleStreet1Change(event) {
+        this.street1 = event.detail.value;
+        if (this.sessionKey === undefined || this.sessionKey === null) {
+            this.sessionKey = this.generateRandomString();
+        }
+        // SaiRam TWC4621-5799 - Optimization for google API
+        if (this.debounceGoogleAPIToggle) {
+            this.debounceGoogleSearch();
+        }else {
+            this.calloutAutoCompleteAPI();
+        }
+    }
+
+    // Handles address selection from Google predictions and fetches complete address details
+    // Modifies street1, state, city, zip, street2 with parsed Google API address components
+    handleSelectedAddress(event) {
+        let placeId = event.currentTarget.dataset.value;
+        this.street1 = '';
+        console.log('@@Place Id ',placeId);
+        
+        this.showPredictionList = false;
+        fetchCompleteAddressDetails({
+            sessiontoken: this.sessionKey,
+            placeId: placeId
+        }).then(data => {
+            this.street1Value = '';
+            this.state = '';
+            this.city = '';
+            this.zip = '';
+            this.street2 = '';
+            // this.coname = data.result.name || this.coname;
+            data.result.address_components.forEach(addrComponent => {
+                console.log('Google Outpur -->', addrComponent)
+                let addrComponentType = addrComponent.types;
+                console.log(addrComponentType);
+                if (addrComponent.types.includes('street_number')) {
+                    this.street1 = `${addrComponent.long_name}`;
+                }
+                if (addrComponent.types.includes('route')) {
+                    this.street1 += `${addrComponent.long_name} `;
+                }
+                if (addrComponent.types.includes('sublocality_level_1')) {
+                    this.street1 += `${addrComponent.long_name} `;
+                }
+                if (addrComponent.types.includes('sublocality_level_2')) {
+                    this.street1 += `${addrComponent.long_name} `;
+                }
+                if (addrComponent.types.includes('sublocality_level_3')) {
+                    this.street1 += `${addrComponent.long_name} `;
+                }
+                if (addrComponent.types.includes('administrative_area_level_2')) {
+                    this.street2 = addrComponent.long_name;
+                }
+                if (addrComponent.types.includes('locality')) {
+                    this.city = addrComponent.long_name;
+                }
+                if (addrComponent.types.includes('administrative_area_level_1')) {
+                    console.log('Goorle API Admin Level 1 Long Name:',addrComponent.long_name,"Short Name:",addrComponent.short_name,);
+                    let filteredState = this.statesCache.find(state => state.Country__c == this.selectedCountryId && ((state.State_Code__c == addrComponent.short_name || state.Name == addrComponent.long_name) || (state.Equivalent_Google_API_State__c == addrComponent.long_name || state.Equivalent_Google_API_State__c == addrComponent.short_name)))
+                    console.log('Filtered States',filteredState);
+                    if (!filteredState && addrComponent.types.includes('administrative_area_level_2')) {
+                        console.log('Goorle API Admin Level 2 Long Name:',addrComponent.long_name,"Short Name:",addrComponent.short_name,);
+                        filteredState = this.statesCache.find(state => state.Country__c == this.selectedCountryId && ((state.State_Code__c == addrComponent.short_name || state.Name == addrComponent.long_name) || (state.Equivalent_Google_API_State__c == addrComponent.long_name || state.Equivalent_Google_API_State__c == addrComponent.short_name)))
+                        console.log('Filtered States',filteredState);
+                        // this.state = filteredState.Id || '';
+                    }
+                    this.state = filteredState.Id;
+                }
+                if (addrComponent.types.includes('postal_code')) {
+                    this.zip = addrComponent.long_name;
+                }
+            });
+
+        }).catch(error => {
+            console.log('Error ',error);
+        })
+    }
+
+    // Normalizes special characters in str by removing diacritical marks
+    // Returns string with NFD normalization and diacritical marks removed using regex
+    normalizeSpecialCharacters(str) {
+        const normalized = str.normalize('NFD');
+        const result = normalized.replace(/[\u0300-\u036f]/g, '');        
+        return result;
+    }
+
+    // Debounces Google API search calls using setTimeout with 350ms delay
+    // Clears existing debounceTimeout and sets new timeout to call calloutAutoCompleteAPI
+    debounceGoogleSearch() {
+        if (this.debounceTimeout) {
+            clearTimeout(this.debounceTimeout);
+        }
+        this.debounceTimeout = setTimeout(() => {
+          this.calloutAutoCompleteAPI();
+        }, 350);
+    }
+
+    // Calls Google autocomplete API with street1, sessionKey, selectedCountrycode parameters
+    // Modifies predictions, showPredictionList and sets input validation based on API response
+    calloutAutoCompleteAPI() {
+        const inputField = this.template.querySelector('.addressInput');
+        inputField.setCustomValidity('');
+        inputField.reportValidity();
+        if (this.street1.trim().length > 0 && this.street1.trim().length > 2) {
+            fetchAutoCompleteResults({
+                query: this.street1,
+                sessiontoken: this.sessionKey,
+                countryCode: this.selectedCountrycode,
+            }).then(data => {
+                console.log('Predections =>', data);
+                
+                if (!data.predictions.length) {
+                    this.predictions = [];
+                    this.showPredictionList = false;
+                    inputField.setCustomValidity('No matching address found. Please refine your input.');
+                    inputField.reportValidity();
+                }
+                if (this.street1 !== null && this.street1 !== undefined && data.predictions.length !== 0) {
+                    this.predictions = data.predictions;
+                    this.showPredictionList = true;
+                }
+            }).catch(error => {
+                console.log('Error ', error);
+            })
+        }
+        else {
+            this.predictions = null;
+            this.street1Value = null;
+            this.showPredictionList = false;
+        }
+    }
+
+    // Generates random UUID string using hexDigits and specific formatting rules
+    // Returns 36-character UUID string with hyphens at positions 8, 13, 18, 23
+    generateRandomString() {
+        let s = [];
+        let hexDigits = "0123456789abcdef";
+        for (var i = 0; i < 36; i++) {
+            s[i] = hexDigits.substring(Math.floor(Math.random() * 0x10), 1);
+        }
+        s[14] = "4"; 
+        s[19] = hexDigits.substring((s[19] & 0x3) | 0x8, 1);  
+        s[8] = s[13] = s[18] = s[23] = "-";
+
+        let uuid = s.join("");
+        return uuid;
+    } 
+}
+____________________________________________________________________________________________________________________________________________________________________________________
+
+import { LightningElement, api } from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import saveContact from '@salesforce/apex/R4C_AG_AddEditDeleteContactCntrlr.savePhyContact';
+import deleteContact from '@salesforce/apex/R4C_AG_AddEditDeleteContactCntrlr.deletePhyContact';
+import r4c_CustomLabels from 'c/r4c_CustomLabels';
+import consentContact from "@salesforce/apex/R4C_AG_CollectionDetails_Controller.consentContact";
+import getCountryForAddress from "@salesforce/apex/R4C_CollectionDetails_Util.getCountryForAddress";
+//import getContactsByPhysicalAddress from '@salesforce/apex/R4C_AG_AddEditDeleteContactUtil.getContactsByPhysicalAddress';
+
+export default class R4c_AG_AddEditDeleteContact extends LightningElement {
+    recordId;
+    @api recordId1;// Used when invoked from Address via Aura - Pravallika changes
+    @api genericmessages = {
+        First_Name: 'First Name',
+        Middle_Name: 'Middle Name',
+        Last_Name: 'Last Name',
+        Email_Label: 'Email',
+        Phone_Number: 'Phone Number',
+        Sales_Issue_Collection_Contact__c: 'Sales_Issue_Collection_Contact__c',
+        Sales_Issue_Return_To_Cst_Contact__c: 'Sales_Issue_Return_To_Cst_Contact__c',
+        Sales_Issue_SoldTo_Contact__c: 'Sales_Issue_SoldTo_Contact__c',
+        Sales_Issue_ShipTo_Contact__c: 'Sales_Issue_ShipTo_Contact__c'
+    };//pravallika changes - needed to create json for genericmessages to pass this info to Aura as part of Quick action button
+    @api openModal = false;
+    @api isEmulatedUser;//TWC4621-2010 -- Manohar -- If the login user is Emulated User, Restrict the Save functionality
+    addressId;
+    contacts = [];
+    firstname = '';
+    middlename = '';
+    lastname = '';
+    emailadd = '';
+    phonenum = '';
+    newContact;
+    addresstype = '';
+    contactList;
+    disableEmail = false; //TWC4621-1013 Disabling email field when editing a contact
+    @api isConsentRequired = false;
+    displayConsent = false;
+    isPrivacyAgreed = false;
+    isCountryAgreed = false;
+    isPortal = false;
+    RTCAddrsConValue;
+    collectionAddrsConValue;
+    deleteAddrContactIds = [];
+    labels = r4c_CustomLabels.labels;//Assigning custom labels to variable
+    SoldToAddrsContactValue = "";
+    shipToAddrsContactValue = "";
+
+    /*pravallika -- consent on customer physical address object for quick action button*/
+    // Sets up contact management when opened from address quick action
+    // Checks if China address requires special consent per Chinese privacy laws
+    connectedCallback() {
+        if (this.recordId1) {
+            this.openModal = true;
+            getCountryForAddress({ addressId: this.recordId1 })
+                .then(country => {
+                    console.log('@@country', country);
+                    if (country === 'China') {
+                        this.isConsentRequired = true;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching country:', error);
+                });
+
+            /* Fetch existing contacts for the Physical Address
+      getContactsByPhysicalAddress({ addressId: this.recordId1 })
+          .then(data => {
+              this.contacts = data;
+              this.contactList = data;
+              console.log('@@Loaded Physical Address Contacts:', this.contacts);
+          })
+          .catch(error => {
+              console.error('Error loading physical address contacts:', error);
+          });*/
+        }
+
+
+    }
+    /*get modalContainerClass() {
+        return this.recordId1 ? 'slds-modal__container full-width-modal' : 'slds-modal__container default-width-modal';
+    }*/
+
+    // Determines if contact form should be read-only when opened from address
+    // Returns true when managing contacts directly from address record
+    get isReadOnlyMode() {
+        return !!this.recordId1;
+    }
+
+    // Sets contact form layout width based on how component was opened
+    // Uses full width when opened from address, half width from R4C process
+    get getLeftSectionClass() {
+        return this.isReadOnlyMode
+            ? 'slds-col slds-box slds-size_1-of-1 slds-p-horizontal_medium'
+            : 'slds-col slds-box slds-size_1-of-2 slds-p-horizontal_medium';
+    }
+
+    /*pravallika -- consent on customer physical address object for quick action button*/
+
+    /*Start--TWC4621-266,TWC4621-269,TWC4621-334--Samuel Nishant--To get required contact and address data from collection details component*/
+    // Receives contact data for specific R4C address type (Collection, Return, SoldTo, ShipTo)
+    // Opens contact management modal for warehouse, shipping, or SAP address contacts
+    @api
+    getdetails(datawrapper) {
+
+        this.deleteAddrContactIds = [];//TWC4621-1009 --- Manohar -- 21stfeb 2023 -- clearing the Address contact ids
+        this.addressId = datawrapper.addId;
+        this.addresstype = datawrapper.addType;
+        this.contacts = [];
+        this.contactList = [];
+        this.collectionAddrsConValue = '';
+        this.RTCAddrsConValue = '';
+        this.SoldToAddrsContactValue = "";
+        this.shipToAddrsContactValue = "";
+        this.isShipConsentRequired = datawrapper.isShipConsentRequired;
+        console.log('@@shipto',this.isShipConsentRequired);
+        this.isSoldConsentRequired = datawrapper.isSoldConsentRequired;
+          console.log('@@soldto consent',this.isSoldConsentRequired);
+        if (datawrapper.contList !== undefined && datawrapper.contList !== null) {
+            this.contactList = datawrapper.contList;
+            this.contacts = datawrapper.contList;
+        }
+        //Start -- TWC4621-1009 -- Manohar -- -- 21stfeb 2023 -- storing the collection address and RTC address value to retain if the user clicks cancel
+        if (datawrapper.addType === this.genericmessages.Sales_Issue_Collection_Contact__c) {  // Collection Contact
+            this.collectionAddrsConValue = datawrapper.previousvalue;
+        } else if (datawrapper.addType === this.genericmessages.Sales_Issue_Return_To_Cst_Contact__c) { // Return to Customer Contact
+            this.RTCAddrsConValue = datawrapper.previousvalue;
+        } else if (datawrapper.addType === this.genericmessages.Sales_Issue_SoldTo_Contact__c) { // solt to contact
+            this.SoldToAddrsContactValue = datawrapper.previousvalue;
+        } else if (datawrapper.addType === this.genericmessages.Sales_Issue_ShipTo_Contact__c) { // solt to contact
+            this.shipToAddrsContactValue = datawrapper.previousvalue;
+        }
+        //End -- TWC4621-1009 -- Manohar -- -- 21stfeb 2023 -- storing the collection address and RTC address value to retain if the user clicks cancel
+        this.openModal = true;
+        this.disableEmail = false; //TWC4621-1013 Disabling email field when editing a contact
+
+        this.focusOnOpen();
+    }
+    /*End--TWC4621-266,TWC4621-269,TWC4621-334--Samuel Nishant--To get required contact and address data from collection details component*/
+
+    //Onchange of input fields
+    // Captures contact information as user types in form fields
+    // Updates firstname, middlename, lastname, emailadd, phonenum for R4C contact creation
+    addContact(event) {
+        if (event.target.name === this.genericmessages.First_Name) {
+            this.firstname = event.detail.value;
+        }
+        if (event.target.name === this.genericmessages.Middle_Name) {
+            this.middlename = event.detail.value;
+        }
+        if (event.target.name === this.genericmessages.Last_Name) {
+            this.lastname = event.detail.value;
+        }
+        if (event.target.name === this.genericmessages.Email_Label) {
+            this.emailadd = event.detail.value;
+        }
+        if (event.target.name === this.genericmessages.Phone_Number) {
+            this.phonenum = event.detail.value;
+        }
+    }
+    /*Start TWC4621-4292 -- Pravallika - To give popup for china country consent and insert a record*/
+
+    // Validates contact details and ensures Chinese privacy consent before saving
+    // Checks required fields and Chinese law compliance for isPrivacyAgreed, isCountryAgreed
+    async checkConsent() {
+        const isValid = this.firstname !== '' &&
+            this.emailadd !== '' &&
+            this.emailadd.includes('@') &&
+            (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,})+$/.test(this.emailadd)) &&
+            (/^(?:(?:\+|00)?\d{1,3})?[\s.-]?(?:\(\d{1,4}\)|\d{1,4})[\s.-]?(?:\d{1,4}[\s.-]?){1,3}(?:(?:x|ext\.?|extension|#|\s|\/)[\s.-]?\(?\d{1,9}\)?)?$/.test(this.phonenum)) &&
+            this.phonenum !== '';
+
+        if (!isValid) {
+            this.showToast(this.labels.Error_Title, this.labels.Enter_req_details, 'error');
+            [...this.template.querySelectorAll('.validate')].forEach((comp) => comp.reportValidity());
+            return; // Stop further execution if form is invalid
+        }
+
+        if (this.isConsentRequired || this.isShipConsentRequired || this.isSoldConsentRequired) {
+            if (this.isPrivacyAgreed && this.isCountryAgreed) {
+                this.displayConsent = true;
+                console.log('#### consent exist', this.displayConsent);
+                this.handleSave();
+            } else {
+                this.showToast(this.labels.Error_Title, this.labels.R4C_Consent_Error, 'error');
+            }
+        }
+        else if (!this.isConsentRequired) {
+            this.handleSave();
+        }
+
+    }
+
+    // Records user agreement to privacy terms for Chinese contacts
+    // Updates isPrivacyAgreed when user checks privacy consent checkbox
+    handlePrivacyChange(event) {
+        this.isPrivacyAgreed = event.target.checked;
+    }
+
+    // Records user agreement to country-specific terms for Chinese contacts
+    // Updates isCountryAgreed when user checks country consent checkbox
+    handleCountryChange(event) {
+        this.isCountryAgreed = event.target.checked;
+    }
+    /*End TWC4621-4292 -- Pravallika - To give popup for china country consent and insert a record*/
+
+    /*Start--TWC4621-266,TWC4621-269,TWC4621-334--Samuel Nishant--To insert/update contact in database*/
+    // Saves contact person for R4C address (warehouse, shipping, customer return)
+    // Creates or updates contact in SAP system and handles Chinese consent recording
+    async handleSave() {
+
+        if (this.firstname !== '' && this.emailadd !== '' && this.emailadd.includes('@') === true && (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,})+$/.test(this.emailadd)) === true && (/^(?:(?:\+|00)?\d{1,3})?[\s.-]?(?:\(\d{1,4}\)|\d{1,4})[\s.-]?(?:\d{1,4}[\s.-]?){1,3}(?:(?:x|ext\.?|extension|#|\s|\/)[\s.-]?\(?\d{1,9}\)?)?$/.test(this.phonenum)) === true && this.phonenum !== '') {
+            let contactDetails;
+            let contactJSON = {
+                contactId: this.recordId,
+                firstName: this.firstname,
+                middleName: this.middlename,
+                lastName: this.lastname,
+                email: this.emailadd,
+                phone: this.phonenum,
+                //recordId: this.recordId,           // Case ID or context
+                //recordId1: this.recordId1 
+                phyAddId: this.recordId1 || this.addressId // Passing recordId1 to Aura for Quick Action button - pravallika 
+            };
+            console.log('this.addressId===>', this.addressId);
+            contactDetails = JSON.stringify(contactJSON);
+            await saveContact({ contactdetails: contactDetails })
+                .then((data) => {
+                    if (data?.errorMessage) {
+                        throw new Error(data.errorMessage);
+                    }
+                    this.newContact = data?.record;
+                    let action = 'new';
+                    let updatedContacts = [];
+                    for (let i = 0; i < this.contacts.length; i++) {
+                        const contact = this.contacts[i];
+                        if (contact.Id === this.newContact.Id) {
+                            action = 'edit';
+                            updatedContacts.push({
+                                ...contact,
+                                Name: this.newContact.Name,
+                                Customer_Middle_Name__c: this.newContact.Customer_Middle_Name__c,
+                                Customer_LastName__c: this.newContact.Customer_LastName__c,
+                                Email__c: this.newContact.Email__c,
+                                Customer_PhoneNumber__c: this.newContact.Customer_PhoneNumber__c
+                            });
+                        } else {
+                            updatedContacts.push(contact);
+                        }
+                    }
+
+                    if (action === 'new') {
+                        updatedContacts.push({ ...this.newContact });
+                    }
+                    this.contacts = updatedContacts;
+
+                    if (this.displayConsent) {
+                        let origin = this.isPortal ? 'Web Portal' : 'Internal';
+
+                        consentContact({ contactId: this.newContact.Id, agree: this.isPrivacyAgreed, consent: this.isCountryAgreed, origin: origin });
+                        this.newContact = {
+                            ...this.newContact,
+                            Opt_in_for_Private_Informations__r: [{
+                                ICS_Consent__c: this.isPrivacyAgreed,
+                                ICS_Agree__c: this.isCountryAgreed
+                            }]
+                        };
+                    }
+
+                    const selectEvent = new CustomEvent('saveevent', {
+                        detail: {
+                            mode: 'save',
+                            newContact: this.newContact,
+                            addType: this.addresstype,
+                            contactList: this.contacts
+                        }
+                    });
+                    this.dispatchEvent(selectEvent);
+                    const privacyCheckbox = this.template.querySelector('lightning-input[data-id="privacyId"]');
+                    const countryCheckbox = this.template.querySelector('lightning-input[data-id="countryId"]');
+
+                    if (privacyCheckbox) {
+                        privacyCheckbox.checked = false;
+                    }
+                    if (countryCheckbox) {
+                        countryCheckbox.checked = false;
+                    }
+
+                    this.isPrivacyAgreed = false;
+                    this.isCountryAgreed = false;
+                    this.dispatchEvent(new CustomEvent('done'));
+                    this.openModal = false;
+                    this.displayConsent = false;
+                    this.showToast(this.labels.Success_Message, this.labels.contact_saved, 'success');
+                })
+                .catch((error) => {
+                    console.log('save error', error);
+                    //let errorMessage = error?.body?.pageErrors[0]?.message || '';
+                    let errorMessage = typeof error === 'string' ? error : (error?.message || String(error));
+                    let isDuplicateEmail = errorMessage.includes('Customer_Address_Email_Unique_ID__c');
+                    if (isDuplicateEmail && !this.disableEmail) {
+                        const duplicateToast = new ShowToastEvent({
+                            title: this.labels.Error_Title,
+                            message: this.labels.R4C_Duplicate_Contact_Email,
+                            variant: 'error',
+                            mode: 'dismissable'
+                        });
+                        this.dispatchEvent(duplicateToast);
+                    }
+                    else {
+                        const evt = new ShowToastEvent({ title: this.labels?.R4C_Contact_Not_Saved, message: this.labels?.generic_error_msg, variant: 'error', mode: 'dismissable' });
+                        this.dispatchEvent(evt);
+                        //this.showToast('Contact Not Saved',error.body.message, 'error');
+                        console.log('Toast error ', error);
+                    }
+                    // Reset checkboxes on error
+                    const privacyCheckbox = this.template.querySelector('lightning-input[data-id="privacyId"]');
+                    const countryCheckbox = this.template.querySelector('lightning-input[data-id="countryId"]');
+
+                    if (privacyCheckbox) {
+                        privacyCheckbox.checked = false;
+                    }
+                    if (countryCheckbox) {
+                        countryCheckbox.checked = false;
+                    }
+
+                    this.isPrivacyAgreed = false;
+                    this.isCountryAgreed = false;
+
+                });
+            this.recordId = undefined;
+            this.firstname = '';
+            this.middlename = '';
+            this.lastname = '';
+            this.emailadd = '';
+            this.phonenum = '';
+        }
+        else {
+            this.showToast(this.labels.Error_Title, this.labels.Enter_req_details, 'error');
+            const valid = [...this.template.querySelectorAll('.validate'),].reduce((validAlready, comp) => {
+                comp.reportValidity();
+                return validAlready && comp.checkValidity();
+            }, true);
+        }
+    }
+    /*End--TWC4621-266,TWC4621-269,TWC4621-334--Samuel Nishant--To insert/update contact in database*/
+
+    /*Start--TWC4621-266,TWC4621-269,TWC4621-334--Samuel Nishant-- To edit a selected contact from list of contact*/
+    // Loads existing contact details into form for editing R4C address contact
+    // Fills firstname, middlename, lastname, emailadd, phonenum and consent status from selectedContact
+    handleEdit(event) {
+        var selectedContact = event.target.name;
+        console.log('selected contact on edit', selectedContact);
+        this.recordId = selectedContact.Id;
+        this.firstname = selectedContact.Name;
+        this.middlename = selectedContact.Customer_Middle_Name__c;
+        this.lastname = selectedContact.Customer_LastName__c;
+        this.emailadd = selectedContact.Email__c;
+        this.phonenum = selectedContact.Customer_PhoneNumber__c;
+        this.disableEmail = true; //TWC4621-1013 Disabling email field when editing a contact
+        this.isPrivacyAgreed = selectedContact.Opt_in_for_Private_Informations__r?.[0]?.ICS_Consent__c || false;
+        this.isCountryAgreed = selectedContact.Opt_in_for_Private_Informations__r?.[0]?.ICS_Agree__c || false;
+        setTimeout(() => ([...this.template.querySelectorAll('.validate'),].reduce((validAlready, comp) => {
+            comp.reportValidity();
+            return validAlready && comp.checkValidity();
+        }, true), 1000));
+    }
+    /*End--TWC4621-266,TWC4621-269,TWC4621-334--Samuel Nishant-- To edit a selected contact from list of contact*/
+
+    /*Start--TWC4621-266,TWC4621-269,TWC4621-334--Samuel Nishant-- To delete a selected contact from list of contact*/
+    // Removes contact person from R4C address (warehouse, shipping, customer return)
+    // Deletes contact from system and updates contacts list for address type
+    handleDelete(event) {
+        let recordId = event.target.value;
+        deleteContact({ contactId: recordId })
+            .then((data) => {
+                if (data?.errorMessage) {
+                    throw new Error(data.errorMessage);
+                }
+                this.showToast(this.labels.Delete_Success, this.labels.Contact_del_success, 'success');
+                this.contacts = this.contacts.filter(item => item.Id !== recordId);
+                const selectEvent = new CustomEvent('saveevent', {
+                    detail: {
+                        mode: 'delete',
+                        addType: this.addresstype,
+                        contactList: this.contacts
+                    }
+                });
+                this.dispatchEvent(selectEvent);
+                this.recordId = undefined;
+                this.firstname = '';
+                this.middlename = '';
+                this.lastname = '';
+                this.emailadd = '';
+                this.phonenum = '';
+            }) //Added as part of Failure Handling - TWC4621-3040
+            .catch((error) => {
+                console.error('error', error);
+                const evt = new ShowToastEvent({ title: this.labels?.R4C_Contact_Not_Deleted, message: this.labels?.generic_error_msg, variant: 'error', mode: 'dismissable' }); //Added as part of Failure Handling - TWC4621-3040
+                this.dispatchEvent(evt);
+            });
+
+    }
+    /*Start--TWC4621-266,TWC4621-269,TWC4621-334--Samuel Nishant-- To delete a selected contact from list of contact*/
+
+    // Cancels contact management and restores previous R4C address contact selection
+    // Closes modal and returns user to R4C process with original contact values
+    closeModal() {
+        //Start -- TWC4621-1009 -- Manohar -- 21st feb 2023 -- to retain the previous selected value if the user clicks cancel
+        let previousValue = '';
+        if (this.addresstype === this.genericmessages.Sales_Issue_Collection_Contact__c) { // collection contact
+            previousValue = this.deleteAddrContactIds.includes(this.collectionAddrsConValue) ? '' : this.collectionAddrsConValue
+        }
+        else if (this.addresstype === this.genericmessages.Sales_Issue_Return_To_Cst_Contact__c) {
+            previousValue = this.deleteAddrContactIds.includes(this.RTCAddrsConValue) ? '' : this.RTCAddrsConValue
+        } else if (this.addresstype === this.genericmessages.Sales_Issue_SoldTo_Contact__c) {
+            previousValue = this.deleteAddrContactIds.includes(this.SoldToAddrsContactValue) ? '' : this.SoldToAddrsContactValue
+
+        } else if (this.addresstype === this.genericmessages.Sales_Issue_ShipTo_Contact__c) {
+            this.shipToAddrsContactValue = this.shipToAddrsContactValue === undefined ? "" : this.shipToAddrsContactValue;
+            previousValue = this.deleteAddrContactIds.includes(this.shipToAddrsContactValue) ? '' : this.shipToAddrsContactValue
+
+        }
+        const selectEvent = new CustomEvent('saveevent', {
+            detail: {
+                mode: 'cancel',
+                addType: this.addresstype,
+                previousvalue: previousValue
+            }
+        });
+        this.dispatchEvent(selectEvent);
+        //End -- TWC4621-1009 -- Manohar -- 21st feb 2023 -- to retain the previous selected value if the user clicks cancel
+        this.recordId = undefined;
+        this.firstname = '';
+        this.middlename = '';
+        this.lastname = '';
+        this.emailadd = '';
+        this.phonenum = '';
+        this.dispatchEvent(new CustomEvent('done'));
+        this.openModal = false;
+        this.disableEmail = false; //TWC4621-1013 Disabling email field when editing a contact
+        this.displayConsent = false;
+        const privacyCheckbox = this.template.querySelector('lightning-input[data-id="privacyId"]');
+        const countryCheckbox = this.template.querySelector('lightning-input[data-id="countryId"]');
+
+        if (privacyCheckbox) {
+            privacyCheckbox.checked = false;
+        }
+        if (countryCheckbox) {
+            countryCheckbox.checked = false;
+        }
+
+        this.isPrivacyAgreed = false;
+        this.isCountryAgreed = false;
+
+    }
+
+    //This method is for displaying all the required toast messages.
+    // Shows success, error, or warning messages to user during R4C contact management
+    // Displays notifications for contact save, delete, validation errors using title, message, variant
+    showToast(title, message, variant) {
+        const event = new ShowToastEvent({
+            title: title,
+            message: message,
+            variant: variant
+        });
+        this.dispatchEvent(event);
+    }
+
+    // Manages keyboard navigation between contact form buttons for accessibility
+    // Handles Tab key movement between focustoclose and savetocancel elements
+    focustoclose(event) {
+
+        if (event.key === 'Tab') {
+            event.preventDefault();
+            setTimeout(() => { this.template.querySelector('.focustoclose').focus(), 10 });
+
+        }
+        if (event.key === 'Tab' && event.shiftKey) {
+            event.preventDefault();
+            setTimeout(() => { this.template.querySelector('.savetocancel').focus(), 10 });
+
+        }
+    }
+
+    // Handles reverse keyboard navigation to save button for accessibility
+    // Moves focus to closetosave button when user presses Shift+Tab
+    focustosave(event) {
+        if (event.key === 'Tab' && event.shiftKey) {
+            setTimeout(() => { this.template.querySelector('.closetosave').focus(), 10 });
+
+        }
+    }
+
+    // Sets initial focus when contact management modal opens for accessibility
+    // Automatically focuses on focustoclose button when modal becomes visible
+    focusOnOpen() {
+        setTimeout(() => { this.template.querySelector('.focustoclose').focus(), 1000 });
+    }
+
+    get isAnyConsentRequired() {
+    return this.isShipConsentRequired || this.isSoldConsentRequired;
+}
+}
+
+/* eslint-disable dot-notation */
+/* eslint-disable guard-for-in */
+import { LightningElement, api, track } from "lwc";
+import { NavigationMixin } from 'lightning/navigation';
+import saveForLater from "@salesforce/apex/R4C_AG_ViewSummaryController.saveCase";
+import getDetails from "@salesforce/apex/R4C_AG_EditCaseController.editCase"; //displaying data controller method
+import { ShowToastEvent } from "lightning/platformShowToastEvent";
+import LightningConfirm from 'lightning/confirm';
+import getCaseByCaseNo from "@salesforce/apex/R4C_ShippingDetailsUtil.getCaseByCaseNo";
+import sublineEdit from "@salesforce/apex/R4C_AG_EditCaseController.UpdateEditedLineItems";
+// Importing custom labels
+import r4c_CustomLabels from "c/r4c_CustomLabels";
+import { StringFormatter } from 'c/r4c_stringFormatter';
+import { setCaseTypeDetails, doEmbargoCheck } from "c/r4c_AG_Utill";
+import getCurrentPortalUserContact from "@salesforce/apex/R4C_AG_CaseHeader_Controller.returnCurrentPortalUserContact";
+import { getUCDtoggle } from "c/iCS_UCD_getMetadata";//TWC777-2322 - 24/06/2024 - Chinnarangaswamy- Getting Toggle Value
+
+//import hasStagingRecords from "@salesforce/apex/R4C_API_ECC_RecordValidator.hasStagingRecords";
+
+export default class r4c_AG_CaseEdit extends NavigationMixin(LightningElement) {
+  @track isUcdoff; //TWC777-2322 - 24/06/2024 - Chinnarangaswamy- Variable declare using toggle logic
+  resultTableEventCache = [];
+  priceOverrideEdit = false;
+  @api recordId; //getting recordId
+  @api isECCLineItemEdit = false; //true only if want to edit only ecc line items
+  @api isPortal = false;
+  @track caseData; //store data from apex
+  navigatetoreturnreq = false;
+  @track casemode;//store the mode value
+  genericMessages;//generic messages fetched from custom settings
+  hideValidateEccLineItemsButton = true;
+  returnshippingdetails;
+  returncollectiondetails;
+  hidecancelButton = false;
+  hideNextButton = false;
+  disableNextButton = true;
+  showPOsearch = false;
+  isEmulatedUser = false; //TWC4621-2010 -- Manohar -- If the login user is Emulated User, Restrict the Save functionality
+  isJustificationRequired = true; //added for Return Reason Justification - ILM Cases
+  poHistoryBagsCMFList = [];//Manohar -- TWC4621-3560 -- PO History changes for CMFs based BAGs - Edit case
+  get showPoSearchX() {
+
+    if (this.isECCLineItemEdit) { //SYED - ECC Edit
+      return 'slds-show';
+    }
+    return this.showPOsearch && this.isSubmitted === false ? 'slds-show' : 'slds-hide';
+  }
+  isLoading = false;
+  embargoBlockCountry = ''; //TWC4621-909 -- Manohar -- 12-01-2023
+  isUserPriceMasked = false; // Furqan - adding to represent if user is price masked
+  embargoBlockedCountriesCount = 0; //TWC4621-909 -- Manohar -- 12-01-2023
+  caserec;
+  salesarea;
+  collectionShippingDetails;
+  showviewsummary = false;
+  soldToCMF;
+  changedSublines;
+  caseStatus;//if we have any soft blocks sendind case status as pending agent
+  ispayercheck;
+  payerCMFMap = new Map();
+  collectiondetailsclass = "slds-section slds-is-open";
+  shippingdetailsclass = "slds-section slds-is-open";
+  casedescriptiondetailsclass = "slds-section slds-is-open";
+  serviceType;
+  collectremedyText;
+  caseType = {};
+  labels = r4c_CustomLabels.labels; //Assigning custom labels to variable
+  isEmailToCase = false //E2C Edit
+  isSubmitted = false; //TWC4621-1097,TWC4621-1090- To indicate an order is submitted to ECC/is in Pending Approval status
+  disableSubmitbtn = false;
+  isAuthorized = false //TWC4621-1097,TWC4621-1090- To indicate an order is RMA authorized
+  isHeaderLoaded = true;
+  headerSoftBlockMessages = '';
+  isBlankHeader = false;
+  internalCustomerFlow = false; //added for Miscellaneous Intake
+  editCaseLines = true;
+  //TWC4621-3197 - Manohar -- Manual Line item closure After RMA Case Edit
+  custompage = true;
+  isManualLineClosure = false;
+  /**
+   * User Story: TWC4621-59
+   * Description: calling imperative method getCaseData, to avoid the wire call, to resolve the cache issue
+   * Author: Chaitanya Bollamreddi
+   * Last Modified Date: 28/09/2022
+  */
+  connectedCallback() {
+    this.casemode = 'Edit';
+    this.disableSubmitbtn = true;
+    this.getCaseData();
+  }
+  // get isTINPRView() { //Bindhu //NPR Changes - Samuel
+  //   return this.caseType.remedy == this.genericMessages?.Credit_NPR;
+  // }
+  get viewCaseLines() {
+    if (this.isECCLineItemEdit) { // Syed - ECC Edit
+      return false;
+    }
+    return !(this.editCaseLines) || this.isSubmitted;
+  }
+  get R4CPlannedMaintenance() {
+    console.log("label planned" + r4c_CustomLabels?.labels?.R4C_Planned_Maintenance_Toggle);
+    return r4c_CustomLabels?.labels?.R4C_Planned_Maintenance_Toggle == '1' ? true : false;
+  }
+
+  get R4CUnPlannedMaintenance() {
+    console.log("label unplanned" + r4c_CustomLabels?.labels?.R4C_UnPlanned_Maintenance_Toggle);
+    return r4c_CustomLabels?.labels?.R4C_UnPlanned_Maintenance_Toggle == '1' ? true : false;
+  }
+  get getCustomerPriceMaskValue() {
+    if (this?.collectionShippingDetails && this?.collectionShippingDetails?.priceMasking === true || this.isUserPriceMasked || this?.collectionShippingDetails?.addressPriceMask == true) {
+      return true;
+    }
+    return false;
+  }
+  /**
+     * User Story: TWC4621-59
+     * Description: Imperative method to retrieve the Case details and ReturnRequest details by record Id
+     * Author: Chaitanya Bollamreddi
+     * Last Modified Date: 28/09/2022
+    */
+  async getCaseData() {
+    this.isLoading = true;
+    let errorList = [];
+    if (this.isPortal == true || this.isPortal == 'true') {
+      let loggedinUserDetails = await getCurrentPortalUserContact();
+      this.isUserPriceMasked = loggedinUserDetails.Contact.R4C_Customer_Price_Mask__c;
+    }
+    this.isUcdoff = await getUCDtoggle();
+
+    await getDetails({ caseId: this.recordId, isPortal: this.isPortal })
+      .then((result) => {
+      if (result?.errorMessage) {
+        throw new Error(result.errorMessage);
+      }
+        console.log('result', JSON.stringify(result));
+        this.isEmailToCase = (result.caseRec.Origin === 'Email' || result.caseRec.Origin === 'ILM' || result.caseRec.Origin === 'CQNR') ? true : false; // E2C Edit
+        this.genericMessages = result.genericMessages;
+        this.isEmulatedUser = result?.isEmualtedUser;
+        if (result?.caseRec?.Customer_Return_Requests__r?.length > 0 && (!result?.caseRec?.Customer_Return_Requests__r[0]?.Sales_Issue_CaseNumber__r?.Contact?.Id) && (result?.caseRec?.Customer_Return_Requests__r[0]?.Sales_Issue_Service_Type__r?.Name == this.genericMessages.Miscellaneous)) {//if Internal Customer flow without Contact) {
+          this.internalCustomerFlow = true;
+        }
+        /*Start--Bindhu--TWC4621-1097,TWC4621-1090--To idenfify the RMA status and conditional render the data*/
+        if (result.caseRec && this.genericMessages.Case_Edit_Status_Values.split(';').includes(result.caseRec.Status)) {
+          this.isSubmitted = true;
+          if (result.caseRec.Status == this.genericMessages.Case_Status_RMA_Authorized) {
+            this.isAuthorized = true;
+          }
+        }
+        /*End--Bindhu--TWC4621-1097,TWC4621-1090--To idenfify the RMA status*/
+        if (result.caseRec && result?.caseRec?.Origin === 'ILM' && result?.caseRec?.Status == 'Draft') {
+          this.editCaseLines = false;
+          //TWC4621-4742,TWC4621-4789 -- added Retrn_Resn_for_ZERO_Price & Retrn_Resn_for_ZERO_OR_Original_Price condition to allow zero dollar
+          let returnReason = result?.caseRec?.Customer_Return_Requests__r[0]?.Sales_Issue_Return_Reason__r?.Name || '';
+          const ilmAdminValidReturnReason = [
+            ...(this.genericMessages?.Retrn_Resn_for_ZERO_Price?.split(';') || []),
+            ...(this.genericMessages?.Retrn_Resn_for_ZERO_OR_Original_Price?.split(';') || [])
+          ];
+          if (ilmAdminValidReturnReason.includes(returnReason)) {
+            this.priceOverrideEdit = true;
+          }
+        }
+        errorList = result.errorMessages ? result.errorMessages : [];
+        //SYED - TWC4621-1653 - BAG CMF Association
+        this.soldToCMF = result.nonBlockedCMFs?.map(i => i.Name);
+        const bagList = result.nonBlockedCMFs?.map(obj => {
+          let cmfNumber = obj.Name;
+          let bagCmfList = [];
+          //Start - TWC777-2322 - 24/06/2024 - Chinnarangaswamy- appling toggle logics and set the format as "bag-cmf and cmf-date"
+          if (this.isUcdoff) {
+            let bagSet = [...new Set(obj?.Customer_BAG_CMF_Associations__r?.filter((data) => result?.bagIds?.includes(data?.Customer_Business_Account_Group_Name__c))?.map(a => a?.Customer_Business_Account_Group_Name__r?.Customer_Business_Account_Group_Id__c))]
+            if (this.soldToCMF.includes(cmfNumber)) {
+              bagCmfList = result?.bagIds.length > 0 ? bagSet.map(s => `${s}-${cmfNumber}`) : `0000-${cmfNumber}`;
+            }
+          }
+          else {
+            const bagSet = [...new Set(obj?.Customer_BAG_CMF_Associations__r?.filter((data) => result?.bagIds?.includes(data?.Customer_Business_Account_Group_Name__c)))];
+            const bagCMFAssociationLst = [];
+            bagSet.forEach(rec => {
+              if (rec?.CMF_Added_To_BAG_Date__c && rec?.Sales_Organization__c && rec?.Disti_Channel__c) { //Manohar -- TWC4621-4012 -- PO History Changes -- Add sales org and disti channel
+                let bagCMFDate = rec?.CMF_Added_To_BAG_Date__c;
+                const formattedDateString = bagCMFDate?.replace('Z', '+000');
+                bagCMFAssociationLst.push(`${formattedDateString}_${rec.Sales_Organization__c}_${rec.Disti_Channel__c}`);
+              }
+            });
+            if (this.soldToCMF.includes(cmfNumber)) {
+              bagCmfList = bagCMFAssociationLst.map(s => `${s}_${cmfNumber}`);
+            }
+          }
+          //End - TWC777-2322 - 24/06/2024 - Chinnarangaswamy- appling toggle logics and set the format as "bag-cmf and cmf-date"
+
+          return bagCmfList;
+        }).flat();
+        this.bagAndSoldToCMF = bagList;
+        //Start -- Manohar -- TWC4621-3560 -- PO History changes for CMFs based BAGs
+        if (result?.bagIds?.length > 0 && !this?.isUcdoff) {
+          this.poHistoryBagsCMFList = [...this.poHistoryBagsCMFList, ...this.bagAndSoldToCMF];
+          result?.soldToRelatedCMFs?.forEach(rec => {
+            if (rec?.CMF_Added_To_BAG_Date__c && rec?.Sales_Organization__c && rec?.Disti_Channel__c && rec?.Customer_CMF__r && rec?.Customer_CMF__r?.Name && (rec?.Customer_CMF__r?.Customer_Central_Order_Block__c === undefined ||
+              (this.isPortal == true || this.isPortal == "true" && rec?.Customer_CMF__r?.Customer_Central_Order_Block__c === this.genericMessages["01"])) &&
+              (rec?.Customer_CMF__r?.Customer_Central_Billling_Block__c === undefined || (this.genericMessages.Customer_Billling_Soft_Blocks.includes(rec?.Customer_CMF__r?.Customer_Central_Billling_Block__c)))) {
+              const formattedDateString = rec.CMF_Added_To_BAG_Date__c?.replace('Z', '+000');
+              this.poHistoryBagsCMFList.push(`${formattedDateString}_${rec.Sales_Organization__c}_${rec.Disti_Channel__c}_${rec?.Customer_CMF__r?.Name}`);//Manohar -- TWC4621-4012 -- PO History Changes -- Add sales org and disti channel
+            }
+          });
+        } else if (!this.isUcdoff && result?.bagIds?.length < 0) {
+          this.poHistoryBagsCMFList = [];
+        }
+        //End -- Manohar -- TWC4621-3560 -- PO History changes for CMFs based BAGs
+
+        this.caseStatus = result.caseStatus;
+        this.payerCMFMap = new Map();
+        let payercmfblocks = '';//added by manohar -- TWC4621-936 -- 30/01/2023 -- Export Compliance Block for payer
+        if (result.payer !== undefined && JSON.stringify(result.payer) !== '{}') {
+          for (let rec in result.payer) {
+            let payercmfRecord = result.payer[rec];
+            console.log('payercmfRecord', payercmfRecord);
+            /* let payercmfAccountRecord = result.payerCMFAccount[rec];//added by manohar -- TWC4621-936 -- 30/01/2023 -- Export Compliance Block for payer
+             if (payercmfAccountRecord === undefined && !this.internalCustomerFlow) {
+               payercmfblocks = this.labels.No_Account_Exists_for_soldTo_CMF;
+             } else if (payercmfAccountRecord && payercmfAccountRecord?.Customer_Account_Name__c && payercmfAccountRecord?.Customer_Account_Name__r?.Core_Export_Compliance_Block__c === true) {//added by manohar -- TWC4621-936 -- 30/01/2023 -- Export Compliance Block for payer
+               payercmfblocks = this.labels.Payer_Account_ECB;
+             } else */
+            if (payercmfRecord && (payercmfRecord.Customer_Central_Billling_Block__c === undefined || payercmfRecord.Customer_Central_Order_Block__c === undefined)) {
+              this.payerCMFMap.set(rec, this.genericMessages.No_Hard_Block);//No Blocks
+
+            } else if (payercmfRecord?.Customer_Central_Order_Block__c && (this.genericMessages.PayerCMF_OrderBlock.includes(payercmfRecord.Customer_Central_Order_Block__c))) { //pravallika - added order block 02 and billing block 08
+              payercmfblocks = this.labels.Payer_Hard_Blocks;
+            }
+            else if (payercmfRecord?.Customer_Central_Billling_Block__c && this.genericMessages.PayerCMF_BillingBlock.includes(payercmfRecord.Customer_Central_Billling_Block__c)) {
+              console.log('##inside payercmf record', payercmfRecord?.Customer_Central_Billling_Block__c);
+              payercmfblocks = this.labels.Payer_Hard_Blocks;//hard blocks
+            }
+            else if (payercmfRecord?.Customer_Central_Billling_Block__c && (this.genericMessages.Customer_Billling_Soft_Blocks.includes(payercmfRecord.Customer_Central_Billling_Block__c))) {
+              this.payerCMFMap.set(rec, this.genericMessages.Central_Block);//soft blocks
+            }
+          }
+
+          if (this.payerCMFMap.size === 0) {
+            errorList.push(payercmfblocks);
+          } else if (result.payersalesarea && JSON.stringify(result.payersalesarea) !== '{}') {
+            for (let [key, value] of this.payerCMFMap.entries()) {
+              let payersalesarealst = result.payersalesarea[key];
+              if (payersalesarealst !== undefined) {
+                for (let i = 0; i < payersalesarealst.length; i++) {
+                  let salesareaRecord = payersalesarealst[i];
+                  let existingblockmsg = value;
+                  if (existingblockmsg === this.genericMessages.No_Hard_Block && salesareaRecord.Customer_Billling_Block__c === undefined) {
+                    this.payerCMFMap.set(key, this.genericMessages.No_Payer_Blocks);//No Blocks at Payer CMF and Payer SalesArea level;
+                    break;
+                  } else if (existingblockmsg === this.genericMessages.No_Hard_Block && salesareaRecord.Customer_Billling_Block__c !== undefined &&
+                    (this.genericMessages.Customer_Billling_Soft_Blocks.includes(salesareaRecord.Customer_Billling_Block__c))) {
+                    this.payerCMFMap.set(key, this.genericMessages.Payer_SalesArea_Central_Block);//No Blocks at Payer CMF and soft blocks at Payer SalesArea level;
+                  } else if (existingblockmsg === this.genericMessages.Central_Block || (salesareaRecord.Customer_Billling_Block__c !== undefined &&
+                    (this.genericMessages.Customer_Billling_Soft_Blocks.includes(salesareaRecord.Customer_Billling_Block__c)))) {
+                    this.payerCMFMap.set(key, this.genericMessages.Payer_Central_Block);//soft Block at Payer CMF and Payer SalesArea level;
+                  }
+                }
+              }
+            }
+
+            let payersalesareacheck = false;
+            let existingcasestatus = this.caseStatus;
+            for (let [key, value] of this.payerCMFMap.entries()) {
+              if (value === this.genericMessages.No_Payer_Blocks) {
+                this.caseStatus = existingcasestatus;
+                payersalesareacheck = true;
+                break;
+              } else if (value === this.genericMessages.Payer_Central_Block) {
+                this.caseStatus = this.genericMessages.Pending_Agent_Action;
+                this.headerSoftBlockMessages += this.genericMessages.Payer_Central_Block;//payer cmf has soft blocks
+                payersalesareacheck = true;
+              } else if (value === this.genericMessages.Payer_SalesArea_Central_Block) {
+                this.caseStatus = this.genericMessages.Pending_Agent_Action;
+                this.headerSoftBlockMessages += this.genericMessages.Payer_SalesArea_Central_Block;//payer sales area has soft blocks
+                payersalesareacheck = true;
+              }
+            }
+            if (payersalesareacheck === false) {
+              errorList.push(this.labels.Payer_Sales_Area_Block);
+            }
+          }
+        }
+        else {
+          if (result.caseRec.Origin !== 'Email' && result.caseRec.Origin !== 'ILM' && result.caseRec.Origin !== 'CQNR') {
+            errorList.push(this.labels.No_Payer_Sold_To);
+          }
+        }
+
+        if ((result.caseRec.Origin == 'Email' || result.caseRec.Origin == 'ILM' || result.caseRec.Origin == 'CQNR') && result.caseRec.Customer_Return_Requests__r[0].Sales_Issue_ShipTo_Customer__c == undefined) {
+          this.isBlankHeader = true;
+        }
+
+        // Start -- manohar -- TWC4621-936 -- 30/01/2023 -- Export Compliance Block for shipTo CMF
+        /*if (result.caseRec.Customer_Return_Requests__r && result.caseRec.Customer_Return_Requests__r[0].Sales_Issue_ShipTo_Customer__c !== undefined) {
+          let shipTocmfAccountrecord = result.shipToCMFAccount[result.caseRec.Customer_Return_Requests__r[0].Sales_Issue_ShipTo_Customer__c];
+          if (shipTocmfAccountrecord && shipTocmfAccountrecord.Customer_Account_Name__c && shipTocmfAccountrecord.Customer_Account_Name__r.Core_Export_Compliance_Block__c === true && !this.internalCustomerFlow) {
+            errorList.push(this.labels.shipTo_CMF_Account_ECB);
+          } else if (shipTocmfAccountrecord === undefined && !this.internalCustomerFlow) {
+            errorList.push(this.labels.No_Account_Exists_for_shipTo_CMF);
+          }
+        }*/
+        // End -- manohar -- TWC4621-936 -- 30/01/2023 -- Export Compliance Block for shipTo CMF
+        //ProfileMask for Edit scenario(Portal)
+
+        if ((this.isPortal == "true" || this.isPortal == true) && result?.caseRec?.Customer_Return_Requests__r[0].Sales_Issue_SoldTo_Customer__c && result?.caseRec?.Customer_Return_Requests__r[0]?.Sales_Issue_ShipTo_Customer__c && result?.caseRec?.Customer_Return_Requests__r[0]?.Sales_Issue_CaseNumber__r?.Contact) {
+          let profileMask = result?.caseRec?.Customer_Return_Requests__r[0]?.Sales_Issue_SoldTo_Customer__r?.Customer_Sold_To_Profile_Create_Mask__c || result?.caseRec?.Customer_Return_Requests__r[0]?.Sales_Issue_ShipTo_Customer__r?.Customer_Ship_To_Profile_Create_Mask__c || result?.caseRec?.Customer_Return_Requests__r[0].Sales_Issue_CaseNumber__r?.Contact?.R4C_Customer_Profile_Mask__c;
+          if (profileMask) {
+            errorList.push(this.genericMessages?.ProfileMask_Error_Msg_For_Edit);
+          }
+        }
+        if (errorList && errorList.length > 0) {
+          this.showToast(this.labels.Error_Title, errorList[0], 'error');
+          this.closetab();
+          this[NavigationMixin.Navigate]({
+            type: 'standard__recordPage',
+            attributes: {
+              recordId: this.recordId,
+              objectApiName: 'Case',
+              actionName: 'view'
+            },
+          });
+        } else {
+          if (result.caseRec) {
+            this.caseData = result.caseRec;
+            let objcaserec = {
+              Id: this.caseData.Id,
+              CaseNumber: this.caseData.CaseNumber,
+              Status: this.caseData.Status,
+              Origin: this.caseData.Origin,
+              Description: this.caseData.Description
+            }
+            this.caserec = objcaserec;
+          }
+          if (result.selectedSalesArea !== undefined) {
+            this.salesarea = result.selectedSalesArea;
+          }
+          if (this.caseData.Customer_Return_Requests__r.length > 0) {
+            this.requestdetails = this.caseData.Customer_Return_Requests__r[0];
+            this.collectionShippingDetails = { ...this.collectionShippingDetails, ...this.caseData.Customer_Return_Requests__r[0], ...{ externalCaseId: this?.caseData?.External_Case_ID__c, External_Issue_ID__c: this?.caseData?.External_Issue_ID__c, comments: this?.caseData?.Description } };// Add Case data ----- Tushar Garg
+            if (this.collectionShippingDetails.Sales_Issue_SoldTo_Customer__c !== undefined) {
+              let caseExtraDetails = {
+                Sold_CMF__C: this.soldToCMF,
+                //SYED - TWC4621-1653 - BAG CMF Association
+                bagList: JSON.stringify(this.bagAndSoldToCMF),
+                poHistoryBagsCMFList: JSON.stringify(this.poHistoryBagsCMFList),//Manohar -- TWC4621-3560 -- PO History changes for CMFs based BAGs
+                selectedsoldToCMF: this.collectionShippingDetails.Sales_Issue_SoldTo_Customer__r?.Name,//TWC4621-1123 -- 17/03/2023 -- Accellor -- replaced Customer_CMF_Id__c --> Customer_Name__c as part of data model changes
+                sales_Area__c: this.salesarea,
+                remedyText: this.collectionShippingDetails.Sales_Issue_Remedy_Type__r?.Name,
+                salesIssueReturnReason: this.collectionShippingDetails.Sales_Issue_Return_Reason__r?.Name,
+                salesIssueReturnReasonCode: this.collectionShippingDetails.Sales_Issue_Return_Reason__r?.Sales_Issue_Return_Reason_Code__c,
+                warrentyQueryNumber: this.collectionShippingDetails?.Sales_Issue_Query_Number__c,
+                remedyDetails: this.collectionShippingDetails?.Sales_Issue_Remedy_Type__r,
+                soldToAddressRec: this.collectionShippingDetails?.Sales_Issue_SoldTo_Address__r,
+                shipToAddressRec: this.collectionShippingDetails?.Sales_Issue_ShipTo_Address__r
+              };
+              this.collectionShippingDetails = {
+                ...this.collectionShippingDetails,
+                ...caseExtraDetails
+              };
+            }
+            if (this.collectionShippingDetails?.Sales_Issue_SoldTo_Address__c !== undefined && this.collectionShippingDetails?.Sales_Issue_SoldTo_Address__r) {
+              warrentyQueryNumber: this.collectionShippingDetails?.Sales_Issue_Query_Number__c;
+
+            }
+            if (this.collectionShippingDetails?.Sales_Issue_ShipTo_Address__c !== undefined && this.collectionShippingDetails?.Sales_Issue_ShipTo_Address__r) {
+              remedyDetails: this.collectionShippingDetails?.Sales_Issue_Remedy_Type__r
+            }
+            //Start -- TWC4621-899 -- Manohar -- added as part of caseEdit -- 17th jan
+            this.serviceType = this.collectionShippingDetails.Sales_Issue_Service_Type__r?.Name;
+            this.isJustificationRequired = (result.caseRec.Origin === 'ILM' && (this.serviceType == this.genericMessages.Exception)) ? false : true; // for ILM Case Edit
+
+            this.collectremedyText = this.collectionShippingDetails.Sales_Issue_Remedy_Type__r?.Name;
+            this.caseType = setCaseTypeDetails(this.collectremedyText, this.serviceType, this.collectionShippingDetails?.Sales_Issue_Return_Reason__r?.Name);
+            //End -- TWC4621-899 -- Manohar -- added as part of caseEdit -- 17th jan
+
+            /*Commenting Price over ride funtnality*/
+            let returnReason = this.collectionShippingDetails.Sales_Issue_Return_Reason__r?.Name;
+            //0$ Price override
+            if (this.genericMessages?.Edit_PriceOverRide_CaseStatus_Valid?.split(',').includes(result.caseRec.Status)) {
+              let isPriceOverRideValid = false;
+              //let ilmAdminValidReturnReason = this.genericMessages?.Edit_PriceOverRide_Remedy_Valid?.split(',') || ['Wrong Product'];
+              const ilmAdminValidReturnReason = [
+                ...(this.genericMessages?.Retrn_Resn_for_ZERO_Price?.split(';') || []),
+                ...(this.genericMessages?.Retrn_Resn_for_ZERO_OR_Original_Price?.split(';') || [])
+              ];//TWC4621-4742,TWC4621-4789 -- added Retrn_Resn_for_ZERO_Price & Retrn_Resn_for_ZERO_OR_Original_Price condition to allow zero dollar
+              if (result.caseRec.Origin === 'ILM' /*&& this.serviceType == this.genericMessages.Admin*/ && ilmAdminValidReturnReason.includes(returnReason)) {
+                isPriceOverRideValid = true;
+              }
+              this.priceOverrideEdit = isPriceOverRideValid;
+              if (isPriceOverRideValid) {
+                this.editCaseLines = false;
+              }
+
+            }
+
+          }
+
+        }
+
+      })
+      .catch((error) => {
+        console.error(error);
+        this.caseData = undefined;
+        this.isLoading = false;
+        this.showToast(this.labels.Error_Title, this.labels.generic_error_msg, 'error');
+      });
+    //Start -- TWC4621-909 -- Manohar -- 12-01-2023 -- Embargo check
+    if (errorList.length == 0) {
+      let gtsResponse;
+    if (!(this.caseType?.isTechnicalExchange() || this.caseType?.isTechnicalNPRCredit() || (this.collectionShippingDetails?.Sales_Issue_Return_Reason__r?.Name === 'FAC' && !this.collectionShippingDetails?.Sales_Issue_Cst_Collection_Address__c))) { // Samuel NPR Changes
+        gtsResponse = await doEmbargoCheck(this, this.isSubmitted, this.collectionShippingDetails);
+      }
+      this.navigatetoreturnreq = true;
+      this.isLoading = false;
+      /*Bindhu--TWC4621-1097,TWC4621-1090--To hide/show the POsearch screen and buttons based on the RMA status*/
+      if ((gtsResponse && gtsResponse?.isEmbargo === false && !this.isSubmitted && this.isHeaderLoaded) || this.caseType?.isTechnicalExchange() || this.caseType?.isTechnicalNPRCredit()) { // proceeding with PO search to get line items 
+        if (this.casemode === 'Edit' && this.caseType?.isTechnicalExchange()) {
+          this.showPOsearch = false;
+          this.hidecancelButton = true; //uncommented by manohar
+          this.hideNextButton = true; //uncommented by manohar
+          this.disableNextButton = true;
+          this.caseData && this.caseData?.Status === this.genericMessages?.Case_Status_Submitted_Pending_Action && !(this?.caseData?.External_Issue_ID__c) ? this.genericMessages(this.labels.Enter_R4E_Number_Msg, '', 'info') : '';
+          return;
+        }
+        this.showPOsearch = true;
+        this.hidecancelButton = false; //uncommented by manohar
+        this.hideNextButton = false; //uncommented by manohar
+        this.disableNextButton = true;
+      }
+      else if (gtsResponse && gtsResponse?.isEmbargo === false && !this.isSubmitted && !this.isHeaderLoaded) { // proceeding with PO search to get line items 
+        this.showPOsearch = false;
+        this.hidecancelButton = true; //uncommented by manohar
+        this.hideNextButton = true; //uncommented by manohar
+      } else if (gtsResponse?.isEmbargo === true) { // if there is any blocked countries showing toast event
+        this.showPOsearch = false;
+        if (!this.isSubmitted) {  /*Bindhu--TWC4621-1097,TWC4621-1090--To hide/show the cancel/next buttons based on RMA status */
+          this.hidecancelButton = true;
+          this.hideNextButton = true;
+        }
+        this.disableNextButton = false;
+        let embargoErrorMessage = gtsResponse?.embargoBlockedCountriesCount > 1 ? StringFormatter.format(this?.labels?.Countries_are_in_Block, gtsResponse?.embargoBlockCountry.join(", "))
+          : StringFormatter.format(this?.labels?.Country_is_in_Block, gtsResponse?.embargoBlockCountry[0]);
+        this.showToast(this.labels.Error_Title, embargoErrorMessage, "error");
+      }
+    }
+
+    //End -- TWC4621-909 -- Manohar -- 12-01-2023 -- Embargo check
+  }
+  handleReturnRequest(event) {
+    if (event.detail && JSON.stringify(event.detail) !== '{}') {
+      this.returnshippingdetails = { ...this.returnshippingdetails, ...event.detail };
+      this.collectionShippingDetails = { ...this.collectionShippingDetails, ...this.returnshippingdetails };
+      if (this.collectionShippingDetails !== '{}' && this.returnshippingdetails !== '{}') {
+        this.disableNextButton = false;
+        this.isHeaderLoaded = true;
+      }
+      // if (this.collectremedyText == this.genericMessages?.Credit_NPR) { //NPR Changes - Samuel
+      //   this.showPOsearch = true;
+      //   this.hidecancelButton = false;
+      //   this.hideNextButton = false;
+      // }
+    }
+    else {
+      this.showPOsearch = false; //Exchange Remedy - Technical Intake
+      this.disableNextButton = true;
+      this.isHeaderLoaded = false;
+      //Exchange Remedy - Technical Intake
+      this.hidecancelButton = true;
+      this.hideNextButton = true;
+      if (this.caseData?.Status == 'Draft' && this?.caseData?.Origin === 'ILM') {
+        this.editCaseLines = true;
+      }
+    }
+  }
+  //Adding to fecth blank header values
+  handleReturnReason(event) {
+    if (this.isEmailToCase) {
+      let shippingResponseData = event.detail.shippingDetails;
+      if (shippingResponseData.Sales_Issue_Return_Reason__c) { // && !this.isTINPRView //NPR Changes - Samuel
+        this.template.querySelector("c-r4c_-a-g_-collection-details").clear();
+        if (
+          shippingResponseData.Sales_Issue_Remedy_Type__c &&
+          shippingResponseData.Sales_Issue_Return_Reason__c &&
+          shippingResponseData.Sales_Issue_Sales_Organization__c
+        ) {
+          this.template
+            .querySelector("c-r4c_-a-g_-collection-details")
+            .fetchCollectionData(shippingResponseData, this.requestdetails.Sales_Issue_Service_Type__r.Id);
+        }
+      }
+    }
+  }
+  handleRemedyChange(event) {
+    if (this.isEmailToCase) {
+      let remedyValue = event?.detail?.remedyText;
+      this.caseType = setCaseTypeDetails(remedyValue, this.serviceType, null);
+    }
+  }
+
+  handleChangeCollectioninput(event) {
+    if (event.detail && JSON.stringify(event.detail) !== '{}') {
+      this.returncollectiondetails = { ...this.returncollectiondetails, ...event.detail };
+      this.collectionShippingDetails = { ...this.collectionShippingDetails, ...this.returncollectiondetails };
+      if (this.returnshippingdetails !== undefined) {
+        this.disableNextButton = false;
+      }
+      this.disableSubmitbtn = false; //TWC4621-1097,TWC4621-1090--To enable submit button
+      this.isHeaderLoaded = true;
+    } else {
+      this.showPOsearch = false;
+      this.isHeaderLoaded = false;
+      if (!this.isSubmitted) { /*Bindhu--TWC4621-1097,TWC4621-1090--Mandatory fields check to display/hide the buttons accordingly*/
+        this.hidecancelButton = true;
+        this.hideNextButton = true;
+        this.disableNextButton = true;
+      }
+      if (this.caseData?.Status == 'Draft' && this?.caseData?.Origin === 'ILM') {
+        this.editCaseLines = true;
+      }
+      this.disableSubmitbtn = true; //TWC4621-1097,TWC4621-1090--To disable submit button
+    }
+  }
+  // Start --- User Story Number TWC4621-54,72 --- Manohar --- This method is used for handling event which is coming from child(r4c_AG_POSearch)
+  handlecaselineItems(event) {
+    this.caseRecord = event.detail.caserecord;
+    this.poSearchWithMatrixData = event.detail.posearchmatrixdata;
+    if (event.detail.caserecord !== null && event.detail.caserecord !== undefined) {
+      let temp = this.template.querySelector('.caseHeader');
+      temp.style.display = 'none';
+      this.hideBackButton = false;
+      this.hideNextButton = false;
+      this.hideEdit = true;
+      this.hideSubmit = true;
+      // Start  -- TWC4621-794 -- 18-12-2022 --- Karthik --- Portal naviagtion to save and view summary component.
+      if (this.isPortal == "true" || this.isPortal == true) {
+        const selectedEvent = new CustomEvent('showviewsummary', { detail: { salesarea: this.salesarea, posearchlineitemdata: this.poSearchWithMatrixData, caseRecord: this.caseRecord, centrlblockcasestatus: this.caseStatus, caseType: this.caseType } });
+        // Dispatches the event.
+        this.dispatchEvent(selectedEvent);
+        return
+      }
+      this.showviewsummary = true;
+    }
+  }
+  // End --- User Story Number TWC4621-54,72 --- Manohar --- This method is used for handling event which is coming from child(r4c_AG_POSearch)
+
+  // Start --- TWC4621-148 -- 10-09-2022 --- Manohar --- This method is called on click of Next Button from UI
+  async goNext() {
+    this.collectionShippingDetails = { ...this.collectionShippingDetails, ...this.returncollectiondetails };
+    this.isLoading = true;
+    if (this.isPortal === false && this.casemode === 'Edit' && this.caseType?.isTechnicalExchange() && this?.caseData && this.caseData?.Status === this.genericMessages?.Case_Status_Submitted_Pending_Action) { ////Exchange Remedy - Technical Intake
+      let r4eCaseList = await this.fetchCaseByNo();
+      if (!this?.returnshippingdetails?.r4eCaseNumber) {
+        this.collectionShippingDetails.Sales_Issue_Header_Error_Messages__c = this.genericMessages.Invalid_R4E_CaseNo_ErrMsg;
+        this.showToast(this.genericMessages?.Error_Title, this.genericMessages?.Invalid_R4E_CaseNo_ErrMsg, 'warning', 'dismissable');
+        this.returnshippingdetails.r4eCaseNumber = '';
+        this.isSubmitted = false;
+      }
+      else if (r4eCaseList === undefined || r4eCaseList?.length === 0) {
+        this.collectionShippingDetails.Sales_Issue_Header_Error_Messages__c = this.genericMessages.Invalid_R4E_CaseNo_ErrMsg;
+        this.showToast(this.genericMessages?.Error_Title, this.genericMessages?.Invalid_R4E_CaseNo_ErrMsg, 'error', 'dismissable');
+        this.isSubmitted = false;
+        this.isLoading = false;
+        return;
+      }
+      else if (r4eCaseList?.length > 1) {
+        this.collectionShippingDetails.Sales_Issue_Header_Error_Messages__c = this.genericMessages.R4E_CaseNo_AlreadyExist_ErrMsg;
+        this.showToast(this.genericMessages?.Error_Title, this.genericMessages?.R4E_CaseNo_AlreadyExist_ErrMsg, 'error', 'dismissable');
+        this.isSubmitted = false;
+        this.isLoading = false;
+        return;
+      }
+      else {
+        if (r4eCaseList[0]?.RecordType?.DeveloperName === this.genericMessages.Warranty_Return_Case_RecordType) {
+
+          this.collectionShippingDetails.External_Case_ID__c = r4eCaseList[0]?.Id; //Adding valid r4eCaseId to header details wrapper to save
+
+          this.showToast(this.genericMessages?.Success_Message, this.genericMessages?.Valid_Warranty_CaseNo_Msg, 'success', 'dismissable');
+          this.isSubmitted = true;
+        } else {
+          this.collectionShippingDetails.Sales_Issue_Header_Error_Messages__c = this.genericMessages.R4E_CaseNo_RecordType_ErrMsg;
+          this.showToast(this.genericMessages?.Error_Title, this.genericMessages?.R4E_CaseNo_RecordType_ErrMsg, 'error', 'dismissable');
+          this.isSubmitted = false;
+          this.isLoading = false;
+          return;
+        }
+        this.template.querySelector('c-r4c_-a-g_-p-o-search').requestdetails = this.collectionShippingDetails;
+      }
+    }
+    if (this.caseData?.Status == 'Draft' && this?.caseData?.Origin === 'ILM') {
+      this.editCaseLines = false;
+      //TWC4621-4742,TWC4621-4789 -- added Retrn_Resn_for_ZERO_Price & Retrn_Resn_for_ZERO_OR_Original_Price condition to allow zero dollar
+      let returnReason = this.collectionShippingDetails?.Sales_Issue_Return_Reason__r?.Name || '';
+      const ilmAdminValidReturnReason = [
+        ...(this.genericMessages?.Retrn_Resn_for_ZERO_Price?.split(';') || []),
+        ...(this.genericMessages?.Retrn_Resn_for_ZERO_OR_Original_Price?.split(';') || [])
+      ];
+      if (ilmAdminValidReturnReason.includes(returnReason)) {
+        this.priceOverrideEdit = true;
+      }
+    }
+    let gtsResponse;
+    if (!(this.caseType?.isTechnicalExchange() || this.caseType?.isTechnicalNPRCredit() || (this.collectionShippingDetails?.Sales_Issue_Return_Reason__r?.Name === 'FAC' && !this.collectionShippingDetails?.Sales_Issue_Cst_Collection_Address__c))) { // Samuel NPR Changes
+
+      gtsResponse = await doEmbargoCheck(this, this.isSubmitted, this.collectionShippingDetails);
+    }
+    if ((gtsResponse && gtsResponse?.isEmbargo === false) || this.caseType?.isTechnicalNPRCredit() || this.caseType?.isTechnicalExchange() || (this.collectionShippingDetails?.Sales_Issue_Return_Reason__r?.Name === 'FAC' && !this.collectionShippingDetails?.Sales_Issue_Cst_Collection_Address__c)) {
+
+      this.hideNextButton = false;
+      this.hidecancelButton = false;
+      this.shippingdetailsclass = "slds-section slds-is-close";
+      this.collectiondetailsclass = "slds-section slds-is-close";
+      this.showPOsearch = true;
+      this.hideSavenSummaryButton = true;
+      this.disableSavenSummary = true;
+      //adding for accessablity focus on section header
+      setTimeout(() => {
+        const poHistorySection = this.refs.poHistorySection;
+        if (poHistorySection) {
+
+          poHistorySection.focus();
+        }
+      }, 1)
+    } else if (gtsResponse && gtsResponse?.isEmbargo === true) {
+      let embargoErrorMessage = gtsResponse?.embargoBlockedCountriesCount > 1 ? StringFormatter.format(this?.labels?.Countries_are_in_Block, gtsResponse?.embargoBlockCountry.join(", "))
+        : StringFormatter.format(this?.labels?.Country_is_in_Block, gtsResponse?.embargoBlockCountry[0]);
+      this.showToast(this.labels.Error_Title, embargoErrorMessage, "error");
+    }
+
+    if (this.isBlankHeader) {
+      this.template.querySelector('c-r4c_-a-g_-p-o-search').fetchLineItemData();
+    }
+    this.isLoading = false;
+  }
+  // End --- TWC4621-148 -- 10-09-2022 --- Manohar --- This method is called on click of Next Button from UI
+
+  async saveForLaterHandler(event) {
+    // Start of TWC4621-2487 Displaying Sublines in edit page and Editing Status and saving Sublines in Edit Page
+    this.isLoading = true;
+    // const hasStaging = await this.checkStagingRecords();
+    // if (hasStaging) {
+    //   this.showToast(this.labels.Error_Title, 'Case can not be edited as the updates from ECC for this case are currently being processed. Please try again later.', 'error');
+    //   this.isLoading = false;
+    //   return; // Stop submission
+    // }
+
+    if (this.refs.headerLineItems) {
+      let sublineRecs = this.refs.headerLineItems.changedSublinesdata();
+      console.log('649sublineRecs',JSON.stringify(sublineRecs))
+      this.changedSublines = sublineRecs;
+
+    }
+    console.log('653this.changedSublines',JSON.stringify(this.changedSublines))
+    if (JSON.stringify(this.changedSublines) !== "{}") {
+      console.log('655')
+      await sublineEdit({ editedSublines: this.changedSublines })
+        .then((result) => {
+          let UpdatedList = result;
+        })
+        .catch((error) => {
+          //UpdatedList = undefined;
+          // this.showToast(this.labels.Error_Title, this.labels.generic_error_msg, 'error', 'dismissable');
+        })
+    }
+    // End of TWC4621-2487 Displaying Sublines in edit page and Editing Status and saving Sublines in Edit Page
+
+    //this.isLoading = true;
+    let gtsResponse;
+    if (!(this.caseType?.isTechnicalExchange() || this.caseType?.isTechnicalNPRCredit() || (this.collectionShippingDetails?.Sales_Issue_Return_Reason__r?.Name === 'FAC' && !this.collectionShippingDetails?.Sales_Issue_Cst_Collection_Address__c))) { // Samuel NPR Changes
+      gtsResponse = await doEmbargoCheck(this, this.isSubmitted, this.collectionShippingDetails);
+    }
+    if ((gtsResponse && gtsResponse?.isEmbargo === false) || this.caseType?.isTechnicalNPRCredit() || this.caseType?.isTechnicalExchange() || (this.collectionShippingDetails?.Sales_Issue_Return_Reason__r?.Name === 'FAC' && !this.collectionShippingDetails?.Sales_Issue_Cst_Collection_Address__c)) { // saving a case if there is no blocked countries
+      this.isLoading = false;
+      let recordTypeName = this.genericMessages.Case_Stock_Rotation;
+      if (this.caseType.isTechnicalService()) {
+        recordTypeName = this.genericMessages.Technical_Intake_label;
+      } else if (this.caseType.isQualityService()) {
+        recordTypeName = this.genericMessages.Quality_Intake; //Manohar---Quality Intake --TWC4621-1359
+      }
+      else if (this.caseType.isExceptionService()) {
+        recordTypeName = this.genericMessages.Exception_Intake;
+      } else if (this.caseType.isAdminService()) {
+        recordTypeName = this.genericMessages.Admin_Intake;
+      } else if (this.caseType.isMiscellaneousService()) { //Manohar -- TWC4621-2011
+        recordTypeName = this.genericMessages.Miscellaneous_Intake;
+      }
+      if (!this.isSubmitted && !(this.caseData?.Status == 'Draft' && this?.caseData?.Origin === 'ILM')) {
+        LightningConfirm.open({
+          message: this.labels.Save_for_later_error_message,
+          variant: this.labels.Success_Message,
+          label: this.labels.Confirm_Message
+          // setting theme would have no effect
+        }).then((data) => {
+          if (data) {
+            this.saveCase(recordTypeName);
+          }
+        });
+      }
+      else {
+        this.saveCase(recordTypeName);
+      }
+    } else if (gtsResponse && gtsResponse?.isEmbargo === true) { // if there is any blocked countries showing toast event
+      let embargoErrorMessage = gtsResponse?.embargoBlockedCountriesCount > 1 ? StringFormatter.format(this?.labels?.Countries_are_in_Block, gtsResponse?.embargoBlockCountry.join(", "))
+        : StringFormatter.format(this?.labels?.Country_is_in_Block, gtsResponse?.embargoBlockCountry[0]);
+      this.showToast(this.labels.Error_Title, embargoErrorMessage, "error");
+    }
+    this.isLoading = false;
+  }
+
+  //Samuel - get r4ecase
+  async fetchCaseByNo() {
+    let caseList;
+    if (this?.returnshippingdetails?.r4eCaseNumber) {
+      await getCaseByCaseNo({ 
+        caseNum: this.returnshippingdetails.r4eCaseNumber })
+        .then((result) => {
+           if (result?.errorMessage) {
+            throw new Error(result.errorMessage);
+          }
+          caseList = result.recordList;
+        })
+        .catch((error) => {
+          caseList = undefined;
+          this.showToast(this.labels.Error_Title, this.labels.generic_error_msg, 'error', 'dismissable');
+        })
+
+    } else {
+      caseList = [];
+    }
+    return caseList;
+  }
+
+  headerDataHandler() {
+    this.collectionShippingDetails = { ...this.collectionShippingDetails, ...this.returncollectiondetails };
+    if (this.returnshippingdetails !== undefined && this.returnshippingdetails.Sales_Issue_Return_Reason__c !== undefined) {
+      this.collectionShippingDetails.Sales_Issue_Return_Reason__c = this.returnshippingdetails.Sales_Issue_Return_Reason__c;
+    }
+    if (this.returnshippingdetails !== undefined && this.returnshippingdetails.Sales_Issue_Remedy_Type__c !== undefined) {
+      this.collectionShippingDetails.Sales_Issue_Remedy_Type__c = this.returnshippingdetails.Sales_Issue_Remedy_Type__c;
+    }
+  }
+
+  //Start -- TWC4621-148 -- Manohar -- 09-09-22 -- custom accordian section logic
+  toggleSection(event) {
+    if (event.currentTarget.dataset.id === 'shippingInputs') {
+      if (this.shippingdetailsclass === "slds-section slds-is-close") {
+        this.shippingdetailsclass = "slds-section slds-is-open";
+      } else {
+        this.shippingdetailsclass = "slds-section slds-is-close";
+      }
+    }
+    if (event.currentTarget.dataset.id === 'collectionInputs') {
+      if (this.collectiondetailsclass === "slds-section slds-is-close") {
+        this.collectiondetailsclass = "slds-section slds-is-open";
+      } else {
+        this.collectiondetailsclass = "slds-section slds-is-close";
+      }
+    }
+    if (event.currentTarget.dataset.id === 'casedescriptiondetailsInputs') {
+      if (this.casedescriptiondetailsclass === "slds-section slds-is-close") {
+        this.casedescriptiondetailsclass = "slds-section slds-is-open";
+      } else {
+        this.casedescriptiondetailsclass = "slds-section slds-is-close";
+      }
+    }
+  }
+  //End -- TWC4621-148 -- Manohar -- 09-09-22 -- custom accordian section logic
+  // Start --- TWC4621-148 -- 10-09-2022 --- Manohar --- This method is used for navigating to case detail page
+  cancelRequest() {
+    LightningConfirm.open({
+      message: this.labels.Navigating_to_Case_Detail_Page,
+      variant: 'success',
+      label: this.labels.Please_confirm,
+    }).then(data => {
+      if (data) {
+        this.closetab();
+        this[NavigationMixin.Navigate]({
+          type: 'standard__recordPage',
+          attributes: {
+            recordId: this.recordId,
+            objectApiName: 'Case',
+            actionName: 'view'
+          },
+        });
+      }
+    })
+  }
+  // End --- TWC4621-148 -- 10-09-2022 --- Manohar --- This method is used for navigating to case detail page
+  /**
+   * User Story: TWC4621-59
+   * Description: invokeWorkspaceAPI to help to close the sub tab
+   * Author: Chaitanya Bollamreddi
+   * Last Modified Date: 21/09/2022
+  */
+  invokeWorkspaceAPI(methodName, methodArgs) {
+    return new Promise((resolve, reject) => {
+      const apiEvent = new CustomEvent("internalapievent", {
+        bubbles: true,
+        composed: true,
+        cancelable: false,
+        detail: {
+          category: "workspaceAPI",
+          methodName: methodName,
+          methodArgs: methodArgs,
+          callback: (err, response) => {
+            if (err) {
+              return reject(err);
+            } else {
+              return resolve(response);
+            }
+          }
+        }
+      });
+
+      window.dispatchEvent(apiEvent);
+    });
+  }
+  /**
+  * User Story: TWC4621-59 && TWC4621-260
+  * Description: calling this method in case of any blockers to close current tab and redirect to case record
+  * Author: Chaitanya Bollamreddi
+  * Last Modified Date: 27/09/2022
+ */
+  closetab() {
+    this.invokeWorkspaceAPI('getFocusedTabInfo').then(focusedTab => {
+      if (focusedTab.tabId) {
+        this.invokeWorkspaceAPI('closeTab', {
+          tabId: focusedTab.tabId
+        })
+      }
+    })
+  }
+
+  //Creating a toast event
+  showToast(title, message, variant) {
+    const evt = new ShowToastEvent({
+      title: title,
+      message: message,
+      variant: variant
+    });
+    this.dispatchEvent(evt);
+  }
+  //E2C Edit Fix TWC4621-1122 - Start
+  renderedCallback() {
+
+    if (this.isEmailToCase && // && this.returnshippingdetails?.remedyText != 'NPR-Credit' -- NPR Changes - Samuel
+      (JSON.stringify(this.returnshippingdetails) === '{}' ||
+        JSON.stringify(this.returncollectiondetails) === '{}' || JSON.stringify(this.returncollectiondetails) === undefined)) {
+      this.showPOsearch = false;
+      this.disableNextButton = true;
+    }
+
+  }
+  //E2C Edit Fix TWC4621-1122 - End
+  /*To save the case */
+  async saveCase(recordTypeName) {
+    let updatedLineItems = [];
+    this.headerDataHandler();
+    let caseStatus = (this.caseData?.Status == 'Draft' && this?.caseData?.Origin === 'ILM') ? 'RMA Authorized' : this.caserec.Status;
+    if (this?.caseType?.isTechnicalExchange() && this.isSubmitted && this.collectionShippingDetails?.External_Case_ID__c && this.isPortal == false) {
+      caseStatus = this.genericMessages.Case_Status_Closed;
+    }
+
+    if (this.refs.headerLineItems) {
+      let changedLineItems = await this.refs?.headerLineItems?.retriveChangedLineItems();
+      if (changedLineItems?.some(item => item?.disableSave == true)) { // TWC4621-4742,TWC4621-4789 -- if there are any validtion errors at line level, throwing an error
+        this.showToast('Validation Errors', 'Please fix errors before submitting', 'error');
+        return;
+      }
+      // Start -- Price change validation & processing
+      const priceChangedItems = changedLineItems?.filter(item => item?.isCreditPriceInput && (item?.creditpricevalue === 0 || item?.creditpricevalue === '0'));
+      if (priceChangedItems?.length > 0) {
+        const missingReason = priceChangedItems?.some(item => !item?.reasonForChange?.trim());
+        if (missingReason) {
+          this.showToast(this.labels.Error_Title, 'Please update reason for change on all items', 'error');
+          return;
+        }
+        // price change records
+        const distiChannel = this.returnshippingdetails?.sales_Area__c?.Customer_Disti_Channel__r?.Customer_Distribution_Channel_Code__c || '';
+        const priceChangeRecords = priceChangedItems?.map(item => {
+          return {
+            lineItemRecId: item?.Id,
+            creditPrice: item?.creditpricevalue,
+            RFPriceChange: item?.reasonForChange,
+            YMS2Price: item?.creditpricevalue
+          };
+        });
+        if (priceChangeRecords?.length > 0) {
+          updatedLineItems = priceChangeRecords;
+          caseStatus = this.caserec.Status;
+        }
+      }
+      //End -- Price change validation & processing
+      //Start -- Manohar -- TWC4621-3197 -- check if atleast one line item status changed to Cancel --  Manual Line Closure - Cancelled line items validation & processing After RMA Case Edit
+      const cancelledItems = changedLineItems?.filter(item => item?.isLineStatusInput && item?.linestatus === 'Cancelled');
+      if (cancelledItems?.length > 0) {
+        const missingCancelInfo = cancelledItems?.some(item => !item?.linecancelreason?.trim() || !item?.linecanceljustification?.trim());
+        if (missingCancelInfo) {
+          this.showToast(this.labels.Error_Title, 'Please update reason for change on all items', 'error');
+          return;
+        }
+
+        const hasUpdatedLineItems = Array.isArray(updatedLineItems) && updatedLineItems?.length > 0;
+        const updatedItemsMap = hasUpdatedLineItems
+          ? new Map(updatedLineItems?.map(item => [item?.lineItemRecId, item]))
+          : null;
+
+        const cancelLineItemRecords = changedLineItems?.map(item => {
+          const baseRecord = {
+            lineItemRecId: item?.Id,
+            lineitemStatus: item?.linestatus,
+            lineCancelReason: item?.linecancelreason,
+            lineCancelJustification: item?.linecanceljustification
+          };
+
+          if (item?.SRallowanceId) {
+            baseRecord.SRallowanceMatrixId = item.SRallowanceId;
+          }
+          if (hasUpdatedLineItems) {
+            const updatedItem = updatedItemsMap?.get(item?.Id);
+            if (updatedItem) {
+              return { ...baseRecord, ...updatedItem };
+            }
+          }
+
+          return baseRecord;
+        });
+        if (cancelLineItemRecords?.length > 0) {
+          this.isManualLineClosure = true;
+          updatedLineItems = cancelLineItemRecords;
+          caseStatus = this.caserec.Status;
+        }
+      }
+      //End -- Manohar -- TWC4621-3197 -- check if atleast one line item status changed to Cancel --  Manual Line Closure - Cancelled line items validation & processing After RMA Case Edit
+      // Handling ILM-specific cases and merging changed items
+      if (this.refs.headerLineItems && this.caseData?.Status === 'Draft' &&
+        this.caseData?.Origin === 'ILM' && this.collectionShippingDetails?.Sales_Issue_SoldTo_Customer__r?.Customer_CPN_Support__c) {
+        const changedILMLineItems = await this.refs?.headerLineItems?.retriveChangedILMLineItems();
+        if (!updatedLineItems || updatedLineItems?.length < 1) {
+          updatedLineItems = changedILMLineItems;
+        } else {
+          updatedLineItems = changedILMLineItems?.map(originalItem => {
+            const existingItem = updatedLineItems?.find(item => item?.lineItemRecId === originalItem?.lineItemRecId);
+            return existingItem ? { ...originalItem, ...existingItem } : originalItem;
+          });
+        }
+        // Check if any CPN is missing
+        const isCPNMissing = updatedLineItems?.some(item => item?.customerItemNbr === '');
+        caseStatus = isCPNMissing ? 'Draft' : 'RMA Authorized';
+      } else if (this.refs?.headerLineItems && this.caseData?.Status === 'Draft' && this.caseData?.Origin === 'ILM') {
+        const allLineItems = await this.refs.headerLineItems?.retriveAllLineItems();
+        if (!updatedLineItems || updatedLineItems?.length < 1) {
+          updatedLineItems = allLineItems?.map(item => ({ lineItemRecId: item?.Id }));
+        } else {
+          updatedLineItems = allLineItems?.map(originalItem => {
+            const existingItem = updatedLineItems.find(item => item?.lineItemRecId === originalItem.Id);
+            originalItem.unitprice = originalItem.unitprice?.replace('$', '').trim() || originalItem.unitprice;
+            return existingItem ? { ...originalItem, ...existingItem } : { lineItemRecId: originalItem.Id };
+          });
+          caseStatus = 'RMA Authorized';
+        }
+      }
+    }
+    let returnReqDetailsWrapper = {
+      customerReturnRequest: this.collectionShippingDetails, //collection and shipping details
+      customerReturnRequestLineWrapperList: updatedLineItems, //selected line item details
+      caserec: this.caserec, //case record
+      casemode: this.casemode, // case mode edit or create
+      caserecTypeName: recordTypeName,// case recordtype developer name
+      isPortal: this.isPortal, // BUG Fix - Portal
+      remedyDetails: this.collectionShippingDetails?.remedyDetails,
+      externalCaseId: this.collectionShippingDetails?.External_Case_ID__c,
+      r4eCaseNumber: this.collectionShippingDetails?.r4eCaseNumber,
+      comments: this.collectionShippingDetails?.comments,
+      isManualLineClosure: this.isManualLineClosure//TWC4621-3197 -- Manual Line item closure After RMA Case Edit
+    };
+    /*if (this.casemode == 'Edit') {
+      returnReqDetailsWrapper.lineIds = [];
+    }*/
+    this.isLoading = true;
+    console.log('940returnReqDetailsWrapper', JSON.stringify(returnReqDetailsWrapper))
+    saveForLater({
+      returnReqDetails: returnReqDetailsWrapper,
+      caseStatus: caseStatus
+    })
+      .then((result) => {
+        this.isLoading = false;
+        if (this.isSubmitted) {
+          this.showToast(this.labels.Success_Message, this.labels.Case_Submitted_Successfully, this.genericMessages.Success_Message);
+        }
+
+        //start
+        if (this.isPortal == true || this.isPortal == "true") {
+
+          this[NavigationMixin.Navigate]({
+            type: "standard__recordPage",
+            attributes: {
+              recordId: result.insertR4CCaseRes.Id,
+              objectApiName: "Case",
+              actionName: "view"
+            }
+          });
+          return;
+        }
+        let pagetab;
+        let parenttab;
+        this.invokeWorkspaceAPI("getFocusedTabInfo").then(
+          (focusedTab) => {
+            if (focusedTab.isSubtab) {
+              pagetab = focusedTab.tabId;
+              parenttab = focusedTab.parentTabId;
+              this.invokeWorkspaceAPI("openSubtab", {
+                parentTabId: parenttab,
+                recordId: result.insertR4CCaseRes?.Id,
+                focus: true
+              }).then((result) => {
+                this.invokeWorkspaceAPI("closeTab", {
+                  tabId: pagetab
+                }).then((result) => {
+                  this.invokeWorkspaceAPI("refreshTab", {
+                    tabId: parenttab,
+                    includeAllSubtabs: true
+                  });
+                });
+              });
+            } else {
+              let tempFocustab = focusedTab.tabId;
+              this.invokeWorkspaceAPI("openTab", {
+                recordId: result.insertR4CCaseRes.Id,
+                focus: true
+              }).then((result) => {
+                this.invokeWorkspaceAPI("closeTab", {
+                  tabId: tempFocustab
+                });
+              });
+            }
+          }
+        );
+        if (result?.errorMessageOfDmlOperation) {
+            throw new Error(result.errorMessageOfDmlOperation);
+        }
+        //End
+      })
+      .catch((error) => {
+        console.error(error);
+        this.showToast(this?.labels?.Error_Title, this?.labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3040
+        this.isLoading = false;
+      });
+  }
+  // added to sync loader with child cmps
+  syncLoader(event) {
+
+    this.isLoading = event.detail
+  }
+  //Added for Exchange remedy(to validate r4ecase number when changed)
+  handleCloseLineItemSection(event) {
+    //Exchange Remedy - Technical Intake
+    this.showPOsearch = false;
+    this.hidecancelButton = true;
+    this.hideNextButton = true;
+    this.isSubmitted = false;
+  }
+}
+import { LightningElement, track, wire } from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { NavigationMixin } from "lightning/navigation";
+import queryReturnRequest from "@salesforce/apex/R4C_CX_QueryController.queryReturnRequest";
+import bulkQueryReturnRequest from "@salesforce/apex/R4C_CX_QueryController.bulkQueryReturnRequest";
+import getPortalUsersForCmfs from "@salesforce/apex/R4C_CX_QueryController.getPortalUsersForCmfs";
+import hasAccCmfAssociations from '@salesforce/apex/R4C_CX_QueryController.hasAccCmfAssociations';
+import { labels } from "c/r4c_CustomLabels";
+import getGenericMessages from '@salesforce/apex/R4C_AG_CaseHeader_Controller.getErrorMessages';
+import basePath from '@salesforce/community/basePath';
+import { portalStatusGroups, configs } from 'c/r4c_AG_Utill';
+
+import {
+    groupArrayByKey,
+    fetchAllTypes,
+    getUserDetail,
+    getSoldToAndRemedy,
+} from "c/r4c_CX_QuerySearchUtill";
+
+const selectOne = { label: labels.Please_Select_One, value: "" };
+export default class R4c_CX_QuerySearchReturnRequest extends NavigationMixin(LightningElement) {
+
+    Options = [
+        {
+            label: labels.Search,
+            value: "search",
+            checked: true
+        },
+        {
+            label: labels.Bulk_Upload,
+            value: "bulkSearch",
+            checked: false
+        }
+    ]
+    acceptedFormats = ['.csv'];
+    customlabels = labels;
+    genericMessages = {
+        Sold_To_Address_Code: 'a',
+        creationDate: 'b',
+        serviceType: 'c',
+        remedy: 'd',
+        returnReasons: 'e',
+        Stock_Rotation: 'Stock_Rotation'
+    };
+    isPortal = true;
+    isLoading = true;
+    isSearchComplete = false;
+    userDetails = {};
+    @track searchResult = [];
+    @track visibilityVariable = {
+        isSearch: false, //Masking Changes - Samuel
+        isBulkSearch: false,
+
+    }
+    @track fileVariables = {
+        bulkUploadFileName: '',
+        get totalLines() {
+            return this.successLines.length + this.errorLines.length;
+        },
+        errorLines: [],
+        successLines: [],
+        isShowError: false
+    }
+    @track inputVariables = {
+
+        rmaNumber: '',
+        soldTo: '',
+        serviceType: '',
+        remedy: '',
+        returnReasons: '',
+        creationDate: '',
+        creationDateEnd: '',
+        customerPO: '',
+        returnPO: '',
+        sNVisID: '',
+        product: '',
+        contactType: '',
+        contactEmail: '',
+        caseLineStatus: '',
+        caseStatus: '',
+        createdBy: '',
+        invoiceNumber: '',
+
+    }
+
+    constantLabels = {
+        'Intel_User': 'Intel User'
+    }
+    showProduct = true;
+    invoice = false;
+    priceMask = false;
+    soldToProfileMaskMap = new Map(); //Masking Changes - Samuel
+    shipToProfileMaskMapUsingSoldTo = new Map(); //Masking Changes - Samuel
+    get isResetEnabled() {
+        return !(this.fileVariables.totalLines > 0 || this.inputVariables.caseLineStatus || this.inputVariables.rmaNumber || this.inputVariables.soldTo || this.inputVariables.serviceType || this.inputVariables.remedy || this.inputVariables.returnReasons || this.inputVariables.creationDate || this.inputVariables.creationDateEnd
+            || this.inputVariables.invoiceNumber || this.inputVariables.createdBy || this.inputVariables.caseStatus || this.inputVariables.customerPO || this.inputVariables.returnPO || this.inputVariables.sNVisID || this.inputVariables.product || this.inputVariables.contactType || this.inputVariables.contactEmail) ? true : false;
+    }
+    get isContactEmail() {
+        return this.inputVariables.contactType ? true : false;
+    }
+    get isSearchDisabled() {
+        if (this.visibilityVariable.isBulkSearch) {
+
+            return !(this.fileVariables.errorLines.length == 0 && this.fileVariables.successLines.length >= 1);
+        }
+
+        return !Object.keys(this.inputVariables).some(i => {
+
+            if (this.inputVariables[i] && i != 'isResetEnabled') {
+                let status = true;
+                if (i == 'contactType' && !this.inputVariables['contactEmail']) {
+                    status = false;
+                }
+                if (i == 'creationDate' && !this.inputVariables['creationDateEnd']) {
+                    status = false;
+                }
+                if (i == 'creationDateEnd' && !this.inputVariables['creationDate']) {
+                    status = false;
+                }
+                return status;
+            }
+            return false;
+
+        });
+    }
+
+
+    @track selectOptions = {
+        soldTos: [],
+        serviceTypes: [],
+        remedies: [],
+        returnReasons: [],
+        allRemedies: [],
+        allReturnReasons: [],
+        allServiceTypes: [],
+        allUsers: [],
+        allCaseLineStatus: [selectOne, ...[...new Set(Object.values(portalStatusGroups).filter(i => i.caseStatus != 'All').map(i => {
+            return i.lineStatus.filter(l => l.caseStatus != 'All').map(j => j.name)
+        }).flat(Infinity))].map(k => ({ label: k, value: k }))],
+        allCaseStatus: [selectOne, ...Object.values(portalStatusGroups).filter(i => i.caseStatus != 'All').map(i => ({ label: i.caseStatus, value: i.caseStatus }))],
+        caseStatusGroup: [selectOne, ...Object.values(portalStatusGroups).filter(i => i.caseStatus != 'All').map(i => ({ label: i.caseStatus, value: i.caseStatus }))],
+        lineStatusGroup: [selectOne, ...[...new Set(Object.values(portalStatusGroups).filter(i => i.caseStatus != 'All').map(i => {
+            return i.lineStatus.filter(l => l.caseStatus != 'All').map(j => j.name)
+        }).flat(Infinity))].map(k => ({ label: k, value: k }))],
+        contactTypeOptions: [
+            selectOne,
+            { label: labels.Sold_To_Address_Code, value: 'Sold-to' },
+            { label: labels.Ship_To_Address_Code, value: 'Ship-to' },
+            { label: labels.R4C_Collection, value: 'Collection' },
+            { label: labels.Return_to_Customer_Contact, value: 'Return to Customer' },
+        ],
+    }
+    allLineItemStatus = [];
+
+    lineItemRecordTypeId = '';
+    showPsgDisclaimer = false;
+
+    //Applying style over rides for input fields 
+    rendered = false;
+    renderedCallback() {
+        if (this.rendered) return;
+        this.applyStyle();
+    }
+    applyStyle() {
+        const style = document.createElement('style');
+        style.innerText = `
+        .design .datetime-input-fullwidth .slds-form-element__row .slds-form-element{
+            width: 100%;
+         } 
+
+         .design .intel-calender h2{
+            font-size: 1rem;
+         }
+         
+         .design.blue-icon svg{
+            fill:#0068B5;
+         }
+
+        .design .slds-input__icon-group {
+            right: 0;
+            top: 50%;
+            z-index: 0;
+        }
+        .design .slds-input__icon {
+            z-index: 0;
+        }
+         `;
+
+        //applying styles dynamically to shadow dom elements
+        let inputs = this.template.querySelectorAll('div.design');
+        for (let div of inputs) {
+            div.appendChild(style);
+            this.rendered = true;
+        }
+    }
+
+    connectedCallback() {
+
+        getGenericMessages() // Apex call to fetch all the R4C_configurations custom settings records
+            .then(result => {
+                this.genericMessages = result;
+
+            })
+            .catch(() => {
+                this.showToast('Error', 'Please contact support team/system admin', "error"); //Added as part of Failure Handling - TWC4621-3090
+            });
+        this._fetchDetails();
+    }
+
+    hasAccountCmfs = false;
+    @wire(hasAccCmfAssociations)
+    wiredAccCMFAssociations({ error, data }) {
+        if (data) {
+            this.hasAccountCmfs = data.genericObjData;
+        }
+    }
+
+    handleUploadFinished(event) {
+        this.fileVariables.bulkUploadFileName = '';
+        this.fileVariables.successLines = [];
+        this.fileVariables.errorLines = [];
+        this.fileVariables.isShowError = false;
+
+        // Get the list of uploaded files
+        const uploadedFiles = event.detail.files;
+        if (uploadedFiles.length > 0) {
+
+            let uploadedFileName = uploadedFiles[0].name;
+            this.fileVariables.bulkUploadFileName = uploadedFileName;
+            const file = uploadedFiles[0];
+            if (file.type === 'text/csv') {
+
+                this.processUploadedFile(file); // start reading the uploaded csv file from here
+            } else {
+                this.showToast(this.customlabels.Error_Title, this.customlabels.wrongfiletypeerror, 'error');
+            }
+        }
+    }
+    async processUploadedFile(file) {
+        let SUCESSHEADER = [labels.COD_RMA_Number, labels.SN_VisID, labels.Label_for_Product, labels.Contact_Email];
+        let ERROREADER = [labels.COD_RMA_Number, labels.SN_VisID, labels.Label_for_Product, labels.Contact_Email, 'Error'];
+        const result = await this.load(file);
+        let csv = result.trim();
+        const lines = [];
+        let addUpto;
+        let tempLines = csv.split(/\r\n|\n/);
+        let tempLinesLength = tempLines.length;
+        for (let i = (tempLinesLength - 1); i >= 0; i--) {
+            let array = (tempLines[i].split(','));
+            if (array.every(element => element.length === 0) !== true) {
+                addUpto = i;
+                break;
+            }
+        }
+        for (let j = 0; j <= addUpto; j++) {
+            lines.push(tempLines[j]);
+        }
+        //checking if file in empty or not
+        if (lines.length < 2) {
+            this.showToast(this.customlabels.Error_Title, this.customlabels.Empty_File, 'error');
+        } else {
+            //checking if template is matching
+            if (!(lines[0] == SUCESSHEADER.join() || lines[0] == ERROREADER.join())) {
+                this.showToast(this.customlabels.Error_Title, this.customlabels.Wrong_File_Format, 'error');
+                return;
+            }
+            lines.forEach((line, i) => {
+                if (i === 0) return;
+
+                let data = line.split(',');
+                if (!data[0]?.trim() && !data[1]?.trim() && !data[2]?.trim() && !data[3]?.trim()) return;
+                let caseNumber = '';
+                if (data[0]) {
+                    caseNumber = data[0]?.trim();
+                    if (caseNumber.length < 8) {
+                        let repeatCount = 8 - caseNumber.length;
+                        caseNumber = '0'.repeat(repeatCount) + caseNumber;
+                    }
+                }
+                if (data[3]?.trim() && !this.validateEmail(data[3]?.trim())) {
+                    this.fileVariables.errorLines.push({
+                        rowNum: i,
+                        rmaNumber: caseNumber,
+                        ult: data[1]?.trim(),
+                        product: data[2]?.trim(),
+                        email: data[3]?.trim(),
+                        error: labels.Invalid_Email
+                    })
+                }
+                else if (data[1]?.trim() && data[1]?.trim() < 6) {
+                    this.fileVariables.errorLines.push({
+                        rowNum: i,
+                        rmaNumber: caseNumber,
+                        ult: data[1]?.trim(),
+                        product: data[2]?.trim(),
+                        email: data[3]?.trim(),
+                        error: labels.Please_enter_more_then_3_characters
+                    })
+                }
+                else if (data[1]?.trim() && data[1]?.trim() > 40) {
+                    this.fileVariables.errorLines.push({
+                        rowNum: i,
+                        rmaNumber: caseNumber,
+                        ult: data[1]?.trim(),
+                        product: data[2]?.trim(),
+                        email: data[3]?.trim(),
+                        error: labels.ULT_max_length_Toast_msg
+                    })
+                }
+                else {
+
+                    this.fileVariables.successLines.push({
+                        rmaNumber: caseNumber,
+                        ult: data[1]?.trim(),
+                        product: data[2]?.trim(),
+                        email: data[3]?.trim(),
+                        error: '',
+                    })
+                }
+
+            });
+            this.fileVariables.isShowError = this.fileVariables.errorLines.length > 0;
+
+        }
+
+    }
+
+    async load(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function () {
+                resolve(reader.result);
+            };
+            reader.onerror = function () {
+                reject(reader.error);
+            };
+            reader.readAsText(file);
+        });
+    }
+    downloadTemplate() {
+        const blob = new Blob([`${labels.COD_RMA_Number},${labels.SN_VisID},${labels.Label_for_Product},${labels.Contact_Email}`]);
+        const link = window.document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", 'Search_BulkSearchTemplate.csv');
+            link.style.visibility = "hidden";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+    downloadErrorCSVFile() {
+        let csvString = `${labels.COD_RMA_Number},${labels.SN_VisID},${labels.Label_for_Product},${labels.Contact_Email},Error\n`;
+
+        this.fileVariables.errorLines.forEach((item) => {
+            csvString += `${item.rmaNumber},${item.ult},${item.product},${item.email},${item.error}\n`;
+        })
+        this.fileVariables.successLines.forEach((item) => {
+            csvString += `${item.rmaNumber},${item.ult},${item.product},${item.email},${item.error}\n`;
+        })
+
+        let downloadElement = document.createElement('a');
+        downloadElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csvString);
+        downloadElement.target = '_self';
+        downloadElement.download = 'Search_BulkSearchFailed.csv';
+        document.body.appendChild(downloadElement);
+        downloadElement.click();
+        document.body.removeChild(downloadElement);
+    }
+    selectedOptionHandler(event) { //Handles the radio button selections between Specific and All CMFS
+        if (event.target.value == 'search') {
+            this.visibilityVariable.isSearch = true;
+            this.visibilityVariable.isBulkSearch = false;
+        }
+        else if (event.target.value == 'bulkSearch') {
+            this.visibilityVariable.isSearch = false;
+            this.visibilityVariable.isBulkSearch = true;
+        }
+        this.Options.forEach(item => { item.checked = item.value === event.target.value ? true : false; })
+
+    }
+
+    onRowChange(event) {
+        let value = event.currentTarget.value || event.detail.value;
+        let name = event.currentTarget.name;
+        let lockupLabel = event.detail.fieldLabel;
+
+        if (lockupLabel && lockupLabel == this.genericMessages.Sold_To_Address_Code) {
+            name = 'soldTo';
+        }
+
+        if (name == this.genericMessages.creationDate || name == 'creationDateEnd') {
+
+            let startDate = (name == 'creationDate') ? new Date(value) : new Date(this.inputVariables.creationDate);
+            let endDate = (name == 'creationDateEnd') ? new Date(value) : new Date(this.inputVariables.creationDateEnd);
+
+            
+
+            let today = new Date();
+
+            if (startDate > today || endDate > today) {
+                let msg = this.customlabels.Date_cannot_be_greater_than_today;
+                this.showToast(this.customlabels.Invalid_Date, msg, 'error');
+                event.currentTarget.value = '';
+                this.inputVariables[name] = '';
+                return;
+            }
+            if (!isNaN(startDate) && !isNaN(endDate)) {
+                const diffTime = Math.abs(endDate - startDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays > 365) {
+                    let msg = this.customlabels.Date_Should_be_within_a_year;
+                    this.showToast(this.customlabels.Invalid_Date, msg, 'error');
+                    event.currentTarget.value = '';
+                    this.inputVariables[name] = '';
+                    return;
+                }
+
+            }
+
+
+        }
+        this.inputVariables[name] = value;
+
+        if (name == this.genericMessages.serviceType) {
+            this.inputVariables.remedy = ''; //Bug fix for filtering of return reasons when servicetype is changed.
+            this.inputVariables.returnReasons = '';
+            if (!value) {
+                this.selectOptions.serviceTypes = this.selectOptions.allServiceTypes;
+                this.selectOptions.remedies = this.selectOptions.allRemedies;
+                this.selectOptions.returnReasons = this.selectOptions.allReturnReasons;
+                this.inputVariables.remedy = '';
+                this.inputVariables.returnReasons = '';
+
+            }
+            else {
+                this.selectOptions.remedies = this.selectOptions.allRemedies.filter(i => i?.serviceTypeId?.indexOf(value) > -1);
+                // BUG FIX - For autopopulating values when only one record is present
+                if (this.selectOptions.remedies.length == 1) {
+                    this.inputVariables.remedy = this.selectOptions.remedies[0].value;
+                } else {
+                    this.selectOptions.remedies.unshift(selectOne);
+                }
+                this.selectOptions.returnReasons = this.selectOptions.allReturnReasons.filter(i => i?.serviceTypeId == value);
+                this.selectOptions.returnReasons.unshift(selectOne);
+
+            }
+        }
+        else if (name == this.genericMessages.remedy) {
+            if (!value) {
+                if (this.inputVariables.serviceType) {
+                    this.selectOptions.remedies = this.selectOptions.allRemedies.filter(i => i?.serviceTypeId?.indexOf(this.inputVariables.serviceType) > -1);
+                    this.selectOptions.remedies.unshift(selectOne);
+                    this.selectOptions.returnReasons = this.selectOptions.allReturnReasons.filter(i => i?.serviceTypeId == this.inputVariables.serviceType);
+                    this.selectOptions.returnReasons.unshift(selectOne);
+                }
+                else {
+                    this.selectOptions.remedies = this.selectOptions.allRemedies;
+                    this.selectOptions.returnReasons = this.selectOptions.allReturnReasons;
+                    this.inputVariables.returnReasons = '';
+                }
+
+            }
+            else {
+                this.selectOptions.returnReasons = this.selectOptions.allReturnReasons.filter(i => {
+                    if (this.inputVariables.serviceType) {
+                        if (i?.serviceTypeId == this.inputVariables.serviceType && i?.remedyId == value) {
+                            return i;
+                        }
+                    }
+                    else if (i?.remedyId == value) {
+                        return i;
+                    }
+                });
+                if (this.selectOptions.returnReasons.length == 1) { // BUG FIX - For autopopulating values when only one record is present
+                    this.inputVariables.returnReasons = this.selectOptions.returnReasons[0].value;
+                } else {
+                    this.selectOptions.returnReasons.unshift(selectOne);
+                }
+            }
+        }
+        else if (name == this.genericMessages.returnReasons) {
+
+            if (this.inputVariables.remedy) {
+                this.selectOptions.returnReasons = this.selectOptions.allReturnReasons.filter(i => {
+                    if (this.inputVariables.serviceType) {
+                        if (i?.serviceTypeId == this.inputVariables.serviceType && i?.remedyId == this.inputVariables.remedy) {
+                            return i;
+                        }
+                    }
+                    else if (i?.remedyId == this.inputVariables.remedy) {
+                        return i;
+                    }
+                });
+                this.selectOptions.returnReasons.unshift(selectOne);
+            }
+            else {
+                this.selectOptions.returnReasons = this.selectOptions.allReturnReasons;
+            }
+
+
+
+        }
+
+        if (name == 'caseStatus') {
+            if (this.inputVariables.caseStatus) {
+                this.selectOptions.allCaseLineStatus = portalStatusGroups[this.inputVariables.caseStatus].lineStatus.map(i => ({ label: i.name, value: i.name }));
+                this.selectOptions.allCaseLineStatus.unshift(selectOne);
+            }
+            else {
+                this.selectOptions.allCaseLineStatus = this.selectOptions.lineStatusGroup;
+            }
+
+        }
+    }
+
+    async _fetchDetails() {
+        try {
+            //getting user details for account id
+            let userValues = await getUserDetail();
+
+            this.userDetails = userValues;
+
+            let soldToAndRemedy = await getSoldToAndRemedy(this.userDetails.ContactId, this.userDetails.Contact.AccountId, this.genericMessages.Stock_Rotation || 'Stock_Rotation');
+            console.log('soldToAndRemedy', soldToAndRemedy)
+            this.selectOptions.soldTos = [];
+            await this._processMasking(soldToAndRemedy.maskingRecords, this.userDetails.ContactId);
+            Object.keys(soldToAndRemedy.soldto).forEach((key) => {
+                if (
+                    // !soldToAndRemedy.soldto[key].Customer_Ship_To_Profile_View_Mask__c &&
+                    // !soldToAndRemedy.soldto[key].Customer_Sold_To_Profile_View_Mask__c
+                    !this.soldToProfileMaskMap[soldToAndRemedy.soldto[key].Id] //Masking Changes - Samuel
+                ) {                
+                    this.selectOptions.soldTos.push({
+                        label: soldToAndRemedy.soldto[key].Name + ' - ' + soldToAndRemedy.soldto[key].Customer_Name__c,
+                        value: soldToAndRemedy.soldto[key].Id
+                    })
+                }
+            })
+
+            let portalUsers =[];
+                await getPortalUsersForCmfs({
+                    cmfIds: this.selectOptions.soldTos.map(i => i.value)
+                })
+                    .then(result => {
+                        if(result.errorMessage != null && result.errorMessage != '') {
+                            throw new Error(result.errorMessage);
+                        }
+                        let userMap = {...result.userListMap};
+                        result.PermSetAssgnList.forEach(i => { //Added logic for filtering R4C users using profile - Samuel
+                            if(Object.keys(userMap).includes(i.AssigneeId)){
+                                portalUsers.push(userMap[i.AssigneeId]);
+                            }
+                        })
+                    })
+                    // .catch(err => { //Will be handled in below catch.. Samuel
+                    //     console.error(err)
+                    //     this.showToast(labels?.Error_Title, labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3090
+                    // })
+            let caseCreatedUsers = portalUsers?.map(i => {
+                let obj = {
+                    label: i.Name,
+                    value: i.Id,
+                    isPortalUser: true
+                }
+                return obj;
+            })
+
+            //getting case types
+            let { ServiceType, Remedy, ReturnReason } = await fetchAllTypes();
+            if (this.hasAccountCmfs == false) {
+                ServiceType = ServiceType.filter(i => i.serviceTypeCode != 802);
+            }
+            ServiceType.unshift(selectOne);
+            Remedy.unshift(selectOne);
+            ReturnReason.unshift(selectOne);
+            ReturnReason.forEach(i => {
+                if (i.value) {
+                    i.label = i.returnReason + ' - ' + i.remedy;
+                }
+            });
+            //caseCreatedUsers.unshift(selectOne); //Samuel
+            caseCreatedUsers.push({
+                label: this.constantLabels.Intel_User,
+                value: 'internalUser',
+                isPortalUser: false
+            });
+            this.selectOptions.allUsers = caseCreatedUsers;
+            this.selectOptions.serviceTypes = ServiceType;
+            this.selectOptions.remedies = Remedy;
+            this.selectOptions.returnReasons = ReturnReason;
+            this.selectOptions.allRemedies = Remedy;
+            this.selectOptions.allReturnReasons = ReturnReason;
+            this.selectOptions.allServiceTypes = ServiceType;
+            this.visibilityVariable.isSearch = true; //Masking Changes - Samuel
+
+        }
+        catch (e) {
+            console.error(e);
+            this.showToast(labels.Error_Title, labels?.generic_error_msg, "error"); //Added as part of Failure Handling - TWC4621-3090
+        }
+        this.isLoading = false;
+    }
+
+
+    navToHome() {
+        this[NavigationMixin.Navigate]({
+            type: 'standard__namedPage',
+            attributes: {
+                pageName: 'home'
+            },
+        });
+
+    }
+
+    resetForm() {
+        Object.keys(this.inputVariables).forEach(key => {
+            if (key != 'isResetEnabled') {
+                this.inputVariables[key] = '';
+            }
+
+        })
+        //Syed - Bug Fix
+        this.selectOptions.serviceTypes = this.selectOptions.allServiceTypes;
+        this.selectOptions.remedies = this.selectOptions.allRemedies;
+        this.selectOptions.returnReasons = this.selectOptions.allReturnReasons;
+        this.selectOptions.allCaseStatus = this.selectOptions.caseStatusGroup;
+        this.selectOptions.allCaseLineStatus = this.selectOptions.lineStatusGroup;
+
+        this.fileVariables.successLines = [];
+        this.fileVariables.errorLines = [];
+        this.fileVariables.isShowError = false;
+        this.fileVariables.bulkUploadFileName = '';
+
+        this.refs?.soldTo?.handleRemovePill();
+        this.searchResult = [];
+        this.isSearchComplete = false;
+        this.rendered = false;
+        this.showPsgDisclaimer = false; //PSG disclaimer changes - Samuel
+    }
+
+    async searchHandler() {
+        let parameters = this.inputVariables;
+        if (parameters.contactType && parameters.contactEmail) {
+            if (!this.refs.contactEmail.reportValidity()) {
+                return;
+            }
+        }
+        if (parameters.invoiceNumber != null) {
+            this.invoice = true;
+            this.priceMask = this.userDetails.Contact.R4C_Customer_Price_Mask__c;
+
+        }
+
+
+
+        let apexcall;
+
+        if (this.visibilityVariable.isSearch) {
+            let requestParams = { ...parameters }
+            if (requestParams.rmaNumber?.trim()) {
+                let caseNumberList = [];
+                let caseNumbersList = requestParams.rmaNumber.split(',');
+                caseNumbersList.forEach(i => {
+
+                    let rma = i?.trim();
+                    if (rma.length < 8) {
+                        let repeatCount = 8 - rma.length;
+                        rma = '0'.repeat(repeatCount) + rma;
+                    }
+                    caseNumberList.push(rma);
+                })
+                requestParams.rmaNumber = caseNumberList.join(',');
+            }
+            if (requestParams.caseStatus) {
+
+                requestParams.caseStatus = portalStatusGroups[requestParams.caseStatus].caseStatusList.join(';');
+            }
+            if (requestParams.caseLineStatus) {
+
+                requestParams.caseLineStatus = [...new Set(Object.values(portalStatusGroups).map(i => {
+                    return i.lineStatus.filter(j => j.name == requestParams.caseLineStatus).map(k => k.status)
+
+                }).flat(Infinity))].join(';');
+            }
+            console.log('parameters', {
+                queryParameters: requestParams,
+                cmfIdList: this.selectOptions.soldTos.map(i => i.value)
+            })
+            apexcall = queryReturnRequest({
+                queryParameters: requestParams,
+                cmfIdList: this.selectOptions.soldTos.map(i => i.value)
+            });
+
+        }
+        else if (this.visibilityVariable.isBulkSearch) {
+
+            let query1 = {
+                numbers: [],
+                ults: [],
+                products: [],
+                emails: []
+            }
+
+            let query2 = {
+                numbers: [],
+                ults: [],
+                products: [],
+                emails: []
+            }
+
+            let query3numbers = {
+                numbers: [],
+                ults: [],
+                products: [],
+                emails: []
+            }
+            let query3ults = {
+                numbers: [],
+                ults: [],
+                products: [],
+                emails: []
+            }
+            let query3products = {
+                numbers: [],
+                ults: [],
+                products: [],
+                emails: []
+            }
+
+            let query4 = {
+                numbers: [],
+                ults: [],
+                products: [],
+                emails: []
+            }
+
+            this.fileVariables.successLines.forEach(line => {
+                //Combination all are given CaseNumber, UnitLevelTraceability, Product, Email
+                if (line.rmaNumber && line.ult && line.product && line.email) {
+                    query1.numbers.push(line.rmaNumber);
+                    query1.ults.push(line.ult);
+                    query1.products.push(line.product);
+                    query1.emails.push(line.email);
+                }
+                //Combination only one is given CaseNumber UnitLevelTraceability Product Email
+                else if (line.rmaNumber && !line.ult && !line.product && !line.email) {
+                    query4.numbers.push(line.rmaNumber);
+                }
+                else if (!line.rmaNumber && line.ult && !line.product && !line.email) {
+                    query4.ults.push(line.ult);
+                }
+                else if (!line.rmaNumber && !line.ult && line.product && !line.email) {
+                    query4.products.push(line.product);
+                }
+                else if (!line.rmaNumber && !line.ult && !line.product && line.email) {
+                    query4.emails.push(line.email);
+                }
+                /*combination
+                    CaseNumber, UnitLevelTraceability, Product
+                    CaseNumber, UnitLevelTraceability, Email
+                    CaseNumber, Product, Email
+                    UnitLevelTraceability, Product, Email
+                */
+                else if (line.rmaNumber && line.ult && line.product && !line.email) {
+                    query2.numbers.push(line.rmaNumber);
+                    query2.ults.push(line.ult);
+                    query2.products.push(line.product);
+                }
+                else if (line.rmaNumber && line.ult && !line.product && line.email) {
+                    query2.numbers.push(line.rmaNumber);
+                    query2.ults.push(line.ult);
+                    query2.emails.push(line.email);
+                }
+                else if (line.rmaNumber && !line.ult && line.product && line.email) {
+                    query2.numbers.push(line.rmaNumber);
+                    query2.products.push(line.product);
+                    query2.emails.push(line.email);
+                }
+                else if (!line.rmaNumber && line.ult && line.product && line.email) {
+                    query2.ults.push(line.ult);
+                    query2.products.push(line.product);
+                    query2.emails.push(line.email);
+                }
+
+                /*combination
+                CaseNumber, UnitLevelTraceability
+                CaseNumber, Product
+                CaseNumber, Email
+                UnitLevelTraceability, Product
+                UnitLevelTraceability, Email
+                Product, Email
+                */
+                else if (line.rmaNumber && line.ult && !line.product && !line.email) {
+                    query3numbers.numbers.push(line.rmaNumber);
+                    query3numbers.ults.push(line.ult);
+                }
+                else if (line.rmaNumber && !line.ult && line.product && !line.email) {
+                    query3numbers.numbers.push(line.rmaNumber);
+                    query3numbers.products.push(line.product);
+                }
+                else if (line.rmaNumber && !line.ult && !line.product && line.email) {
+                    query3numbers.numbers.push(line.rmaNumber);
+                    query3numbers.emails.push(line.email);
+                }
+                else if (!line.rmaNumber && line.ult && line.product && !line.email) {
+                    query3ults.ults.push(line.ult);
+                    query3ults.products.push(line.product);
+                }
+                else if (!line.rmaNumber && line.ult && !line.product && line.email) {
+                    query3ults.ults.push(line.ult);
+                    query3ults.emails.push(line.email);
+                }
+                else if (!line.rmaNumber && !line.ult && line.product && line.email) {
+                    query3products.products.push(line.product);
+                    query3products.emails.push(line.email);
+                }
+            })
+
+            apexcall = bulkQueryReturnRequest({
+                cmfIdList: this.selectOptions.soldTos.map(i => i.value),
+                query1: query1,
+                query2: query2,
+                query3: {
+                    query3numbers,
+                    query3ults,
+                    query3products
+                },
+                query4: query4
+            });
+        }
+
+        this.isLoading = true;
+
+        let notFoundNumbers = [];
+        apexcall.then(result => {
+            console.log('result', result)
+            result.recordList.forEach(i => {
+
+                let ownerName = this.constantLabels.Intel_User;
+                if (i?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.CreatedBy?.IsPortalEnabled) {
+                    ownerName = i?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.CreatedBy?.Name || '';
+                }
+
+                i.CaseId = i?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.Id || '';
+                i.CaseUrl = basePath + '/case/' + i?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.Id + '/detail';
+                i.ReturnOrder = i?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.CaseNumber || '';
+                i.ServiceType = i?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Service_Type__r?.Name || '';
+                i.Remedy = i?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Remedy_Type__r?.Name || '';
+                i.ReturnReason = i?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Return_Reason__r?.Name || '';
+                i.CreatedBy = ownerName;
+                i.OrderStatus = i?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_CaseNumber__r?.Status || '';
+                let createdDate = new Date(i.Sales_Issue_Cst_Return_Request_Number__r.Sales_Issue_CaseNumber__r.CreatedDate)
+                i.OrderCreatedDate = createdDate.toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit", timeZone: "UTC"  
+                })//createdDate.toLocaleDateString();
+                i.OrderCreatedDateValue = createdDate;
+                i.InvoiceNumber = i?.Sales_Issue_Invoice_Number__c || '';
+                //PSG disclaimer changes - Samuel
+                if (!this.showPsgDisclaimer && i?.Sales_Issue_Cst_Return_Request_Number__r?.Sales_Issue_Sales_Organization__r?.Customer_Sales_Organization_Code__c == 'AM40') {
+                    this.showPsgDisclaimer = true;
+                }
+            })
+            let groupByCaseNumberList = groupArrayByKey(result.recordList, 'ReturnOrder');
+            let listByCaseNumber = [];
+            Object.keys(groupByCaseNumberList).forEach(key => {
+                if (groupByCaseNumberList[key].length > 0) {
+                    //getting only first item from all line items
+                    listByCaseNumber.push(groupByCaseNumberList[key][0]);
+                }
+            });
+
+            //Filter Case records for Sold To & Ship To profile masking (Masking prev in apex. cannot use now). Masking Changes - Samuel
+            console.log('Case List-- ', listByCaseNumber);
+            listByCaseNumber = listByCaseNumber.filter(i => {
+                const soldToId = i.Sales_Issue_Cst_Return_Request_Number__r.Sales_Issue_SoldTo_Customer__c;
+                const shipToId = i.Sales_Issue_Cst_Return_Request_Number__r.Sales_Issue_ShipTo_Customer__c;
+                const isSoldToMasked = this.soldToProfileMaskMap[soldToId];
+                const shipToMaskList = this.shipToProfileMaskMapUsingSoldTo[soldToId] || [];
+                return !isSoldToMasked && !shipToMaskList.includes(shipToId);
+            }); //Masking Changes - Samuel
+            console.log('After profile masking filter Case List-- ', listByCaseNumber);
+
+            notFoundNumbers = this._processNotFoundNumber(listByCaseNumber, parameters);
+            this.searchResult = listByCaseNumber;
+            this.isSearchComplete = true;
+
+        })
+            .catch(err => {
+                console.error(err);
+                this.showToast(this.customlabels.Search_Failed, this.customlabels.Something_went_wrong_please_contact_super_user, 'error');
+            })
+            .finally(() => {
+                this.isLoading = false;
+                if (notFoundNumbers.length > 0) {
+                    this.showToast(this.customlabels.No_Results_Found_For, notFoundNumbers.join(','), 'error');
+                }
+            })
+
+    }
+
+    _processNotFoundNumber(listByCaseNumber, parameters) {
+        let notFoundList = [];
+        if (parameters.rmaNumber) {
+            let resultValues = listByCaseNumber.map(i => i.ReturnOrder);
+            parameters.rmaNumber.split(',').forEach(searchKey => {
+                const paddedSearchKey = searchKey.padStart(8, '0');
+                if (resultValues.indexOf(paddedSearchKey.toUpperCase().trim()) == -1) {
+                                    notFoundList.push(searchKey);
+                }
+            });
+        }
+
+        return notFoundList;
+    }
+
+    //Generic method for toast messages
+    showToast(title, message, variant) {
+        const event = new ShowToastEvent({
+            title: title,
+            message: message,
+            variant: variant,
+        });
+        this.dispatchEvent(event);
+    }
+    validateEmail(email) {
+        // Create a regular expression that matches valid email addresses.
+        const regex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/g;
+
+        // Return `true` if the email address matches the regular expression, otherwise `false`.
+        return regex.test(email);
+    }
+
+    onMouseIn() {
+        this.showProduct = false;
+    }
+    onMouseOut() {
+        this.showProduct = true;
+    }
+
+    //Masking Changes - Samuel
+    async _processMasking(records,contactId) {
+
+    this.soldToProfileMaskMap.clear();
+    this.shipToProfileMaskMapUsingSoldTo.clear();
+
+    this.soldToProfileMaskMap = await records?.reduce((map, rec) => {
+      const isUserProfile = rec.Contact__c === contactId;
+      const isCustomerProfile = rec.Contact__c == undefined;
+      const createMask = (isUserProfile || isCustomerProfile) && rec.Sold_To_CMF__c && rec.Ship_To_CMF__c == undefined && rec.Sold_To_Profile_View_Mask__c == true;
+      if (map[rec.Sold_To_CMF__c] === false || !map[rec.Sold_To_CMF__c]) {
+        map[rec.Sold_To_CMF__c] = createMask ? true : false;
+      }
+      return map;
+    }, {});
+
+    this.shipToProfileMaskMapUsingSoldTo = await records?.reduce((map, rec) => {
+      const isUserProfile = rec.Contact__c === contactId;
+      const isCustomerProfile = rec.Contact__c == undefined;
+      const createMask = (isUserProfile || isCustomerProfile) && rec.Sold_To_CMF__c && rec.Ship_To_CMF__c && rec.Ship_To_Profile_View_Mask__c == true;
+      if ( !map[rec.Sold_To_CMF__c] || map[rec.Sold_To_CMF__c].includes(rec.Ship_To_CMF__c) === false) {
+        if (!map[rec.Sold_To_CMF__c]) {
+          map[rec.Sold_To_CMF__c] = [];
+        }
+        if (createMask) {
+          map[rec.Sold_To_CMF__c].push(rec.Ship_To_CMF__c);
+        }
+      }
+      return map;
+    }, {});
+
+    console.log('this.soldToProfileMaskMap-- ', this.soldToProfileMaskMap);
+    console.log('this.shipToProfileMaskMapUsingSoldTo-- ', this.shipToProfileMaskMapUsingSoldTo);
+  }
+
+    //SaiRam adding getter to determine if current screen is IAO or not -  TWC4621-5330
+    get isIAOScreen() {
+        return this.genericMessages.isIaoFlag == 'true';
+    }   
+
+    get productSearchLabel () {
+        return this.genericMessages.isIaoFlag == 'true' ?  this.customlabels.MMID_CPN_OPN : this.customlabels.Product_code_MMID_CPN_or_IPN;
+        
     }
 }
+
